@@ -1635,16 +1635,15 @@ svg { width: 100%; height: 100%; display: block; }
 .strike-gem { overflow: visible; }
 
 /* =================== Accueil : boutons AMIS, PROFIL, CADEAU (tuiles de jeu) =================== */
-.hud-tile { pointer-events: auto; position: relative; width: 50px; height: 56px; padding: 4px 0 3px; border-radius: 14px; flex-direction: column; justify-content: flex-start; gap: 0;
+.hud-tile { pointer-events: auto; position: relative; width: 52px; height: 52px; padding: 0; border-radius: 14px; flex-direction: column; justify-content: center; gap: 0;
   background: linear-gradient(180deg, #33376a 0%, #1a1c36 100%); border: 2px solid var(--tile, rgba(255,255,255,.6));
   box-shadow: 0 4px 0 color-mix(in srgb, var(--tile, #888) 35%, #05060f), 0 8px 14px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.2); color: #fff; overflow: visible; }
 .hud-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 color-mix(in srgb, var(--tile, #888) 35%, #05060f), 0 4px 8px rgba(0,0,0,.3); }
-.ht-art { width: 34px; height: 34px; display: block; filter: drop-shadow(0 2px 2px rgba(0,0,0,.45)); }
+.ht-art { width: 40px; height: 40px; display: block; filter: drop-shadow(0 2px 2px rgba(0,0,0,.45)); }
 .ht-art svg { width: 100%; height: 100%; display: block; }
-.ht-lbl { margin-top: 1px; font: 900 9px/1 var(--font-body); letter-spacing: .06em; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.7); }
 .tile-friends { --tile: #5cffc4; }
 .tile-gift { --tile: #ffc93a; }
-.tile-profile { --tile: var(--rk, #c9d1dc); padding: 3px; justify-content: center; }
+.tile-profile { --tile: var(--rk, #c9d1dc); padding: 3px; }
 .ht-portrait { display: block; width: 100%; height: 100%; border-radius: 10px; overflow: hidden; box-shadow: inset 0 0 0 2px rgba(0,0,0,.25); }
 .ht-portrait svg { width: 100%; height: 100%; display: block; }
 .ht-rank { position: absolute; right: -8px; bottom: -8px; width: 24px; height: 26px; filter: drop-shadow(0 2px 2px rgba(0,0,0,.6)); }
@@ -1652,9 +1651,9 @@ svg { width: 100%; height: 100%; display: block; }
 .hud-top .tile-gift { position: absolute; right: calc(var(--safe-r) + var(--gutter)); top: calc(var(--safe-t) + 78px); }
 .tile-gift.glow { animation: gift-wiggle 1.6s ease-in-out infinite; box-shadow: 0 4px 0 #7a4a08, 0 0 18px rgba(255, 201, 58, .55), inset 0 1px 0 rgba(255,255,255,.2); }
 @media (max-width: 340px) {
-  .hud-tile { width: 42px; height: 50px; border-radius: 12px; }
-  .ht-art { width: 30px; height: 30px; }
-  .ht-lbl { font-size: 8px; }
+  .hud-tile { width: 42px; height: 42px; border-radius: 12px; }
+  .ht-rank { right: -5px; bottom: -6px; width: 20px; height: 22px; }
+  .ht-art { width: 32px; height: 32px; }
 }
 
 /* =================== AMIS =================== */

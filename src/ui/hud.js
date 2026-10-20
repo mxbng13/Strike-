@@ -28,14 +28,14 @@ export function createHud(container, { onShop, onFriends, onCollection, onBox, o
       </button>
       <div class="hud-top-right">
         <button class="btn hud-tile tile-friends btn-friends" data-action="friends" aria-label="Amis">
-          <span class="ht-art">${friendsArt()}</span><span class="ht-lbl">AMIS</span>
+          <span class="ht-art">${friendsArt()}</span>
         </button>
         <button class="btn hud-tile tile-profile btn-profile" data-action="profile" aria-label="Profil">
           <span class="ht-portrait" data-bind="avatar"></span><span class="ht-rank" data-bind="profileRank"></span>
         </button>
       </div>
       <button class="btn hud-tile tile-gift btn-gift" data-action="daily" aria-label="Cadeau du jour">
-        <span class="ht-art">${giftArt()}</span><span class="ht-lbl">CADEAU</span>
+        <span class="ht-art">${giftArt()}</span>
         <span class="badge" data-bind="giftBadge" hidden>1</span>
       </button>
     </div>
