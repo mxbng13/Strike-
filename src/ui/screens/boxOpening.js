@@ -36,14 +36,16 @@ async function run(typeId, source, done) {
   ]).filter((r) => r.type !== 'xp');
   if (!rewards.length) rewards = [{ type: 'coins', amount: 0 }];
   // Récompense mise en avant (la plus spectaculaire) : Striker > skin perso > skin d'arme > pièces
-  const ORDER = ['striker', 'characterSkin', 'weaponSkin', 'coins'];
+  const ORDER = ['striker', 'characterSkin', 'weaponSkin', 'gems', 'coins'];
   const main = [...rewards].sort((a, b) => (!!a.converted - !!b.converted) || ORDER.indexOf(a.type) - ORDER.indexOf(b.type))[0];
   const def = main.type === 'striker' && !main.converted ? getCharacter(main.id) : null;
   const cskin = main.type === 'characterSkin' && !main.converted ? getCharacterSkin(main.id) : null;
   const wskin = main.type === 'weaponSkin' && !main.converted ? getWeaponSkin(main.id) : null;
   const rarity = def?.rarity ?? cskin?.rarity ?? wskin?.rarity ?? null;
   const color = rarity ? RARITIES[rarity].color : main.type === 'coins' ? '#ffc83d' : '#5cc8ff';
-  const coins = rewards.find((r) => r.type === 'coins')?.amount ?? 0;
+  // total des pièces et diamants de la box (plusieurs gains peuvent en donner)
+  const coins = rewards.filter((r) => r.type === 'coins' || r.converted).reduce((t, r) => t + r.amount, 0);
+  const gems = rewards.filter((r) => r.type === 'gems').reduce((t, r) => t + r.amount, 0);
   // 0..4 : plus c'est rare, plus la tension monte
   const tier = rarity ? RARITY_ORDER.indexOf(rarity) : coins >= 150 ? 2 : coins >= 60 ? 1 : 0;
 
@@ -53,21 +55,26 @@ async function run(typeId, source, done) {
   const prize = def ? `<img class="op-char full" src="${getIllustration(def, rankFor(def.id).id)}" alt="" />`
     : cskin ? `<img class="op-char full skin-reveal" src="${skinPreview(cskin)}" alt="" />`
     : wskin ? `<img class="op-char weapon-reveal" src="${weaponPortrait(weaponOf(save.get().selected).id, wskin.id)}" alt="" />`
-    : `<div class="op-char xp-orb-big coins-orb"><span>+${main.amount}</span><i>${ICONS.coin}</i></div>`;
+    : main.type === 'gems' && gems >= coins / 10 ? `<div class="op-char xp-orb-big coins-orb gems-orb"><span>+${gems}</span><i>${ICONS.gem}</i></div>`
+    : `<div class="op-char xp-orb-big coins-orb"><span>+${coins}</span><i>${ICONS.coin}</i></div>`;
   const label = (r) => {
     if (r.converted) return `${REWARD_CATEGORIES[r.type].label} déjà possédé : +${r.amount.toLocaleString('fr-FR')} pièces`;
     if (r.type === 'coins') return `+${r.amount.toLocaleString('fr-FR')} pièces`;
+    if (r.type === 'gems') return `+${r.amount.toLocaleString('fr-FR')} diamants`;
     if (r.type === 'striker') return `Striker : ${getCharacter(r.id).name}`;
     if (r.type === 'characterSkin') return `Skin : ${getCharacterSkin(r.id)?.name ?? r.id}`;
     if (r.type === 'weaponSkin') return `Skin d’arme : ${getWeaponSkin(r.id)?.name ?? r.id}`;
     return '';
   };
   const icon = (r) => (r.converted || r.type === 'coins' ? ICONS.coin : ICONS[REWARD_CATEGORIES[r.type]?.icon] ?? '');
-  const chips = rewards.map((r) => `<span class="rw-chip rw-${r.converted ? 'coins' : r.type}"><span class="pi">${icon(r)}</span>${label(r)}</span>`).join('');
+  // un carré par gain (3, 5 ou 7), qui apparaissent l'un après l'autre
+  const rarColor = (r) => (r.rarity ? RARITIES[r.rarity].color : r.type === 'gems' ? '#5fd0ff' : '#ffc83d');
+  const big = (r) => (r.converted || r.type === 'coins' || r.type === 'gems' ? `+${r.amount.toLocaleString('fr-FR')}` : r.type === 'striker' ? 'STRIKER' : 'SKIN');
+  const chips = rewards.map((r, i) => `<span class="rw-tile rw-${r.converted ? 'coins' : r.type} ${r.rarity && !r.converted ? 'rare' : ''}" style="--rc:${rarColor(r)};--i:${i}" title="${label(r)}"><span class="pi">${icon(r)}</span><b>${big(r)}</b><small>${label(r).replace(/^\+[\d\s\u202f]+/, '')}</small></span>`).join('');
   const headline = def ? `<p class="rarity-text">${RARITIES[def.rarity].label}</p><h2>${def.name}</h2><p class="op-result new">NOUVEAU STRIKER !</p>`
     : cskin ? `<p class="rarity-text">${RARITIES[cskin.rarity].label} · Skin de personnage</p><h2>${cskin.name}</h2><p class="op-result new">NOUVEAU SKIN ! Équipe-le depuis la carte du Striker.</p>`
     : wskin ? `<p class="rarity-text">${RARITIES[wskin.rarity].label} · Skin d’arme</p><h2>${wskin.name}</h2><p class="op-result new">NOUVEAU SKIN D’ARME ! Applique-le depuis la carte du Striker.</p>`
-    : '<p class="rarity-text">Récompenses</p>';
+    : `<p class="rarity-text">${rewards.length} gains</p>`;
   el.innerHTML = `
     <div class="op-bg"></div>
     <div class="op-rays"></div>
@@ -80,7 +87,8 @@ async function run(typeId, source, done) {
     <p class="op-hint">${box.name}${reveal.source === 'free' ? ' gratuite' : ''}</p>
     <div class="op-card">
       ${headline}
-      <div class="rw-list">${chips}</div>
+      ${def || cskin || wskin ? `<p class="rw-count">${rewards.length} gains</p>` : ''}
+      <div class="rw-grid n${rewards.length}">${chips}</div>
       <div class="op-btns">
         <button class="r-btn ghost" data-act="back">CONTINUER</button>
         <button class="r-btn" data-act="again" hidden></button>

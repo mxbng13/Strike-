@@ -4,6 +4,7 @@ import { BOX_TYPES, BOX_ORDER } from '../../data/boxes.js';
 import { RARITIES, RARITY_ORDER } from '../../data/rarities.js';
 import { buyBox } from '../../game/boxService.js';
 import { COIN_PACKS, GEM_PACKS, CURRENCY } from '../../data/shopOffers.js';
+import { BOX_LOOT, chanceInBox } from '../../data/rewards.js';
 import { getCharacter } from '../../data/characters.js';
 import { weaponOf } from '../../data/weapons.js';
 import { dailyOffers, buyDaily, isSoldOut, msUntilTomorrow, markShopSeen } from '../../game/dailyShop.js';
@@ -53,7 +54,8 @@ function boxesView(goToBox) {
         <span class="tier-tag">${box.tier}</span>
         <h3>${box.name}</h3>
         <p class="sb-desc">${box.desc}</p>
-        <details class="sb-rates"><summary>Chances par rareté</summary>${ratesHtml(box.rates)}</details>
+        <p class="sb-gains"><b>${BOX_LOOT[id].drops} gains</b><span>Striker : ${pct(Math.round(chanceInBox(id, 'striker') * 1000) / 10)} par box</span></p>
+        <details class="sb-rates"><summary>Rareté du Striker (s’il y en a un)</summary>${ratesHtml(box.rates)}</details>
         <button class="buy-btn ${curClass(box.price)}">${priceHtml(box.price)}</button>
       </div>`;
     const btn = card.querySelector('.buy-btn');

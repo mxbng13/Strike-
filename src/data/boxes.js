@@ -4,22 +4,23 @@
 export const BOX_TYPES = {
   normale: {
     id: 'normale', name: 'Box normale', tier: 'Normale',
-    desc: 'La box de tous les jours. Surtout des Strikers communs et rares.',
+    desc: '3 gains : surtout des pièces, parfois des diamants ou un skin. Un Striker y est très rare.',
     price: { coins: 300 },
-    // Probabilités en % par rareté de personnage (chaque colonne totalise 100).
-    rates: { commun: 65, rare: 25, epique: 8, legendaire: 1.8, mythique: 0.2 },
+    // Rareté du Striker QUAND la box en donne un (en %, total 100). La chance d'avoir un Striker est
+    // dans data/rewards.js (BOX_LOOT) : elle est déjà très faible.
+    rates: { commun: 70, rare: 24, epique: 5, legendaire: 0.9, mythique: 0.1 },
   },
   rare: {
     id: 'rare', name: 'Box rare', tier: 'Rare',
-    desc: 'Plus de Strikers rares et épiques, avec une chance de légendaire.',
+    desc: '5 gains : plus de pièces, de diamants et de skins. Un peu plus de chances de Striker.',
     price: { coins: 1200 },
-    rates: { commun: 25, rare: 45, epique: 23, legendaire: 6, mythique: 1 },
+    rates: { commun: 45, rare: 38, epique: 13.6, legendaire: 3, mythique: 0.4 },
   },
   legendaire: {
     id: 'legendaire', name: 'Box légendaire', tier: 'Légendaire',
-    desc: 'Le coffre des champions : Strikers épiques et légendaires le plus souvent.',
+    desc: '7 gains : les plus grosses récompenses et la meilleure chance de Striker, même légendaire.',
     price: { gems: 120 },
-    rates: { commun: 5, rare: 20, epique: 35, legendaire: 30, mythique: 10 },
+    rates: { commun: 25, rare: 36, epique: 28.5, legendaire: 9, mythique: 1.5 },
   },
 };
 export const BOX_ORDER = ['normale', 'rare', 'legendaire'];

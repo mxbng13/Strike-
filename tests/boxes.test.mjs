@@ -67,37 +67,50 @@ check(save.get().coins === coinsBefore + sum(r1, 'coins') && sum(r1, 'xp') === 0
 const r2 = svc.openBox('normale');
 check(r2.reveal.id === r1.reveal.id && save.get().boxes.normale === 1 && save.get().coins === coinsBefore + sum(r1, 'coins'), 'second clic avant acquittement : même résultat, rien de crédité en double');
 svc.acknowledgeReveal(r1.reveal.id);
-// 7. Récompenses : tables par coffre (3 à 5 types), quantités, fréquences, jamais de box vide
-const { BOX_LOOT } = await import('../src/data/rewards.js');
+// 7. Récompenses : 3 / 5 / 7 gains par box, Strikers très rares, jamais d'XP
+const { BOX_LOOT, chanceInBox } = await import('../src/data/rewards.js');
 const { CHARACTER_SKINS, WEAPON_SKINS } = await import('../src/data/skins.js');
-check(Object.values(BOX_LOOT).every((t) => t.length >= 2 && t.length <= 5 && !t.some((e) => e.type === 'xp')), 'chaque coffre a 2 à 5 types de récompenses, aucun ne donne d’XP');
-for (const [box, coins] of [['normale', [15, 45]], ['rare', [40, 110]], ['legendaire', [100, 260]]]) {
-  save.update({ owned: ['claude'], boxes: { normale: 0, rare: 0, legendaire: 0, [box]: 3000 }, pendingReveal: null, characterSkinsOwned: [], weaponSkinsOwned: [] });
-  let c = 0, bad = 0, empty = 0, types = new Set();
-  for (let k = 0; k < 3000; k++) {
+check(BOX_LOOT.normale.drops === 3 && BOX_LOOT.rare.drops === 5 && BOX_LOOT.legendaire.drops === 7, 'gains par box : 3 (normale), 5 (rare), 7 (légendaire)');
+check(Object.values(BOX_LOOT).every((c) => Math.abs(c.table.reduce((t, e) => t + e.weight, 0) - 100) < 1e-9 && !c.table.some((e) => e.type === 'xp')), 'tables à 100 %, aucune XP');
+check(chanceInBox('normale', 'striker') < 0.035 && chanceInBox('rare', 'striker') < 0.1 && chanceInBox('legendaire', 'striker') < 0.26, `Strikers très rares : ${['normale', 'rare', 'legendaire'].map((k) => `${k} ${(chanceInBox(k, 'striker') * 100).toFixed(1)} %`).join(', ')} par box`);
+{
+  const { BOX_TYPES: BT } = await import('../src/data/boxes.js');
+  const legMyth = (k) => chanceInBox(k, 'striker') * (BT[k].rates.legendaire + BT[k].rates.mythique) / 100;
+  check(legMyth('normale') < 0.0005 && legMyth('rare') < 0.004 && legMyth('legendaire') < 0.03 && BT.legendaire.rates.mythique <= 1.5,
+    `légendaire ou mythique : ${['normale', 'rare', 'legendaire'].map((k) => `${(legMyth(k) * 100).toFixed(2)} %`).join(' / ')} par box`);
+}
+for (const [box, coins] of [['normale', [10, 30]], ['rare', [25, 70]], ['legendaire', [60, 160]]]) {
+  const n = BOX_LOOT[box].drops, N = 4000;
+  save.update({ owned: ['claude'], boxes: { normale: 0, rare: 0, legendaire: 0, [box]: N }, pendingReveal: null, characterSkinsOwned: [], weaponSkinsOwned: [] });
+  let bad = 0, wrongCount = 0, strikerBoxes = 0, twoStrikers = 0, gemsSeen = 0, types = new Set();
+  for (let k = 0; k < N; k++) {
     const r = svc.openBox(box);
-    for (const w of r.reveal.rewards) { types.add(w.converted ? `${w.type}*` : w.type); if (w.type === 'coins') { c++; if (w.amount < coins[0] || w.amount > coins[1]) bad++; } }
-    if (!r.reveal.rewards.length) empty++;
+    const rw = r.reveal.rewards;
+    if (rw.length !== n) wrongCount++;
+    const st = rw.filter((w) => w.type === 'striker').length;
+    if (st) strikerBoxes++; if (st > 1) twoStrikers++;
+    for (const w of rw) { types.add(w.converted ? `${w.type}*` : w.type); if (w.type === 'coins' && (w.amount < coins[0] || w.amount > coins[1])) bad++; if (w.type === 'gems') gemsSeen++; }
     svc.acknowledgeReveal(r.reveal.id);
+    if (save.get().owned.length > 1) save.update({ owned: ['claude'] });   // on garde des Strikers à gagner
   }
-  // pièces : tirées selon leur chance, ou données d'office si rien d'autre n'est sorti (jamais de box vide)
-  const pc = BOX_LOOT[box].find((e) => e.type === 'coins').chance / 100;
-  const none = BOX_LOOT[box].filter((e) => e.type !== 'coins').reduce((a, e) => a * (1 - e.chance / 100), 1);
-  const chance = Math.round((1 - (1 - pc) * (1 - none)) * 1000) / 10;
-  check(bad === 0 && empty === 0, `${box} : pièces entre ${coins[0]} et ${coins[1]}, jamais de box vide (types vus : ${[...types].join(', ')})`);
-  check(Math.abs(c / 30 - chance) < 4, `${box} : pièces dans ${(c / 30).toFixed(1)} % des box (prévu ${chance} %)`);
+  const expected = chanceInBox(box, 'striker') * 100, seen = (strikerBoxes / N) * 100;
+  check(wrongCount === 0 && bad === 0 && twoStrikers === 0, `${box} : toujours ${n} gains, pièces entre ${coins[0]} et ${coins[1]}, jamais 2 Strikers (types : ${[...types].join(', ')})`);
+  check(Math.abs(seen - expected) < Math.max(1.2, expected * 0.25) && gemsSeen > 0, `${box} : Striker dans ${seen.toFixed(1)} % des box (prévu ${expected.toFixed(1)} %), diamants possibles`);
 }
 const st7 = save.get();
-check(new Set(st7.characterSkinsOwned).size === st7.characterSkinsOwned.length && st7.characterSkinsOwned.every((x) => CHARACTER_SKINS.some((k) => k.id === x)), `skins de personnages débloqués et enregistrés sans doublon (${st7.characterSkinsOwned.length}/${CHARACTER_SKINS.length})`);
+save.update({ characterSkinsOwned: [], weaponSkinsOwned: [] });
+for (let k = 0; k < 400; k++) { save.update({ boxes: { normale: 0, rare: 0, legendaire: 1 }, pendingReveal: null }); svc.acknowledgeReveal(svc.openBox('legendaire').reveal.id); }
+const st7b = save.get();
+check(new Set(st7b.characterSkinsOwned).size === st7b.characterSkinsOwned.length && st7b.characterSkinsOwned.length > 0 && st7b.characterSkinsOwned.every((x) => CHARACTER_SKINS.some((k) => k.id === x)), `skins de personnages débloqués et enregistrés sans doublon (${st7b.characterSkinsOwned.length}/${CHARACTER_SKINS.length})`);
 {
   const { CHEST_WEAPON_SKINS } = await import('../src/data/skins.js');
-  check(new Set(st7.weaponSkinsOwned).size === st7.weaponSkinsOwned.length && st7.weaponSkinsOwned.length === CHEST_WEAPON_SKINS.length, `skins d'armes des coffres débloqués et enregistrés (${st7.weaponSkinsOwned.length}/${CHEST_WEAPON_SKINS.length})`);
-  check(![...st7.weaponSkinsOwned, ...st7.characterSkinsOwned].some((id) => [...CHARACTER_SKINS, ...WEAPON_SKINS].find((k) => k.id === id)?.source === 'pass'), 'les skins exclusifs du Passe ne sortent jamais des coffres');
+  check(new Set(st7b.weaponSkinsOwned).size === st7b.weaponSkinsOwned.length && st7b.weaponSkinsOwned.length === CHEST_WEAPON_SKINS.length, `skins d'armes des coffres débloqués et enregistrés (${st7b.weaponSkinsOwned.length}/${CHEST_WEAPON_SKINS.length})`);
+  check(![...st7b.weaponSkinsOwned, ...st7b.characterSkinsOwned].some((id) => [...CHARACTER_SKINS, ...WEAPON_SKINS].find((k) => k.id === id)?.source === 'pass'), 'les skins exclusifs du Passe ne sortent jamais des coffres');
 }
 check(st7.boxHistory.length === 50, 'historique des coffres ouverts enregistré (50 derniers)');
 // Striker déjà possédé : converti en pièces
 const { rollRewards } = await import('../src/game/rewards.js');
-const conv = rollRewards('normale', { pickStriker: () => ({ striker: null, rarity: 'rare' }) }, () => 0);
+const conv = rollRewards('normale', { pickStriker: () => ({ striker: null, rarity: 'rare' }) }, () => 0);   // rng 0 : premier gain = Striker
 check(conv.some((r) => r.type === 'striker' && r.converted && r.amount === 120), 'Striker déjà possédé : converti en 120 pièces (rare)');
 // XP : sert uniquement au passe (plus de réserve, de niveaux de Striker ni d'achat d'XP)
 const prog = await import('../src/game/progression.js');
