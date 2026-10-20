@@ -1,5 +1,5 @@
 // STRIKERS (collection), en deux onglets : STRIKERS (grille + filtre, puis la carte de chaque Striker) et ACTIF
-// (la carte du Striker actuellement utilisé). Chaque carte montre le personnage, son statut (actif ou non), ses
+// (uniquement la carte du Striker actuellement utilisé, sans choix d'un autre Striker). Chaque carte montre le personnage, son statut (actif ou non), ses
 // skins possédés, puis en bas SON arme (et ses skins d'armes) et SON ulti. Changer de Striker actif met tout à
 // jour immédiatement. Les personnages inconnus restent anonymes ; les skins non possédés ne sont jamais montrés.
 import { CHARACTERS, getCharacter, shortName } from '../../data/characters.js';
@@ -169,34 +169,19 @@ function mountCard(el, id, { yaw = 0, onChange } = {}) {
   return viewer;
 }
 
-// ---------- Onglet ACTIF : la carte du Striker utilisé en combat, avec le choix rapide du Striker actif ----------
-function strikerStrip(s) {
-  const owned = CHARACTERS.filter((c) => s.owned.includes(c.id));
-  return `
-    <div class="cs-strip" role="listbox" aria-label="Striker actif">${owned.map((c) => `
-      <button class="cs-pick ${s.selected === c.id ? 'on' : ''}" data-pick="${c.id}" role="option" aria-selected="${s.selected === c.id}" style="--rarity:${RARITIES[c.rarity].color}">
-        <img src="${getPortrait(c, rankFor(c.id, s).id)}" alt="" /><span>${shortName(c)}</span>
-      </button>`).join('')}
-    </div>`;
-}
+// ---------- Onglet ACTIF : uniquement la carte du Striker utilisé en combat ----------
+// (pour en changer : onglet STRIKERS, fiche d'un Striker, bouton « JOUER AVEC … »)
 function activeTab() {
   const el = document.createElement('div');
   el.className = 'active-screen';
-  const strip = document.createElement('div');
   const card = document.createElement('div');
-  el.append(strip, card);
+  el.append(card);
   let shown = null;
   const render = (yaw = 0) => {
-    const s = save.get();
-    shown = s.selected;
-    strip.innerHTML = strikerStrip(s);
-    requestAnimationFrame(() => { if (el.isConnected) mountCard(card, s.selected, { yaw, onChange: (y) => render(y) }); });
+    shown = save.get().selected;
+    requestAnimationFrame(() => { if (el.isConnected) mountCard(card, shown, { yaw, onChange: (y) => render(y) }); });
   };
-  strip.addEventListener('click', (e) => {
-    const p = e.target.closest('[data-pick]');
-    if (p && p.dataset.pick !== save.get().selected) select(p.dataset.pick);   // la mise à jour suit (abonnement)
-  });
-  // changement de Striker actif (ici ou ailleurs) : la carte suit aussitôt
+  // changement de Striker actif ailleurs : la carte suit
   const off = save.subscribe((s) => { if (!el.isConnected) { off?.(); return; } if (s.selected !== shown) render(); });
   render();
   return el;
