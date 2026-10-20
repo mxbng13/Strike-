@@ -1,5 +1,5 @@
-// Séquence d'ouverture d'une box : apparition, secousses, couvercle qui saute, lumière de la rareté,
-// révélation du personnage puis carte de récompense. Toucher l'écran accélère la séquence.
+// Séquence d'ouverture d'une box : apparition, secousses, couvercle qui saute, puis UN GAIN À CHAQUE TOUCHER
+// (du plus simple au plus précieux, le compteur montre ce qu'il reste) et enfin le résumé de tous les gains.
 // Le résultat est tiré ET enregistré avant l'animation (boxService.openBox) : fermer le jeu
 // pendant l'animation ne fait rien perdre, le résultat sera réaffiché à la prochaine visite de MES BOX.
 import { BOX_TYPES } from '../../data/boxes.js';
@@ -28,35 +28,38 @@ async function run(typeId, source, done) {
   if (!res.ok) { toast('Tu n’as plus de box de ce type.', '#ff5c7a', 'error'); done(); return; }
   const reveal = res.reveal;
   const box = BOX_TYPES[reveal.box];
-  // Contenu (anciens formats de sauvegarde convertis)
-  // (l'ancienne XP des box n'existe plus : elle n'est plus affichée)
+  // Contenu (anciens formats de sauvegarde convertis ; l'ancienne XP des box n'est plus affichée)
   let rewards = (reveal.rewards ?? [
     ...(reveal.charId ? [{ type: 'striker', id: reveal.charId }] : []),
     ...(reveal.coins ? [{ type: 'coins', amount: reveal.coins }] : []),
   ]).filter((r) => r.type !== 'xp');
   if (!rewards.length) rewards = [{ type: 'coins', amount: 0 }];
-  // Récompense mise en avant (la plus spectaculaire) : Striker > skin perso > skin d'arme > pièces
-  const ORDER = ['striker', 'characterSkin', 'weaponSkin', 'gems', 'coins'];
-  const main = [...rewards].sort((a, b) => (!!a.converted - !!b.converted) || ORDER.indexOf(a.type) - ORDER.indexOf(b.type))[0];
-  const def = main.type === 'striker' && !main.converted ? getCharacter(main.id) : null;
-  const cskin = main.type === 'characterSkin' && !main.converted ? getCharacterSkin(main.id) : null;
-  const wskin = main.type === 'weaponSkin' && !main.converted ? getWeaponSkin(main.id) : null;
-  const rarity = def?.rarity ?? cskin?.rarity ?? wskin?.rarity ?? null;
-  const color = rarity ? RARITIES[rarity].color : main.type === 'coins' ? '#ffc83d' : '#5cc8ff';
-  // total des pièces et diamants de la box (plusieurs gains peuvent en donner)
-  const coins = rewards.filter((r) => r.type === 'coins' || r.converted).reduce((t, r) => t + r.amount, 0);
-  const gems = rewards.filter((r) => r.type === 'gems').reduce((t, r) => t + r.amount, 0);
-  // 0..4 : plus c'est rare, plus la tension monte
-  const tier = rarity ? RARITY_ORDER.indexOf(rarity) : coins >= 150 ? 2 : coins >= 60 ? 1 : 0;
+  // Ordre de révélation : du plus simple au plus précieux (le meilleur gain arrive en dernier)
+  const VALUE = { coins: 0, gems: 1, weaponSkin: 3, characterSkin: 4, striker: 5 };
+  const val = (r) => (r.converted ? 2 : VALUE[r.type] ?? 0) * 1e6 + (r.amount ?? 0);
+  const order = [...rewards].sort((x, y) => val(x) - val(y));
+  const info = (r) => {
+    if (r.converted) {
+      return { color: '#ffc83d', kind: 'coins', top: `${REWARD_CATEGORIES[r.type].label} déjà possédé`, title: '', sub: 'converti en pièces', art: orb(r.amount, ICONS.coin, 'coins-orb') };
+    }
+    if (r.type === 'coins') return { color: '#ffc83d', kind: 'coins', top: 'Pièces', title: '', sub: '', art: orb(r.amount, ICONS.coin, 'coins-orb') };
+    if (r.type === 'gems') return { color: '#5fd0ff', kind: 'gems', top: 'Diamants', title: '', sub: '', art: orb(r.amount, ICONS.gem, 'coins-orb gems-orb') };
+    if (r.type === 'striker') {
+      const d = getCharacter(r.id);
+      return { color: RARITIES[d.rarity].color, kind: 'special', rarity: d.rarity, top: RARITIES[d.rarity].label, title: d.name, sub: 'NOUVEAU STRIKER !', art: `<img class="oi-img full" src="${getIllustration(d, rankFor(d.id).id)}" alt="" />` };
+    }
+    if (r.type === 'characterSkin') {
+      const k = getCharacterSkin(r.id);
+      return { color: RARITIES[k.rarity].color, kind: 'special', rarity: k.rarity, top: `${RARITIES[k.rarity].label} · Skin`, title: k.name, sub: 'NOUVEAU SKIN ! Équipe-le depuis la fiche du Striker.', art: `<img class="oi-img full" src="${skinPreview(k)}" alt="" />` };
+    }
+    const k = getWeaponSkin(r.id);
+    return { color: RARITIES[k.rarity].color, kind: 'special', rarity: k.rarity, top: `${RARITIES[k.rarity].label} · Skin d’arme`, title: k.name, sub: 'NOUVEAU SKIN D’ARME ! Applique-le depuis la fiche du Striker.', art: `<img class="oi-img weapon" src="${weaponPortrait(weaponOf(save.get().selected).id, k.id)}" alt="" />` };
+  };
+  function orb(amount, icon, cls) { return `<div class="oi-orb ${cls}"><span>+${amount.toLocaleString('fr-FR')}</span><i>${icon}</i></div>`; }
+  // tension de l'ouverture selon le meilleur gain de la box
+  const best = order[order.length - 1], bestInfo = info(best);
+  const tier = bestInfo.rarity ? RARITY_ORDER.indexOf(bestInfo.rarity) : 0;
 
-  const el = document.createElement('div');
-  el.className = `opening reveal-${main.type} ${rarity ? `rarity-${rarity}` : 'xp'} box-${reveal.box}`;
-  el.style.setProperty('--rarity', color);
-  const prize = def ? `<img class="op-char full" src="${getIllustration(def, rankFor(def.id).id)}" alt="" />`
-    : cskin ? `<img class="op-char full skin-reveal" src="${skinPreview(cskin)}" alt="" />`
-    : wskin ? `<img class="op-char weapon-reveal" src="${weaponPortrait(weaponOf(save.get().selected).id, wskin.id)}" alt="" />`
-    : main.type === 'gems' && gems >= coins / 10 ? `<div class="op-char xp-orb-big coins-orb gems-orb"><span>+${gems}</span><i>${ICONS.gem}</i></div>`
-    : `<div class="op-char xp-orb-big coins-orb"><span>+${coins}</span><i>${ICONS.coin}</i></div>`;
   const label = (r) => {
     if (r.converted) return `${REWARD_CATEGORIES[r.type].label} déjà possédé : +${r.amount.toLocaleString('fr-FR')} pièces`;
     if (r.type === 'coins') return `+${r.amount.toLocaleString('fr-FR')} pièces`;
@@ -67,28 +70,35 @@ async function run(typeId, source, done) {
     return '';
   };
   const icon = (r) => (r.converted || r.type === 'coins' ? ICONS.coin : ICONS[REWARD_CATEGORIES[r.type]?.icon] ?? '');
-  // un carré par gain (3, 5 ou 7), qui apparaissent l'un après l'autre
-  const rarColor = (r) => (r.rarity ? RARITIES[r.rarity].color : r.type === 'gems' ? '#5fd0ff' : '#ffc83d');
+  const rarColor = (r) => (r.rarity && !r.converted ? RARITIES[r.rarity].color : r.type === 'gems' ? '#5fd0ff' : '#ffc83d');
   const big = (r) => (r.converted || r.type === 'coins' || r.type === 'gems' ? `+${r.amount.toLocaleString('fr-FR')}` : r.type === 'striker' ? 'STRIKER' : 'SKIN');
-  const chips = rewards.map((r, i) => `<span class="rw-tile rw-${r.converted ? 'coins' : r.type} ${r.rarity && !r.converted ? 'rare' : ''}" style="--rc:${rarColor(r)};--i:${i}" title="${label(r)}"><span class="pi">${icon(r)}</span><b>${big(r)}</b><small>${label(r).replace(/^\+[\d\s\u202f]+/, '')}</small></span>`).join('');
-  const headline = def ? `<p class="rarity-text">${RARITIES[def.rarity].label}</p><h2>${def.name}</h2><p class="op-result new">NOUVEAU STRIKER !</p>`
-    : cskin ? `<p class="rarity-text">${RARITIES[cskin.rarity].label} · Skin de personnage</p><h2>${cskin.name}</h2><p class="op-result new">NOUVEAU SKIN ! Équipe-le depuis la carte du Striker.</p>`
-    : wskin ? `<p class="rarity-text">${RARITIES[wskin.rarity].label} · Skin d’arme</p><h2>${wskin.name}</h2><p class="op-result new">NOUVEAU SKIN D’ARME ! Applique-le depuis la carte du Striker.</p>`
-    : `<p class="rarity-text">${rewards.length} gains</p>`;
+  const tiles = order.map((r, i) => `<span class="rw-tile rw-${r.converted ? 'coins' : r.type} ${r.rarity && !r.converted ? 'rare' : ''}" style="--rc:${rarColor(r)};--i:${i}" title="${label(r)}"><span class="pi">${icon(r)}</span><b>${big(r)}</b><small>${label(r).replace(/^\+[\d\s ]+/, '')}</small></span>`).join('');
+  const totalCoins = rewards.filter((r) => r.type === 'coins' || r.converted).reduce((t, r) => t + r.amount, 0);
+  const totalGems = rewards.filter((r) => r.type === 'gems').reduce((t, r) => t + r.amount, 0);
+  const specials = order.filter((r) => !r.converted && ['striker', 'characterSkin', 'weaponSkin'].includes(r.type));
+
+  const el = document.createElement('div');
+  el.className = `opening box-${reveal.box}`;
+  el.style.setProperty('--rarity', bestInfo.rarity ? bestInfo.color : '#ffc83d');
   el.innerHTML = `
     <div class="op-bg"></div>
     <div class="op-rays"></div>
     <div class="op-stage">
       <div class="op-glow"></div>
       <div class="op-box">${boxArt(reveal.box)}</div>
-      ${prize}
+      <div class="op-item" aria-live="polite"></div>
     </div>
     <div class="op-flash"></div>
     <p class="op-hint">${box.name}${reveal.source === 'free' ? ' gratuite' : ''}</p>
+    <button class="op-skip" data-act="skip">TOUT VOIR ${ICONS.back}</button>
+    <div class="op-info"><small></small><b></b><span></span></div>
+    <div class="op-left"><span class="ol-box">${boxArt(reveal.box)}</span><b></b></div>
+    <p class="op-tap">Touche l’écran</p>
     <div class="op-card">
-      ${headline}
-      ${def || cskin || wskin ? `<p class="rw-count">${rewards.length} gains</p>` : ''}
-      <div class="rw-grid n${rewards.length}">${chips}</div>
+      <p class="rarity-text">Résumé · ${rewards.length} gains</p>
+      ${specials.length ? `<p class="op-result new">${specials.map((r) => label(r)).join(' · ')}</p>` : ''}
+      <p class="op-totals"><span><span class="pi">${ICONS.coin}</span>+${totalCoins.toLocaleString('fr-FR')}</span>${totalGems ? `<span><span class="pi">${ICONS.gem}</span>+${totalGems.toLocaleString('fr-FR')}</span>` : ''}</p>
+      <div class="rw-grid n${rewards.length}">${tiles}</div>
       <div class="op-btns">
         <button class="r-btn ghost" data-act="back">CONTINUER</button>
         <button class="r-btn" data-act="again" hidden></button>
@@ -96,25 +106,55 @@ async function run(typeId, source, done) {
     </div>`;
   document.body.append(el);
 
+  // 1) ouverture de la box (toucher accélère)
   const skip = { list: [], skipped: false };
   const fast = () => { skip.skipped = true; skip.list.splice(0).forEach((f) => f()); };
-  el.addEventListener('pointerdown', (e) => { if (!e.target.closest('.op-card')) fast(); });
-
+  let phase = 'intro', next = null, toSummary = false;
+  el.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.op-card, .op-skip')) return;
+    if (phase === 'intro') fast();
+    else if (phase === 'items') next?.();
+  });
+  el.querySelector('.op-skip').addEventListener('click', () => { toSummary = true; if (phase === 'intro') fast(); next?.(); });
   const step = (cls, ms) => { el.classList.add(cls); return skip.skipped ? Promise.resolve() : sleep(ms, skip); };
   await sleep(30, skip);
   await step('s-drop', 550);                       // la box tombe au centre
-  await step('s-shake', 700 + tier * 160);         // secousses (plus longues si rare)
-  el.classList.add('s-tint');                      // la lumière prend la couleur de la rareté
+  await step('s-shake', 700 + tier * 160);         // secousses (plus longues si un gain rare attend)
+  el.classList.add('s-tint');
   await step('s-shake2', 350 + tier * 120);
   navigator.vibrate?.(tier >= 3 ? [40, 50, 80] : 40);
   await step('s-open', 380);                       // couvercle qui saute + flash
-  await step('s-reveal', 650);                     // personnage
-  el.classList.add('s-drop', 's-shake', 's-tint', 's-shake2', 's-open', 's-reveal', 's-card');
+  el.classList.add('s-drop', 's-shake', 's-tint', 's-shake2', 's-open', 's-items');
 
+  // 2) un gain à chaque toucher, du plus simple au plus précieux
+  phase = 'items';
+  const item = el.querySelector('.op-item'), inf = el.querySelector('.op-info'), left = el.querySelector('.op-left b');
+  for (let i = 0; i < order.length && !toSummary; i++) {
+    const it = info(order[i]);
+    el.style.setProperty('--rarity', it.color);
+    el.classList.toggle('special', it.kind === 'special');
+    item.innerHTML = `<div class="oi oi-${it.kind}">${it.art}</div>`;
+    inf.querySelector('small').textContent = it.top;
+    inf.querySelector('b').textContent = it.title;
+    inf.querySelector('span').textContent = it.sub;
+    inf.classList.remove('in'); void inf.offsetWidth; inf.classList.add('in');
+    const remaining = order.length - i - 1;
+    left.textContent = remaining ? `${remaining}` : '0';
+    el.querySelector('.op-left').classList.toggle('empty', !remaining);
+    if (it.kind === 'special') { el.classList.remove('flash2'); void el.offsetWidth; el.classList.add('flash2'); navigator.vibrate?.([30, 40, 60]); } else navigator.vibrate?.(12);
+    await new Promise((r) => { next = r; });
+    next = null;
+  }
+
+  // 3) résumé de tous les gains
+  phase = 'summary';
+  el.classList.remove('special');
+  el.style.setProperty('--rarity', bestInfo.rarity ? bestInfo.color : '#ffc83d');
+  el.classList.add('s-card');
   const again = el.querySelector('[data-act="again"]');
   const src = reveal.source ?? 'bought';
-  const left = src === 'free' ? freeBoxStatus().stored : save.get().boxes[reveal.box];
-  if (left > 0) { again.hidden = false; again.textContent = `OUVRIR ENCORE (x${left})`; }
+  const leftBoxes = src === 'free' ? freeBoxStatus().stored : save.get().boxes[reveal.box];
+  if (leftBoxes > 0) { again.hidden = false; again.textContent = `OUVRIR ENCORE (x${leftBoxes})`; }
 
   el.querySelector('.op-btns').addEventListener('click', (e) => {
     const b = e.target.closest('[data-act]');

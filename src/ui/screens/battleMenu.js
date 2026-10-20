@@ -7,7 +7,12 @@ import { ICONS } from '../icons.js';
 import { showPanel, closePanel } from '../panel.js';
 import { openArena, ARENA_FORMATS, KILL_TARGETS, DEFAULT_KILL_TARGET } from '../../arena/arenaGame.js';
 import { ARENA_MAPS } from '../../arena/maps.js';
-import { arenaMapPreview, cachedArenaMapPreview } from '../../render/portraits.js';
+import { arenaMapPreview, cachedArenaMapPreview, getPortrait } from '../../render/portraits.js';
+import { getCharacter } from '../../data/characters.js';
+import { RARITIES } from '../../data/rarities.js';
+import { appearanceFor } from '../../game/appearance.js';
+import { strikerTrophies } from '../../game/trophies.js';
+import { openCollection } from './collection.js';
 
 const prefsOf = (s = save.get()) => {
   const p = { ...DEFAULT_BATTLE_PREFS, ...(s.battlePrefs ?? {}) };
@@ -30,34 +35,45 @@ export function openBattleMenu() {
   function render() {
     const s = save.get(), p = prefsOf(s);
     const rec = s.arenaRecord ?? { wins: 0, losses: 0 };
+    const me = getCharacter(s.selected), look = appearanceFor(s.selected, s);
+    const myImg = getPortrait(me, look.rank);
+    const foe = `<span class="bm-foe">${ICONS.striker}</span>`;
+    const mine = `<span class="bm-mine"><img src="${myImg}" alt="" /></span>`;
+    const ally = `<span class="bm-mine ally">${ICONS.striker}</span>`;
+    const preview = cachedArenaMapPreview(map.id);
     root.innerHTML = `
-      <section class="bm-arena" style="--mc:${map.color}">
-        <span class="bm-thumb ${cachedArenaMapPreview(map.id) ? 'ready' : ''}"><img data-apreview="${map.id}" ${cachedArenaMapPreview(map.id) ? `src="${cachedArenaMapPreview(map.id)}"` : ''} alt="" /></span>
-        <div class="bm-arena-txt"><b>Arène de combat</b><small>${map.desc}</small><span class="bm-info">${ICONS.trophy}<span>${rec.wins} victoire${rec.wins > 1 ? 's' : ''} · ${rec.losses} défaite${rec.losses > 1 ? 's' : ''}</span></span></div>
+      <section class="bm-hero" style="--mc:${map.color}">
+        <img class="bm-hero-img ${preview ? 'ready' : ''}" data-apreview="${map.id}" ${preview ? `src="${preview}"` : ''} alt="" />
+        <span class="bm-hero-name">ARÈNE DE COMBAT</span>
+        <span class="bm-rec"><span class="w">${rec.wins}<small>victoire${rec.wins > 1 ? 's' : ''}</small></span><span class="l">${rec.losses}<small>défaite${rec.losses > 1 ? 's' : ''}</small></span></span>
       </section>
 
-      <p class="bm-opt-label">Mode de jeu</p>
-      <div class="bm-formats" role="radiogroup" aria-label="Mode de jeu">${Object.values(ARENA_FORMATS).map((f) => `
-        <button class="bm-format ${p.arenaFormat === f.id ? 'sel' : ''}" data-aformat="${f.id}" role="radio" aria-checked="${p.arenaFormat === f.id}" style="--mc:${MODE_INFO[f.id].color}">
-          <span class="bm-ic">${ICONS[MODE_INFO[f.id].icon]}</span>
-          <b>${f.size === 1 ? '1 contre 1' : '2 contre 2'}</b><small>${f.name}</small>
+      <section class="bm-me" style="--rarity:${RARITIES[me.rarity].color}">
+        <span class="bm-me-img"><img src="${myImg}" alt="" /></span>
+        <div class="bm-me-txt"><small>Ton Striker</small><b>${me.name}</b><span>${ICONS.trophy}${strikerTrophies(me.id, s)}</span></div>
+        <button class="bm-change" data-change>CHANGER</button>
+      </section>
+
+      <div class="sh-banner bm-banner"><span class="sh-ic">${ICONS.battle}</span><h4>Mode</h4></div>
+      <div class="bm-modes2" role="radiogroup" aria-label="Mode de jeu">${Object.values(ARENA_FORMATS).map((f) => `
+        <button class="bm-mode2 ${p.arenaFormat === f.id ? 'sel' : ''}" data-aformat="${f.id}" role="radio" aria-checked="${p.arenaFormat === f.id}" style="--mc:${MODE_INFO[f.id].color}">
+          <span class="bm-vs">${f.size === 1 ? `${mine}<i>VS</i>${foe}` : `<span class="bm-team">${mine}${ally}</span><i>VS</i><span class="bm-team">${foe}${foe}</span>`}</span>
+          <b>${f.size === 1 ? '1 CONTRE 1' : '2 CONTRE 2'}</b><small>${f.name}</small>
           <span class="bm-check">${ICONS.check}</span>
         </button>`).join('')}
       </div>
-      <p class="bm-mode-desc">${MODE_INFO[p.arenaFormat].desc}</p>
 
-      <p class="bm-opt-label">Nombre d’éliminations pour gagner</p>
-      <div class="bm-kills" role="radiogroup" aria-label="Nombre d’éliminations pour gagner">${KILL_TARGETS.map((k) => `
-        <button class="bm-kill ${p.arenaKills === k ? 'sel' : ''}" data-kills="${k}" role="radio" aria-checked="${p.arenaKills === k}"><b>${k}</b><small>élim.</small></button>`).join('')}
+      <div class="sh-banner bm-banner"><span class="sh-ic">${ICONS.trophy}</span><h4>Victoire à</h4></div>
+      <div class="bm-kills2" role="radiogroup" aria-label="Nombre d’éliminations pour gagner">${KILL_TARGETS.map((k) => `
+        <button class="bm-kill2 ${p.arenaKills === k ? 'sel' : ''}" data-kills="${k}" role="radio" aria-checked="${p.arenaKills === k}"><b>${k}</b><small>éliminations</small><em>${k === 3 ? 'Rapide' : k === 5 ? 'Classique' : 'Long'}</em></button>`).join('')}
       </div>
-      <p class="bm-mode-desc">${p.arenaFormat === 'duo' ? `La première équipe à ${p.arenaKills} éliminations gagne.` : `Le premier à ${p.arenaKills} éliminations gagne.`} Les combattants éliminés réapparaissent dans leur camp après 3 s.</p>
+      <p class="bm-rule">${p.arenaFormat === 'duo' ? `La première équipe à ${p.arenaKills} éliminations gagne.` : `Le premier à ${p.arenaKills} éliminations gagne.`} Réapparition après 3 s.</p>
 
-      <div class="bm-footer">
-        <div class="bm-sum" style="--mc:${MODE_INFO[p.arenaFormat].color}"><b>${ARENA_FORMATS[p.arenaFormat].name} · ${p.arenaKills} éliminations</b><span>Arène de combat</span></div>
-        <button class="r-btn bm-play" data-play>${ICONS.battle}JOUER</button>
+      <div class="bm-footer2">
+        <button class="bm-go" data-play><span class="bm-go-ic">${ICONS.battle}</span><span><b>COMBAT</b><small>${ARENA_FORMATS[p.arenaFormat].name} · ${p.arenaKills} élim.</small></span></button>
       </div>`;
     const img = root.querySelector('[data-apreview]:not([src])');
-    if (img) requestAnimationFrame(() => { if (!img.isConnected) return; img.src = arenaMapPreview(map.id); img.closest('.bm-thumb').classList.add('ready'); });
+    if (img) requestAnimationFrame(() => { if (!img.isConnected) return; img.src = arenaMapPreview(map.id); img.classList.add('ready'); });
   }
 
   root.addEventListener('click', (e) => {
@@ -65,6 +81,7 @@ export function openBattleMenu() {
     if (af) { setPrefs({ arenaFormat: af.dataset.aformat }); navigator.vibrate?.(8); render(); return; }
     const k = e.target.closest('[data-kills]');
     if (k) { setPrefs({ arenaKills: Number(k.dataset.kills) }); navigator.vibrate?.(8); render(); return; }
+    if (e.target.closest('[data-change]')) { closePanel(true); openCollection(true, 0); return; }
     if (e.target.closest('[data-play]')) {
       const p = prefsOf();
       closePanel(true);
@@ -73,5 +90,5 @@ export function openBattleMenu() {
   });
 
   render();
-  showPanel({ title: 'COMBAT', subtitle: 'Arène · 1 contre 1 ou 2 contre 2', icon: ICONS.battle, accent: '#ff3d7f', content: root });
+  showPanel({ title: 'COMBAT', icon: ICONS.battle, accent: '#ff3d7f', content: root });
 }
