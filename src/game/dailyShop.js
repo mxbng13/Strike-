@@ -55,3 +55,10 @@ export function buyDaily(offerId, t = Date.now()) {
   });
   return { ok: true, offer };
 }
+
+/** Le joueur a-t-il déjà vu les offres d'aujourd'hui ? (pastille « ! » sur le bouton BOUTIQUE) */
+export const newShopOffers = (s = save.get(), t = Date.now()) => s.shopSeenDay !== dailyOffers(t).day;
+export function markShopSeen(t = Date.now()) {
+  const day = dailyOffers(t).day;
+  if (save.get().shopSeenDay !== day) save.update({ shopSeenDay: day });
+}

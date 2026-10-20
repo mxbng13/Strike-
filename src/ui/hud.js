@@ -1,7 +1,11 @@
 // HUD de l'écran principal : monnaies (haut gauche), TROPHÉES (haut centre), AMIS puis PROFIL (haut droite),
 // cadeau du jour (sous le profil), STRIKER puis BOX juste dessous (à gauche), PASSE (bas gauche),
 // BOUTIQUE (bas centre) et COMBAT (bas droite).
-import { ICONS, friendsArt, giftArt } from './icons.js';
+import { ICONS, friendsArt, giftArt, shopArt } from './icons.js';
+import { getCharacter } from '../data/characters.js';
+import { getPortrait } from '../render/portraits.js';
+import { appearanceFor, appearanceKey } from '../game/appearance.js';
+import { newShopOffers } from '../game/dailyShop.js';
 import { createWallet } from './currency.js';
 import { freeBoxStatus, totalBoxes } from '../game/boxService.js';
 import { rankedClaimable, nextMajorStep, resolveReward } from '../game/ranked.js';
@@ -41,8 +45,8 @@ export function createHud(container, { onShop, onFriends, onCollection, onBox, o
     </div>
 
     <nav class="side-nav">
-      <button class="btn btn-side2 btn-striker" data-action="collection" aria-label="Striker">
-        <span class="sn-ico striker-ico">${ICONS.striker}</span><span class="btn-label">STRIKER</span>
+      <button class="btn btn-side2 btn-striker" data-action="collection" aria-label="Strikers">
+        <span class="stk-portrait"><img data-bind="strikerPortrait" alt="" /></span><span class="btn-label">STRIKERS</span>
       </button>
       <button class="btn btn-side2 btn-box" data-action="box" aria-label="Box">
         <span class="sn-ico">${ICONS.chest}</span><span class="btn-label">BOX</span>
@@ -55,8 +59,9 @@ export function createHud(container, { onShop, onFriends, onCollection, onBox, o
         <span class="btn-icon">${ICONS.ulti}</span><span class="btn-label">PASSE DE COMBAT</span>
         <span class="badge" data-bind="passBadge" hidden></span>
       </button>
-      <button class="btn btn-corner btn-shop-bottom" data-action="shop">
-        <span class="btn-icon">${ICONS.shop}</span><span class="btn-label">BOUTIQUE</span>
+      <button class="btn btn-corner btn-shop-bottom" data-action="shop" aria-label="Boutique">
+        <span class="shop-art">${shopArt()}</span><span class="btn-label">BOUTIQUE</span>
+        <span class="badge" data-bind="shopBadge" hidden>!</span>
       </button>
       <button class="btn btn-battle" data-action="battle">
         <span class="battle-shine"></span>
@@ -103,6 +108,10 @@ export function createHud(container, { onShop, onFriends, onCollection, onBox, o
       bind('rankNext').hidden = !major;
     }
     card.setAttribute('aria-label', `Trophées : ${r.label}, ${pts.toLocaleString('fr-FR')} trophées${major ? `, prochaine grande récompense à ${major.points.toLocaleString('fr-FR')} trophées` : ''}`);
+    // bouton STRIKERS : portrait du Striker actif (avec son skin et sa tenue de palier)
+    const look = appearanceFor(state.selected, state), pk = appearanceKey(state.selected, look);
+    if (bind('strikerPortrait').dataset.k !== pk) { bind('strikerPortrait').dataset.k = pk; bind('strikerPortrait').src = getPortrait(getCharacter(state.selected), look.rank); }
+    bind('shopBadge').hidden = !newShopOffers(state);
     const tb = bind('trophyBadge');
     const claim = rankedClaimable(state);
     tb.hidden = !claim; tb.textContent = claim;

@@ -37,13 +37,17 @@ export function openCollection(animate = true, tab = 0) {
   const ownedCount = CHARACTERS.filter((c) => s.owned.includes(c.id)).length;
   const el = document.createElement('div');
   el.innerHTML = `
-    <div class="col-progress"><div class="cp-bar"><i style="width:${(ownedCount / CHARACTERS.length) * 100}%"></i></div><b>${ownedCount} / ${CHARACTERS.length}</b></div>
+    <div class="sk-head">
+      <span class="sk-head-ic">${ICONS.collection}</span>
+      <div class="sk-head-txt"><b>${ownedCount} <small>/ ${CHARACTERS.length}</small></b><small>Strikers débloqués</small></div>
+      <div class="cp-bar"><i style="width:${(ownedCount / CHARACTERS.length) * 100}%"></i></div>
+    </div>
     <div class="chips filter">
       <button data-filter="all">Toutes</button>
       ${RARITY_ORDER.map((r) => `<button data-filter="${r}" style="--rarity:${RARITIES[r].color}">${RARITIES[r].label}</button>`).join('')}
     </div>
-    <div class="col-grid"></div>`;
-  const grid = el.querySelector('.col-grid');
+    <div class="sk-grid"></div>`;
+  const grid = el.querySelector('.sk-grid');
 
   function render() {
     const st = save.get();
@@ -55,14 +59,14 @@ export function openCollection(animate = true, tab = 0) {
       const owned = st.owned.includes(c.id);
       const r = RARITIES[c.rarity];
       const rk = rankFor(c.id, st);
+      const active = st.selected === c.id;
       return `
-        <button class="col-card ${owned ? '' : 'locked'} ${st.selected === c.id ? 'active' : ''}" style="--rarity:${r.color}" ${owned ? `data-detail="${c.id}"` : 'data-locked'}>
-          <span class="cc-art"><img alt="" src="${getPortrait(c, owned ? rk.id : 'basique')}" />${owned ? '' : `<span class="lock">${ICONS.lock}</span>`}</span>
-          ${owned ? `<span class="rank-chip rk-${rk.id}" style="--rk:${rk.color}">${rk.label}</span>` : ''}
-          <span class="cc-rarity">${r.label}</span>
-          <span class="cc-name">${owned ? shortName(c) : '???'}</span>
-          ${st.selected === c.id ? '<span class="cc-active">ACTIF</span>' : ''}
-          ${owned ? `<span class="cc-level cc-trophies">${ICONS.trophy}${strikerTrophies(c.id, st)}</span>` : ''}
+        <button class="sk-card ${owned ? '' : 'locked'} ${active ? 'active' : ''}" style="--rarity:${r.color}" ${owned ? `data-detail="${c.id}" aria-label="${c.name}, ${r.label}"` : `data-locked aria-label="Striker ${r.label} inconnu"`}>
+          <span class="sk-bg" aria-hidden="true"></span>
+          <span class="sk-art"><img alt="" src="${getPortrait(c, owned ? rk.id : 'basique')}" /></span>
+          ${owned ? `<span class="sk-tro">${ICONS.trophy}${strikerTrophies(c.id, st)}</span><span class="sk-tier" style="--rk:${rk.color}">${rk.label}</span>` : `<span class="sk-q">?</span><span class="sk-lock">${ICONS.lock}</span>`}
+          ${active ? '<span class="sk-active">EN COMBAT</span>' : ''}
+          <span class="sk-plate"><small>${r.label}</small><b>${owned ? shortName(c) : '???'}</b></span>
         </button>`;
     }).join('') || '<p class="empty">Aucun Striker de cette rareté.</p>';
   }
@@ -88,6 +92,7 @@ export function openCollection(animate = true, tab = 0) {
 // Ordre (tout l'essentiel visible sans défiler) : personnage en 3D, nom + statut + bouton de sélection, skins
 // possédés, palier ; puis en bas son ARME (skins d'armes compatibles) et son ULTI. Jamais l'arme ou l'ulti d'un autre.
 const statLine = (a) => `${a.pellets > 1 ? `${a.pellets}×` : ''}${a.dmg}${a.burst > 1 ? ` ×${a.burst}` : ''}`;
+const STAT_ICONS = { pv: ICONS.heart, atk: ICONS.sword, def: ICONS.shield, vit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6l6 6-6 6M12 6l6 6-6 6"/></svg>' };
 function cardHtml(id, s) {
   const c = getCharacter(id), r = RARITIES[c.rarity];
   const active = s.selected === id;
@@ -96,27 +101,36 @@ function cardHtml(id, s) {
   const w = getWeapon(equippedWeapon(id, s)), wskin = equippedWeaponSkin(w.id, s), wskins = ownedWeaponSkinsFor(w.id, s), a = w.arena;
   const u = ultiOf(id);
   const st = statsAt(c, COMBAT_LEVEL, rank.id);
+  const tierPct = nx ? Math.max(0, Math.min(100, ((tro - rank.minTrophies) / (nx.minTrophies - rank.minTrophies)) * 100)) : 100;
   return `
-    <div class="dt-viewer tier-${rank.id}" aria-label="Striker en 3D : glisse le doigt pour le faire tourner">
-      <span class="dt-rotate" aria-hidden="true">${ICONS.rotate}</span>
-    </div>
-    <div class="sc-head">
-      <div class="sc-id">
-        <p class="rarity-text">${r.label}</p>
-        <h2 class="dt-name">${c.name}</h2>
-        <p class="sc-sub"><span class="rank-chip rk-${rank.id}" style="--rk:${rank.color}">${rank.label}</span><span class="sc-tro">${ICONS.trophy}${tro}</span>${nx ? `<small>${nx.label} à ${nx.minTrophies}</small>` : ''}</p>
+    <div class="sc-stage">
+      <div class="dt-viewer tier-${rank.id}" aria-label="Striker en 3D : glisse le doigt pour le faire tourner">
+        <span class="dt-rotate" aria-hidden="true">${ICONS.rotate}</span>
       </div>
-      ${active ? `<span class="sc-status on">${ICONS.check}ACTIF</span>` : `<button class="sc-status" data-select>SÉLECTIONNER</button>`}
+      <span class="sc-tro-pill">${ICONS.trophy}<b>${tro}</b></span>
+      <span class="sc-tier-pill" style="--rk:${rank.color}">${rank.label}</span>
+      <div class="sc-plate"><small>${r.label}</small><h2 class="dt-name">${c.name}</h2></div>
     </div>
-    <div class="sc-row" role="radiogroup" aria-label="Skin">
-      <button class="sc-skin ${skin ? '' : 'sel'}" data-skin=""><span class="sc-skin-art">${ICONS.striker}</span><small>Classique</small></button>
-      ${skins.map((k) => `<button class="sc-skin ${skin?.id === k.id ? 'sel' : ''}" data-skin="${k.id}" style="--rk:${RARITIES[k.rarity].color}"><img src="${skinPreview(k)}" alt="" /><small>${k.name.replace(c.name, '').trim() || k.name}</small></button>`).join('')}
-    </div>
-    <ul class="sc-stats">${Object.keys(STAT_LABELS).map((k) => `<li><small>${STAT_LABELS[k]}</small><b>${st[k]}</b></li>`).join('')}</ul>
+    ${active ? `<div class="sc-cta on">${ICONS.check}EN COMBAT</div>` : `<button class="sc-cta" data-select>${ICONS.battle}JOUER AVEC ${shortName(c).toUpperCase()}</button>`}
+    <section class="sc-box sc-tier" style="--rk:${rank.color}">
+      <div class="sc-tier-top"><b>Palier ${rank.label}</b><small>${nx ? `${ICONS.trophy}${tro} / ${nx.minTrophies} pour ${nx.label}` : 'Palier maximum atteint'}</small></div>
+      <span class="sc-bar"><i style="width:${tierPct}%"></i></span>
+    </section>
+    <section class="sc-box">
+      <h4 class="sc-h">Statistiques</h4>
+      <ul class="sc-stats2">${Object.keys(STAT_LABELS).map((k) => `<li class="st-${k}"><span class="sc-st-ic">${STAT_ICONS[k]}</span><div><small>${STAT_LABELS[k]}</small><b>${st[k]}</b><span class="sc-bar"><i style="width:${Math.min(100, (st[k] / (STAT_MAX[k] * 1.1)) * 100)}%"></i></span></div></li>`).join('')}</ul>
+    </section>
+    <section class="sc-box">
+      <h4 class="sc-h">Skins <span>${skins.length + 1}</span></h4>
+      <div class="sc-row" role="radiogroup" aria-label="Skin">
+        <button class="sc-skin ${skin ? '' : 'sel'}" data-skin=""><span class="sc-skin-art">${ICONS.striker}</span><small>Classique</small></button>
+        ${skins.map((k) => `<button class="sc-skin ${skin?.id === k.id ? 'sel' : ''}" data-skin="${k.id}" style="--rk:${RARITIES[k.rarity].color}"><img src="${skinPreview(k)}" alt="" /><small>${k.name.replace(c.name, '').trim() || k.name}</small></button>`).join('')}
+      </div>
+    </section>
     <section class="sc-part sc-weapon" style="--rarity:${RARITIES[w.rarity].color}">
+      <span class="sc-part-tag">${ICONS.gun}ARME</span>
       <img class="sc-part-art" src="${weaponPortrait(w.id, wskin?.id)}" alt="" />
       <div class="sc-part-txt">
-        <p class="sc-part-kind">${ICONS.gun}ARME</p>
         <b>${w.name}</b>
         <small>${statLine(a)} dégâts · ${a.range} m · ${a.mag} charges</small>
       </div>
@@ -126,9 +140,9 @@ function cardHtml(id, s) {
       </div>
     </section>
     <section class="sc-part sc-ulti" style="--uc:${u.color}">
+      <span class="sc-part-tag">${ICONS.star}ULTI</span>
       <span class="sc-part-art sc-ulti-ic">${ICONS.ulti}</span>
       <div class="sc-part-txt">
-        <p class="sc-part-kind">${ICONS.star}ULTI</p>
         <b>${u.name}</b>
         <small>${u.desc}</small>
       </div>

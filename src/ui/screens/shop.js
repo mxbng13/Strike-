@@ -1,4 +1,4 @@
-// BOUTIQUE : Du jour (skins du jour + packs en promo), Box, Pièces (argent réel,
+// BOUTIQUE : Du jour (skins du jour + packs en promo), Box, Monnaies (diamants et pièces, argent réel,
 // paiement pas encore connecté).
 import { BOX_TYPES, BOX_ORDER } from '../../data/boxes.js';
 import { RARITIES, RARITY_ORDER } from '../../data/rarities.js';
@@ -6,7 +6,7 @@ import { buyBox } from '../../game/boxService.js';
 import { COIN_PACKS, GEM_PACKS, CURRENCY } from '../../data/shopOffers.js';
 import { getCharacter } from '../../data/characters.js';
 import { weaponOf } from '../../data/weapons.js';
-import { dailyOffers, buyDaily, isSoldOut, msUntilTomorrow } from '../../game/dailyShop.js';
+import { dailyOffers, buyDaily, isSoldOut, msUntilTomorrow, markShopSeen } from '../../game/dailyShop.js';
 import { requestPurchase, paymentsAvailable } from '../../game/payments.js';
 import { weaponPortrait, skinPreview } from '../../render/portraits.js';
 import { save } from '../../save/storage.js';
@@ -109,14 +109,20 @@ function packCard(p, kind, i, packs) {
       <button class="buy-btn cur-eur" data-pack="${p.productId}">${euro(p.price)}</button>
     </article>`;
 }
-/** Packs de pièces OU de diamants (onglets séparés). */
-function packsView(kind) {
+/** Monnaies : les diamants puis les pièces, dans le même onglet. */
+function packsView(focus = 'gems') {
   const el = document.createElement('div');
-  el.className = `offer-grid ${kind}-grid`;
-  const packs = kind === 'coins' ? COIN_PACKS : GEM_PACKS;
-  el.innerHTML = banner(kind === 'coins' ? ICONS.coin : ICONS.gem, kind === 'coins' ? 'Pièces' : 'Diamants', '<span class="sh-note">Plus le pack est gros, plus le bonus est grand</span>')
-    + packs.map((p, i) => packCard(p, kind, i, packs)).join('')
+  el.className = 'money-view';
+  const section = (kind) => {
+    const packs = kind === 'coins' ? COIN_PACKS : GEM_PACKS;
+    return `<section class="offer-grid ${kind}-grid" id="shop-${kind}">`
+      + banner(kind === 'coins' ? ICONS.coin : ICONS.gem, kind === 'coins' ? 'Pièces' : 'Diamants', `<span class="sh-note">${kind === 'coins' ? 'Box, packs du jour' : 'Skins, box légendaires'}</span>`)
+      + packs.map((p, i) => packCard(p, kind, i, packs)).join('') + '</section>';
+  };
+  el.innerHTML = section('gems') + section('coins')
     + `<p class="pay-note">${paymentsAvailable() ? '' : 'Les achats ne sont pas encore disponibles : aucun système de paiement n’est connecté. Aucune somme n’est débitée et rien n’est crédité.'}</p>`;
+  // ouvert depuis le compteur de pièces : on arrive directement sur les pièces
+  if (focus === 'coins') requestAnimationFrame(() => el.querySelector('#shop-coins')?.scrollIntoView({ block: 'start' }));
   el.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-pack]');
     if (!b || b.disabled) return;
@@ -216,9 +222,10 @@ export function openShop(tab = 'daily') {
   const TABS = [
     { key: 'daily', label: 'Du jour', render: dailyView },
     { key: 'box', label: 'Box', render: () => boxesView(() => goToBoxImpl()) },
-    { key: 'coins', label: 'Pièces', render: () => packsView('coins') },
-    { key: 'gems', label: 'Diamants', render: () => packsView('gems') },
+    { key: 'money', label: 'Monnaies', render: () => packsView(tab === 'coins' ? 'coins' : 'gems') },
   ];
-  wrap.append(tabs(TABS, Math.max(0, TABS.findIndex((t) => t.key === tab))));
+  const key = tab === 'coins' || tab === 'gems' ? 'money' : tab;
+  wrap.append(tabs(TABS, Math.max(0, TABS.findIndex((t) => t.key === key))));
+  markShopSeen();
   showPanel({ title: 'BOUTIQUE', icon: ICONS.shop, accent: '#ffb422', content: wrap });
 }

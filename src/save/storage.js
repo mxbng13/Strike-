@@ -64,6 +64,7 @@ const DEFAULT_SAVE = {
   sound: true,             // effets sonores
   daily: { next: 0, last: null }, // récompenses de connexion (jour suivant du cycle, dernier jour récupéré)
   shop: { day: null, bought: [] }, // boutique du jour : jour affiché et offres déjà achetées ce jour-là
+  shopSeenDay: null,       // dernier jour où les offres du jour ont été vues (pastille « ! » de la boutique)
   stats: { boxesOpened: 0 },
 };
 

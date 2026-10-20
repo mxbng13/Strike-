@@ -95,6 +95,31 @@ export function giftArt() {
   </svg>`;
 }
 
+/** BOUTIQUE : échoppe à auvent rayé, comptoir en bois, pièces et diamant à l'étalage. */
+export function shopArt() {
+  const k = `sa${artUid++}`;
+  const scallops = Array.from({ length: 6 }, (_, i) => `<path d="M${5 + i * 6.33} 17.5a3.17 3.17 0 0 0 6.33 0" fill="${i % 2 ? '#fff4e0' : '#e8323f'}" stroke="#5a1410" stroke-width="1.4"/>`).join('');
+  return `<svg viewBox="0 0 48 48" aria-hidden="true" class="hud-art">
+    <defs>
+      <linearGradient id="${k}w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c98a4a"/><stop offset="1" stop-color="#7a4a22"/></linearGradient>
+      <linearGradient id="${k}c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe07a"/><stop offset="1" stop-color="#e09a14"/></linearGradient>
+      <linearGradient id="${k}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9fbff"/><stop offset="1" stop-color="#3a8cf0"/></linearGradient>
+    </defs>
+    <rect x="8" y="17" width="3" height="24" rx="1" fill="#6b3b16" stroke="#3a1d08" stroke-width="1.2"/>
+    <rect x="37" y="17" width="3" height="24" rx="1" fill="#6b3b16" stroke="#3a1d08" stroke-width="1.2"/>
+    <path d="M7 8h34l3 9.5H4z" fill="#e8323f" stroke="#5a1410" stroke-width="1.6" stroke-linejoin="round"/>
+    <path d="M14.5 8 12.3 17.5M21.5 8l-.9 9.5M26.5 8l.9 9.5M33.5 8l2.2 9.5" stroke="#fff4e0" stroke-width="3.4"/>
+    <path d="M7 8h34l3 9.5H4z" fill="none" stroke="#5a1410" stroke-width="1.6" stroke-linejoin="round"/>
+    ${scallops}
+    <rect x="5" y="30" width="38" height="12" rx="2.5" fill="url(#${k}w)" stroke="#3a1d08" stroke-width="1.6"/>
+    <path d="M7 34h34M7 38h34" stroke="#5a3214" stroke-width=".9" opacity=".7"/>
+    <ellipse cx="15" cy="29.5" rx="5" ry="2.4" fill="#b8740e"/><ellipse cx="15" cy="28" rx="5" ry="2.4" fill="url(#${k}c)" stroke="#6b3b06" stroke-width="1.1"/>
+    <ellipse cx="17" cy="25.6" rx="4.4" ry="2.1" fill="url(#${k}c)" stroke="#6b3b06" stroke-width="1.1"/>
+    <path d="M28 22h8l2.6 3.2L32 32l-6.6-6.8z" fill="url(#${k}g)" stroke="#0b2c72" stroke-width="1.2" stroke-linejoin="round"/>
+    <path d="M25.4 25.2h13.2M30 22l2 10 2-10" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width=".6"/>
+  </svg>`;
+}
+
 // Logo XP : hexagone dégradé bleu-violet, chevrons de montée de niveau et lettres « XP » dessinées.
 let xpUid = 0;
 export function xpLogo() {
