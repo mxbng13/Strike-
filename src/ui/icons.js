@@ -2,27 +2,53 @@
 const svg = (body, fill = 'none') =>
   `<svg viewBox="0 0 24 24" fill="${fill}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
 
-// Pièce STRIKE : pièce dorée (couronne métallique crantée, face bombée, reflets) avec un grand S noir
-// au centre. Dessin vectoriel : reste nette à toutes les tailles. Chaque appel génère des identifiants
-// de dégradés uniques (plusieurs pièces peuvent coexister dans la page).
+// Pièce STRIKE : pièce d'or épaisse vue légèrement de dessus (tranche cannelée visible), listel en relief,
+// S frappé en relief dans le métal (pas de noir), reflet spéculaire. Vectoriel, net à toutes les tailles ;
+// identifiants de dégradés uniques à chaque appel (plusieurs pièces dans la page).
 let coinUid = 0;
 export function strikeCoin() {
   const k = `sc${coinUid++}`;
-  // S en forme pleine (et non en texte), centré en (12, 12)
   const S = 'M15.6 8.9c-.8-1.3-2.2-2.1-3.9-2.1-2.4 0-4.1 1.4-4.1 3.3 0 2.1 1.7 2.8 3.8 3.4 1.4.4 1.9.7 1.9 1.3 0 .7-.7 1.2-1.8 1.2-1.2 0-2.2-.6-2.9-1.6l-2 1.7c1.1 1.5 2.9 2.4 4.9 2.4 2.7 0 4.5-1.5 4.5-3.6 0-2.2-1.7-2.9-3.9-3.5-1.3-.4-1.8-.6-1.8-1.2 0-.6.6-1 1.4-1 1 0 1.7.4 2.3 1.1z';
+  const ridges = Array.from({ length: 15 }, (_, i) => { const x = 3 + i * 1.29; return `<path d="M${x.toFixed(2)} 13.4v2.1" />`; }).join('');
   return `<svg viewBox="0 0 24 24" aria-hidden="true" class="strike-coin">
     <defs>
-      <linearGradient id="${k}r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff2b8"/><stop offset=".45" stop-color="#f2be3c"/><stop offset="1" stop-color="#a8700c"/></linearGradient>
-      <radialGradient id="${k}f" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="#ffe98f"/><stop offset=".55" stop-color="#f4c443"/><stop offset="1" stop-color="#d79a1c"/></radialGradient>
-      <linearGradient id="${k}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2a2a"/><stop offset="1" stop-color="#050505"/></linearGradient>
+      <linearGradient id="${k}e" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6e4305"/><stop offset=".3" stop-color="#c88a17"/><stop offset=".55" stop-color="#8d5a08"/><stop offset="1" stop-color="#4d2e03"/></linearGradient>
+      <linearGradient id="${k}r" x1="0" y1="0" x2=".6" y2="1"><stop offset="0" stop-color="#fff4c4"/><stop offset=".35" stop-color="#f3c247"/><stop offset=".75" stop-color="#c58612"/><stop offset="1" stop-color="#8f5b07"/></linearGradient>
+      <radialGradient id="${k}f" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#ffe7a0"/><stop offset=".5" stop-color="#e9b33a"/><stop offset="1" stop-color="#b47a0e"/></radialGradient>
+      <linearGradient id="${k}s" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="#fff6cf"/><stop offset=".5" stop-color="#f7cf5c"/><stop offset="1" stop-color="#c88b16"/></linearGradient>
     </defs>
-    <circle cx="12" cy="12.6" r="10.6" fill="#6b4206" opacity=".55"/>
-    <circle cx="12" cy="12" r="10.6" fill="url(#${k}r)" stroke="#7a4f08" stroke-width=".7"/>
-    <circle cx="12" cy="12" r="8.7" fill="none" stroke="#b07a10" stroke-width="1.6" stroke-dasharray=".55 .75" opacity=".7"/>
-    <circle cx="12" cy="12" r="7.8" fill="url(#${k}f)" stroke="#9a6608" stroke-width=".55"/>
-    <path d="M6.2 9.2a6.4 6.4 0 0 1 7.6-5" fill="none" stroke="#fff" stroke-width=".9" stroke-linecap="round" opacity=".7"/>
-    <path d="${S}" transform="translate(0 .45)" fill="#fff3c4" opacity=".55"/>
-    <path d="${S}" fill="url(#${k}s)"/>
+    <ellipse cx="12" cy="15.6" rx="10.4" ry="7.6" fill="#000" opacity=".28"/>
+    <path d="M1.6 11.2v2.6c0 4.2 4.66 7.6 10.4 7.6s10.4-3.4 10.4-7.6v-2.6z" fill="url(#${k}e)"/>
+    <g stroke="#3d2402" stroke-width=".35" opacity=".55">${ridges}</g>
+    <ellipse cx="12" cy="11.2" rx="10.4" ry="9.2" fill="url(#${k}r)" stroke="#5a3804" stroke-width=".55"/>
+    <ellipse cx="12" cy="11.2" rx="8.3" ry="7.3" fill="url(#${k}f)" stroke="#8a5908" stroke-width=".7"/>
+    <ellipse cx="12" cy="11.4" rx="8.3" ry="7.3" fill="none" stroke="#fff3c0" stroke-width=".35" opacity=".5"/>
+    <g transform="translate(12 11.2) scale(.92 .82) translate(-12 -12)">
+      <path d="${S}" transform="translate(.35 .55)" fill="#7a4c05" opacity=".75"/>
+      <path d="${S}" fill="url(#${k}s)" stroke="#9a6409" stroke-width=".3"/>
+    </g>
+    <path d="M4.6 7.4C6.2 4.6 9.4 3.1 13 3.3" fill="none" stroke="#fff" stroke-width=".9" stroke-linecap="round" opacity=".75"/>
+  </svg>`;
+}
+
+// Diamant STRIKE : gemme taillée (table, couronne et pavillon à facettes de teintes différentes),
+// arêtes fines et éclat. Pas de contour épais façon dessin animé.
+export function strikeGem() {
+  const f = (pts, c) => `<polygon points="${pts}" fill="${c}"/>`;
+  return `<svg viewBox="0 0 24 24" aria-hidden="true" class="strike-gem">
+    ${f('2,8.6 6,3.4 7.4,8.6', '#7fe3ff')}
+    ${f('6,3.4 9.4,3.4 7.4,8.6', '#c9f6ff')}
+    ${f('9.4,3.4 14.6,3.4 12,8.6 7.4,8.6', '#eafcff')}
+    ${f('14.6,3.4 16.6,8.6 12,8.6', '#a7ecff')}
+    ${f('14.6,3.4 18,3.4 16.6,8.6', '#6fd2fb')}
+    ${f('18,3.4 22,8.6 16.6,8.6', '#3aa8ea')}
+    ${f('2,8.6 7.4,8.6 12,21', '#2f9be3')}
+    ${f('7.4,8.6 12,8.6 12,21', '#6ccff8')}
+    ${f('12,8.6 16.6,8.6 12,21', '#1f7fd0')}
+    ${f('16.6,8.6 22,8.6 12,21', '#0f56a6')}
+    <path d="M2 8.6 6 3.4h12l4 5.2L12 21z" fill="none" stroke="#0b3f7d" stroke-width=".6" stroke-linejoin="round"/>
+    <path d="M2 8.6h20M7.4 8.6 12 21l4.6-12.4M9.4 3.4 7.4 8.6M14.6 3.4l2 5.2" fill="none" stroke="#ffffff" stroke-opacity=".35" stroke-width=".35"/>
+    <path d="M19.2 1.2l.5 1.4 1.4.5-1.4.5-.5 1.4-.5-1.4-1.4-.5 1.4-.5z" fill="#fff"/>
   </svg>`;
 }
 
@@ -48,7 +74,7 @@ export const ICONS = {
   get coin() { return strikeCoin(); },
   get xpLogo() { return xpLogo(); },
   get xp() { return xpLogo(); }, // pièce STRIKE (S noir au centre), voir strikeCoin()
-  gem: svg('<path d="M6 3h12l4 6-10 12L2 9z" fill="#5fe0ff" stroke="#1b6c8f"/><path d="M2 9h20M9 3l3 18 3-18" stroke="#1b6c8f"/>'),
+  get gem() { return strikeGem(); },
   close: svg('<path d="M6 6l12 12M18 6L6 18"/>'),
   star: svg('<path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.3l-5.6 2.9 1.1-6.3L2.9 9.5l6.3-.9z" stroke="none"/>', 'currentColor'),
   lock: svg('<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>'),
