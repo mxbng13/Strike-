@@ -20,6 +20,13 @@ export const priceHtml = (p) => p.gems
   ? `<span class="pi">${ICONS.gem}</span>${p.gems.toLocaleString('fr-FR')}`
   : `<span class="pi">${ICONS.coin}</span>${p.coins.toLocaleString('fr-FR')}`;
 
+/** Classe du bouton d'achat selon la monnaie (pièces = or, diamants = bleu, euros = vert). */
+const curClass = (p) => (p.gems ? 'cur-gems' : 'cur-coins');
+/** Bandeau de titre de section (style jeu). */
+const banner = (icon, title, extra = '') => `<div class="sh-banner"><span class="sh-ic">${icon}</span><h4>${title}</h4>${extra}</div>`;
+/** Rayons de lumière derrière une illustration (couleur de la rareté / du type). */
+const rays = (color) => `<span class="sh-rays" style="--ray:${color}" aria-hidden="true"></span>`;
+
 function refuse(btn, msg) {
   btn.classList.remove('shake'); void btn.offsetWidth; btn.classList.add('shake');
   navigator.vibrate?.([30, 40, 30]);
@@ -34,19 +41,20 @@ export function ratesHtml(rates) {
 function boxesView(goToBox) {
   const el = document.createElement('div');
   el.className = 'shop-list';
+  el.innerHTML = banner(ICONS.chest, 'Box', '<span class="sh-note">Ouvre-les dans MES BOX</span>');
   for (const id of BOX_ORDER) {
     const box = BOX_TYPES[id];
     const card = document.createElement('article');
     card.className = `shop-box tier-${id}`;
+    const tierColor = { normale: '#c9a46a', rare: '#7b8cff', legendaire: '#ffc93a' }[id];
     card.innerHTML = `
-      <div class="sb-art">${boxArt(id)}</div>
+      <div class="sb-art">${rays(tierColor)}${boxArt(id)}</div>
       <div class="sb-info">
         <span class="tier-tag">${box.tier}</span>
         <h3>${box.name}</h3>
-        <div class="sb-buy">
-          <span class="price">${priceHtml(box.price)}</span>
-          <button class="buy-btn">ACHETER</button>
-        </div>
+        <p class="sb-desc">${box.desc}</p>
+        <details class="sb-rates"><summary>Chances par rareté</summary>${ratesHtml(box.rates)}</details>
+        <button class="buy-btn ${curClass(box.price)}">${priceHtml(box.price)}</button>
       </div>`;
     const btn = card.querySelector('.buy-btn');
     btn.addEventListener('click', () => {
@@ -62,7 +70,7 @@ function boxesView(goToBox) {
     el.append(card);
   }
   const go = document.createElement('button');
-  go.className = 'r-btn ghost wide';
+  go.className = 'r-btn ghost wide sh-mybox';
   go.innerHTML = `${ICONS.chest} VOIR MES BOX`;
   go.addEventListener('click', goToBox);
   el.append(go);
@@ -71,26 +79,34 @@ function boxesView(goToBox) {
 
 // --- Pièces et Diamants (argent réel : interface prête, paiement pas encore connecté) ---
 const euro = (v) => v.toLocaleString('fr-FR', { style: 'currency', currency: CURRENCY });
-// Tas de diamants qui grossit avec le pack : [taille %, x %, y %, rotation°] (le premier est devant)
-const GEM_PILES = [
+// Tas qui grossit avec le pack : [taille %, x %, y %, rotation°] (le premier est devant)
+const PILES = [
   [[78, 50, 52, 0]],
   [[72, 40, 54, -6], [52, 72, 62, 10]],
   [[66, 50, 50, 0], [48, 24, 64, -14], [48, 76, 64, 12]],
   [[62, 50, 42, 0], [46, 22, 58, -16], [46, 78, 58, 14], [38, 36, 74, -4], [38, 64, 74, 6]],
   [[62, 50, 36, 0], [44, 20, 50, -18], [44, 80, 50, 16], [38, 33, 68, -6], [38, 67, 68, 8], [32, 50, 76, 0]],
 ];
-function packCard(p, kind, i, n) {
+const NAMES = { coins: ['Poignée de pièces', 'Bourse de pièces', 'Sac de pièces', 'Coffret de pièces', 'Trésor de pièces'],
+  gems: ['Poignée de diamants', 'Écrin de diamants', 'Sac de diamants', 'Coffret de diamants', 'Trésor de diamants'] };
+function packCard(p, kind, i, packs) {
   const ico = kind === 'coins' ? ICONS.coin : ICONS.gem;
   const amount = kind === 'coins' ? p.coins : p.gems;
-  const art = kind === 'gems'
-    ? `<span class="offer-ico gem-pile">${[...GEM_PILES[Math.min(i, GEM_PILES.length - 1)]].reverse().map(([sz, x, y, r]) => `<i style="width:${sz}%;left:${x}%;top:${y}%;transform:translate(-50%,-50%) rotate(${r}deg)">${ICONS.gem}</i>`).join('')}</span>`
-    : `<span class="offer-ico coin-stack">${ico}${i >= 2 ? ico : ''}${i >= 4 ? ico : ''}</span>`;
+  // bonus réel : quantité par euro comparée au plus petit pack
+  const base = (kind === 'coins' ? packs[0].coins : packs[0].gems) / packs[0].price;
+  const bonus = Math.round(((amount / p.price) / base - 1) * 100);
+  const best = i === packs.length - 1;
+  const art = `<span class="offer-ico pile ${kind}-pile">${rays(kind === 'coins' ? '#ffc93a' : '#5fd0ff')}${[...PILES[Math.min(i, PILES.length - 1)]].reverse().map(([sz, x, y, r]) => `<i style="width:${Math.round(sz * 1.05)}px;left:${x}%;top:${y}%;transform:translate(-50%,-50%) rotate(${r}deg)">${ico}</i>`).join('')}</span>`;
   return `
-    <article class="offer ${kind}-offer ${i === n - 1 ? 'best' : ''}">
+    <article class="offer ${kind}-offer ${best ? 'best' : ''}">
+      ${best ? '<span class="of-ribbon">MEILLEURE OFFRE</span>' : ''}
+      ${bonus >= 5 ? `<span class="of-bonus">+${bonus} %<small>bonus</small></span>` : ''}
       ${art}
-      <b class="offer-amount">${amount.toLocaleString('fr-FR')}</b>
-      <span class="offer-sub">${kind === 'coins' ? 'pièces' : 'diamants'}</span>
-      <button class="buy-btn" data-pack="${p.productId}">${euro(p.price)}</button>
+      <div class="of-text">
+        <small class="of-name">${NAMES[kind][Math.min(i, 4)]}</small>
+        <b class="offer-amount">${amount.toLocaleString('fr-FR')}</b>
+      </div>
+      <button class="buy-btn cur-eur" data-pack="${p.productId}">${euro(p.price)}</button>
     </article>`;
 }
 /** Packs de pièces OU de diamants (onglets séparés). */
@@ -98,8 +114,8 @@ function packsView(kind) {
   const el = document.createElement('div');
   el.className = `offer-grid ${kind}-grid`;
   const packs = kind === 'coins' ? COIN_PACKS : GEM_PACKS;
-  el.innerHTML = `<h4 class="f-sec offer-title"><span class="pi">${kind === 'coins' ? ICONS.coin : ICONS.gem}</span> ${kind === 'coins' ? 'Pièces' : 'Diamants'}</h4>`
-    + packs.map((p, i) => packCard(p, kind, i, packs.length)).join('')
+  el.innerHTML = banner(kind === 'coins' ? ICONS.coin : ICONS.gem, kind === 'coins' ? 'Pièces' : 'Diamants', '<span class="sh-note">Plus le pack est gros, plus le bonus est grand</span>')
+    + packs.map((p, i) => packCard(p, kind, i, packs)).join('')
     + `<p class="pay-note">${paymentsAvailable() ? '' : 'Les achats ne sont pas encore disponibles : aucun système de paiement n’est connecté. Aucune somme n’est débitée et rien n’est crédité.'}</p>`;
   el.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-pack]');
@@ -133,11 +149,12 @@ function dailyView() {
       const sub = kind === 'character' ? `Skin de ${getCharacter(k.strikerId)?.name ?? '?'}` : 'Skin d’arme';
       return `
         <article class="ds-skin ${sold ? 'sold' : ''}" style="--rarity:${r.color}">
-          <span class="ds-art"><img src="${img}" alt="" /></span>
-          <span class="cc-rarity">${r.label}</span>
+          <span class="ds-kind">${kind === 'character' ? 'SKIN' : 'SKIN D’ARME'}</span>
+          <span class="ds-art">${rays(r.color)}<img src="${img}" alt="" /></span>
+          <span class="ds-rar">${r.label}</span>
           <b class="ds-name">${k.name}</b>
           <small>${sub}</small>
-          <button class="buy-btn" data-daily="${offer.id}" ${sold ? 'disabled' : ''}>${sold ? 'POSSÉDÉ' : priceHtml(offer.price)}</button>
+          <button class="buy-btn ${curClass(offer.price)}" data-daily="${offer.id}" ${sold ? 'disabled' : ''}>${sold ? `${ICONS.check} POSSÉDÉ` : priceHtml(offer.price)}</button>
         </article>`;
     };
     const packCard = (p) => {
@@ -146,21 +163,21 @@ function dailyView() {
       return `
         <article class="ds-pack ${sold ? 'sold' : ''}">
           <span class="ds-off">−${p.discount} %</span>
-          <div class="ds-pack-art">${boxes.map(([id, n]) => `<span class="ds-box">${boxArt(id)}<i>×${n}</i></span>`).join('')}<span class="ds-coins"><span class="pi">${ICONS.coin}</span>${p.coins.toLocaleString('fr-FR')}</span></div>
+          <div class="ds-pack-art">${rays('#ffb02e')}${boxes.map(([id, n]) => `<span class="ds-box">${boxArt(id)}<i>×${n}</i></span>`).join('')}<span class="ds-coins"><span class="pi">${ICONS.coin}</span>${p.coins.toLocaleString('fr-FR')}</span></div>
           <div class="ds-pack-info">
             <h3>${p.name}</h3>
             <p>${boxes.map(([id, n]) => `${n} × ${BOX_LABEL[id]}`).join(' · ')} · ${p.coins.toLocaleString('fr-FR')} pièces</p>
             <div class="sb-buy">
               <s class="ds-old">${priceHtml(p.value)}</s>
-              <button class="buy-btn" data-daily="${p.id}" ${sold ? 'disabled' : ''}>${sold ? 'ACHETÉ' : priceHtml(p.price)}</button>
+              <button class="buy-btn ${curClass(p.price)}" data-daily="${p.id}" ${sold ? 'disabled' : ''}>${sold ? `${ICONS.check} ACHETÉ` : priceHtml(p.price)}</button>
             </div>
           </div>
         </article>`;
     };
     el.innerHTML = `
-      <div class="ds-head"><h4 class="f-sec">Boutique du jour</h4><span class="ds-timer">${ICONS.clock ?? ''}Nouvelles offres dans <b>${untilText(msUntilTomorrow())}</b></span></div>
+      ${banner(ICONS.star, 'Offres du jour', `<span class="ds-timer">${ICONS.clock}<b>${untilText(msUntilTomorrow())}</b></span>`)}
       <div class="ds-skins">${skinCard(o.characterSkin, 'character')}${skinCard(o.weaponSkin, 'weapon')}</div>
-      <h4 class="f-sec">Packs du jour <span class="ds-note">1 achat par pack et par jour</span></h4>
+      ${banner(ICONS.chest, 'Packs du jour', '<span class="sh-note">1 achat par pack et par jour</span>')}
       <div class="ds-packs">${o.packs.map(packCard).join('')}</div>
       <p class="shop-note">Les skins changent l’apparence, pas les statistiques.</p>`;
   }
