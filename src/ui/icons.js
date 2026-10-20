@@ -60,6 +60,41 @@ export function strikeGem() {
   </svg>`;
 }
 
+// Illustrations des boutons de l'accueil (pleines, en relief), dégradés uniques à chaque appel.
+let artUid = 0;
+/** AMIS : deux joueurs, celui de devant en clair, celui de derrière en turquoise. */
+export function friendsArt() {
+  const k = `fa${artUid++}`;
+  return `<svg viewBox="0 0 48 48" aria-hidden="true" class="hud-art">
+    <defs>
+      <linearGradient id="${k}a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8ff7da"/><stop offset="1" stop-color="#1fa98d"/></linearGradient>
+      <linearGradient id="${k}b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#c9e6ff"/></linearGradient>
+    </defs>
+    <circle cx="31" cy="15" r="7.4" fill="url(#${k}a)" stroke="#0b3a33" stroke-width="2"/>
+    <path d="M18.5 38c.6-9 5.6-14 12.5-14s11.9 5 12.5 14z" fill="url(#${k}a)" stroke="#0b3a33" stroke-width="2" stroke-linejoin="round"/>
+    <circle cx="18" cy="19" r="8.4" fill="url(#${k}b)" stroke="#11183a" stroke-width="2"/>
+    <path d="M3.5 43c.7-10.4 6.3-16 14.5-16s13.8 5.6 14.5 16z" fill="url(#${k}b)" stroke="#11183a" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M13.2 15.4c1.4-2.6 4-3.8 6.8-3.2" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
+  </svg>`;
+}
+/** CADEAU : boîte dorée, ruban rouge et gros nœud. */
+export function giftArt() {
+  const k = `ga${artUid++}`;
+  return `<svg viewBox="0 0 48 48" aria-hidden="true" class="hud-art">
+    <defs>
+      <linearGradient id="${k}b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd76a"/><stop offset="1" stop-color="#e08a12"/></linearGradient>
+      <linearGradient id="${k}l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff0a8"/><stop offset="1" stop-color="#f2b42c"/></linearGradient>
+      <linearGradient id="${k}r" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ff4a5c"/><stop offset=".5" stop-color="#e01e34"/><stop offset="1" stop-color="#a30f22"/></linearGradient>
+    </defs>
+    <rect x="7" y="21" width="34" height="23" rx="3" fill="url(#${k}b)" stroke="#6b3b06" stroke-width="2"/>
+    <rect x="4.5" y="15" width="39" height="9" rx="3" fill="url(#${k}l)" stroke="#6b3b06" stroke-width="2"/>
+    <rect x="20.5" y="15" width="7" height="29" fill="url(#${k}r)" stroke="#6b0a16" stroke-width="1.6"/>
+    <path d="M24 15c-3-7-12-9-12-3 0 3 5 4 12 3zM24 15c3-7 12-9 12-3 0 3-5 4-12 3z" fill="url(#${k}r)" stroke="#6b0a16" stroke-width="1.8" stroke-linejoin="round"/>
+    <circle cx="24" cy="15" r="2.6" fill="#ff5d6c" stroke="#6b0a16" stroke-width="1.4"/>
+    <path d="M9 24.5h10" stroke="#fff6c8" stroke-width="1.6" stroke-linecap="round" opacity=".8"/>
+  </svg>`;
+}
+
 // Logo XP : hexagone dégradé bleu-violet, chevrons de montée de niveau et lettres « XP » dessinées.
 let xpUid = 0;
 export function xpLogo() {
@@ -107,6 +142,7 @@ export const ICONS = {
   fragment: svg('<path d="M12 3l6 7-6 11-6-11z"/>'),
   token: svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 7v10M7 12h10"/>'),
   upgrade: svg('<path d="M12 4l6 6h-4v8h-4v-8H6z"/>'),
+  copy: svg('<rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h2"/>'),
   card: svg('<rect x="5" y="3" width="14" height="18" rx="2"/>'),
   rare: svg('<path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6-4.5-4.2 6.1-.7z"/>'),
   trophy: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10v5a5 5 0 0 1-10 0z" fill="#ffc83d" stroke="#8a5a06" stroke-width="1"/><path d="M7 5H4v1.5A3.5 3.5 0 0 0 7.5 10M17 5h3v1.5A3.5 3.5 0 0 1 16.5 10" fill="none" stroke="#ffc83d" stroke-width="1.6"/><path d="M10.5 13h3l.5 4h-4z" fill="#f0a812"/><rect x="7.5" y="17" width="9" height="3.5" rx="1" fill="#b8740e"/><path d="M9 5v3" stroke="#fff" stroke-width="1.1" stroke-linecap="round" opacity=".7"/></svg>',

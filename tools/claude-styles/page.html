@@ -1,0 +1,42 @@
+<title>Choisis ton Claude</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;800&display=swap">
+<style>
+  /* Une seule ambiance assumée : la scène sombre du jeu (vitrine de personnage), le socle au centre, les choix dessous. */
+  :root {
+    --night: #120f24; --stage: #1d1838; --line: #3a3363; --ink: #f4f1ff; --muted: #b9b1dd; --gold: #ffc93a; --red: #e0242e;
+    --display: 'Lilita One', 'Trebuchet MS', system-ui, sans-serif; --body: 'Nunito', system-ui, -apple-system, sans-serif;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  body { background: radial-gradient(120% 70% at 50% 30%, #2b2357 0%, var(--night) 70%); background-color: var(--night); color: var(--ink); font-family: var(--body);
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  main { max-width: 760px; margin: 0 auto; padding-block: 14px 24px; display: grid; gap: 12px; }
+  header h1 { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(26px, 7vw, 38px); letter-spacing: .02em; text-wrap: balance; }
+  header h1 em { font-style: normal; color: var(--gold); }
+  header p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+  .stage-wrap { position: relative; border-radius: 22px; overflow: hidden; background: radial-gradient(80% 60% at 50% 45%, #3a3075 0%, var(--stage) 75%); box-shadow: inset 0 0 0 1px var(--line); }
+  #stage { display: block; width: 100%; height: min(62vh, 560px); touch-action: none; cursor: grab; }
+  #stage:active { cursor: grabbing; }
+  .hint { position: absolute; left: 12px; bottom: 10px; font-size: 12px; color: var(--muted); background: rgba(10, 8, 24, .6); padding: 4px 10px; border-radius: 99px; pointer-events: none; }
+  #chips { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .chip { display: grid; justify-items: center; gap: 0; padding: 8px 4px 9px; border-radius: 14px; border: 2px solid var(--line); background: var(--stage); color: var(--ink); font: inherit; cursor: pointer; }
+  .chip b { font-family: var(--display); font-weight: 400; font-size: 26px; line-height: 1; color: var(--gold); }
+  .chip span { font-size: 13px; font-weight: 800; }
+  .chip[aria-pressed="true"] { border-color: var(--gold); background: linear-gradient(180deg, #3b2f12, var(--stage)); box-shadow: 0 0 0 3px rgba(255, 201, 58, .2); }
+  .chip:focus-visible, #compare:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  #info h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 24px; display: flex; align-items: center; gap: 10px; }
+  #info .letter { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: var(--red); color: #fff; font-size: 22px; }
+  #info p { margin: 4px 0 0; color: var(--muted); line-height: 1.45; max-width: 60ch; }
+  #compare { justify-self: start; padding: 10px 16px; border-radius: 12px; border: 0; background: var(--gold); color: #2a1600; font: 800 14px var(--body); cursor: pointer; box-shadow: 0 3px 0 #9a6a08; }
+  footer { color: var(--muted); font-size: 13px; }
+  @media (prefers-reduced-motion: reduce) { .chip { transition: none; } }
+</style>
+<main>
+  <header><h1>Choisis ton <em>Claude</em></h1><p>4 directions pour le même personnage. Touche une lettre, fais-le tourner, puis dis-moi laquelle tu préfères.</p></header>
+  <div class="stage-wrap"><canvas id="stage" aria-label="Modèle 3D de Claude"></canvas><span class="hint">Glisse pour faire tourner</span></div>
+  <div id="chips" role="group" aria-label="Modèles"></div>
+  <section id="info" aria-live="polite"></section>
+  <button id="compare" aria-pressed="false">Voir les 4 côte à côte</button>
+  <footer>Mêmes couleurs et accessoires partout : cheveux blonds, masque rouge, costume bleu marine, cravate rouge, pistolet doré.</footer>
+</main>

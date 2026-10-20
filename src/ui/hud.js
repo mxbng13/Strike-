@@ -1,7 +1,7 @@
 // HUD de l'écran principal : monnaies (haut gauche), TROPHÉES (haut centre), AMIS puis PROFIL (haut droite),
 // cadeau du jour (sous le profil), STRIKER puis BOX juste dessous (à gauche), PASSE (bas gauche),
 // BOUTIQUE (bas centre) et COMBAT (bas droite).
-import { ICONS } from './icons.js';
+import { ICONS, friendsArt, giftArt } from './icons.js';
 import { createWallet } from './currency.js';
 import { freeBoxStatus, totalBoxes } from '../game/boxService.js';
 import { rankedClaimable, nextMajorStep, resolveReward } from '../game/ranked.js';
@@ -27,15 +27,15 @@ export function createHud(container, { onShop, onFriends, onCollection, onBox, o
         <span class="badge" data-bind="trophyBadge" hidden></span>
       </button>
       <div class="hud-top-right">
-        <button class="btn top-round btn-friends" data-action="friends" aria-label="Amis">
-          <span class="tr-ico">${ICONS.friends}</span>
+        <button class="btn hud-tile tile-friends btn-friends" data-action="friends" aria-label="Amis">
+          <span class="ht-art">${friendsArt()}</span><span class="ht-lbl">AMIS</span>
         </button>
-        <button class="btn top-round btn-profile" data-action="profile" aria-label="Profil">
-          <span class="pf-mini" data-bind="avatar"></span>
+        <button class="btn hud-tile tile-profile btn-profile" data-action="profile" aria-label="Profil">
+          <span class="ht-portrait" data-bind="avatar"></span><span class="ht-rank" data-bind="profileRank"></span>
         </button>
       </div>
-      <button class="btn top-round btn-gift" data-action="daily" aria-label="Cadeau du jour">
-        <span class="tr-ico">${ICONS.gift}</span>
+      <button class="btn hud-tile tile-gift btn-gift" data-action="daily" aria-label="Cadeau du jour">
+        <span class="ht-art">${giftArt()}</span><span class="ht-lbl">CADEAU</span>
         <span class="badge" data-bind="giftBadge" hidden>1</span>
       </button>
     </div>
@@ -87,7 +87,8 @@ export function createHud(container, { onShop, onFriends, onCollection, onBox, o
     // bouton TROPHÉES : rang (emblème), points de classement, progression du niveau, prochaine grande récompense
     const pts = state.ranked?.points ?? 0, r = rankOf(pts), rkKey = `${r.tierIndex}-${r.level}`;
     const card = container.querySelector('.rank-card');
-    if (card.dataset.rk !== rkKey) { card.dataset.rk = rkKey; bind('rankEmb').innerHTML = rankEmblem(r.tierIndex, r.level, { size: 46 }); }
+    if (card.dataset.rk !== rkKey) { card.dataset.rk = rkKey; bind('rankEmb').innerHTML = rankEmblem(r.tierIndex, r.level, { size: 46 }); bind('profileRank').innerHTML = rankEmblem(r.tierIndex, r.level, { size: 22, pips: false }); }
+    container.querySelector('.tile-profile').style.setProperty('--rk', r.tier.main);
     card.style.setProperty('--rk', r.tier.main); card.style.setProperty('--rk-l', r.tier.light);
     bind('rankName').textContent = r.label;
     bind('rankPts').textContent = pts.toLocaleString('fr-FR');
