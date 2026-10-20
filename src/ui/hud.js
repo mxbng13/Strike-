@@ -64,7 +64,7 @@ export function createHud(container, { onShop, onFriends, onCollection, onBox, o
       </button>
     </div>`;
 
-  container.querySelector('.hud-wallet').append(createWallet({ onPlus: (kind) => onShop(kind === 'coins' ? 'coins' : 'box') }));
+  container.querySelector('.hud-wallet').append(createWallet({ onPlus: (kind) => onShop(kind === 'coins' ? 'coins' : 'gems') }));
 
   const actions = { shop: onShop, friends: onFriends, collection: onCollection, box: onBox, battle: onBattle, profile: onProfile, trophies: onTrophies, pass: onPass, daily: onDaily };
   container.querySelectorAll('[data-action]').forEach((b) => {

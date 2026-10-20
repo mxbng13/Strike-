@@ -46,7 +46,11 @@ export function createWallet({ onPlus, compact = false, ranked = false } = {}) {
   }
   render(save.get());
   const unsub = save.subscribe(render);
-  if (onPlus) el.addEventListener('click', (e) => { const b = e.target.closest('[data-plus]'); if (b) onPlus(b.dataset.plus); });
+  // toucher le compteur (ou son « + ») ouvre la boutique sur l'onglet correspondant
+  if (onPlus) {
+    el.classList.add('tappable');
+    el.addEventListener('click', (e) => { const b = e.target.closest('[data-plus], .cur-pill[data-kind="coins"], .cur-pill[data-kind="gems"]'); if (b) onPlus(b.dataset.plus ?? b.dataset.kind); });
+  }
   el.destroy = unsub;
   return el;
 }

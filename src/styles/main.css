@@ -705,6 +705,14 @@ svg { width: 100%; height: 100%; display: block; }
 .offer-ico svg { width: 100%; height: 100%; }
 .coin-stack { display: flex; width: auto; height: 54px; }
 .coin-stack svg { width: 46px; height: 46px; margin: 0 -10px; }
+/* Diamants : tas de gemmes qui grossit avec le pack, sur un halo de lumière */
+.gem-pile { position: relative; width: 96px; height: 76px; }
+.gem-pile::before { content: ''; position: absolute; inset: -6px -10px; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(110, 210, 255, .45), rgba(120, 90, 255, .12) 60%, transparent); }
+.gem-pile i { position: absolute; display: block; aspect-ratio: 1; filter: drop-shadow(0 4px 5px rgba(0, 10, 40, .55)); }
+.gem-pile i svg { width: 100%; height: 100%; display: block; }
+.gems-offer { background: linear-gradient(160deg, #1d2a52, #141831 70%); border-color: rgba(110, 200, 255, .22); }
+.gems-offer .offer-amount { color: #bdf2ff; }
 .offer-amount { font-family: var(--font-display); font-size: 24px; line-height: 1.1; }
 .offer-sub { font-size: 12px; color: var(--ink-dim); margin-top: -4px; }
 .offer .buy-btn { width: 100%; margin-top: 6px; }
@@ -1639,3 +1647,5 @@ svg { width: 100%; height: 100%; display: block; }
 .rn-name small { display: inline-flex; align-items: center; gap: 3px; }
 .rn-name small svg { width: 11px; height: 11px; }
 .cur-pill.rkp { --cur-accent: color-mix(in srgb, var(--rk, #fff) 70%, transparent); }
+.wallet-ui.tappable .cur-pill { cursor: pointer; } .wallet-ui.tappable .cur-pill:active { transform: translateY(1px) scale(.98); }
+.strike-gem { overflow: visible; }

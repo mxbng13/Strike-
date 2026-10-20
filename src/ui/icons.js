@@ -31,24 +31,32 @@ export function strikeCoin() {
   </svg>`;
 }
 
-// Diamant STRIKE : gemme taillée (table, couronne et pavillon à facettes de teintes différentes),
-// arêtes fines et éclat. Pas de contour épais façon dessin animé.
+// Diamant STRIKE : brillant vu de profil (couronne à 10 facettes, rondiste, pavillon profond à 6 facettes),
+// dégradés de cristal à saphir profond, touches irisées, arêtes fines et éclat. Dégradés uniques par appel.
+let gemUid = 0;
 export function strikeGem() {
-  const f = (pts, c) => `<polygon points="${pts}" fill="${c}"/>`;
+  const k = `sg${gemUid++}`;
+  const P = { L: [2.4, 9], TL: [6.4, 3.3], T1: [9, 3.3], Tm: [12, 3.3], T2: [15, 3.3], TR: [17.6, 3.3], R: [21.6, 9],
+    gA: [5.6, 9], gB: [8.8, 9], gC: [12, 9], gD: [15.2, 9], gE: [18.4, 9], C: [12, 22.4] };
+  const tri = (a, b, c, g, o) => `<polygon points="${[a, b, c].map((n) => P[n].join(',')).join(' ')}" fill="url(#${k}${g})"${o ? ` opacity="${o}"` : ''}/>`;
+  const stop = (o, c) => `<stop offset="${o}" stop-color="${c}"/>`;
+  const lg = (id, c0, c1, x2 = '.25') => `<linearGradient id="${k}${id}" x1="0" y1="0" x2="${x2}" y2="1">${stop(0, c0)}${stop(1, c1)}</linearGradient>`;
   return `<svg viewBox="0 0 24 24" aria-hidden="true" class="strike-gem">
-    ${f('2,8.6 6,3.4 7.4,8.6', '#7fe3ff')}
-    ${f('6,3.4 9.4,3.4 7.4,8.6', '#c9f6ff')}
-    ${f('9.4,3.4 14.6,3.4 12,8.6 7.4,8.6', '#eafcff')}
-    ${f('14.6,3.4 16.6,8.6 12,8.6', '#a7ecff')}
-    ${f('14.6,3.4 18,3.4 16.6,8.6', '#6fd2fb')}
-    ${f('18,3.4 22,8.6 16.6,8.6', '#3aa8ea')}
-    ${f('2,8.6 7.4,8.6 12,21', '#2f9be3')}
-    ${f('7.4,8.6 12,8.6 12,21', '#6ccff8')}
-    ${f('12,8.6 16.6,8.6 12,21', '#1f7fd0')}
-    ${f('16.6,8.6 22,8.6 12,21', '#0f56a6')}
-    <path d="M2 8.6 6 3.4h12l4 5.2L12 21z" fill="none" stroke="#0b3f7d" stroke-width=".6" stroke-linejoin="round"/>
-    <path d="M2 8.6h20M7.4 8.6 12 21l4.6-12.4M9.4 3.4 7.4 8.6M14.6 3.4l2 5.2" fill="none" stroke="#ffffff" stroke-opacity=".35" stroke-width=".35"/>
-    <path d="M19.2 1.2l.5 1.4 1.4.5-1.4.5-.5 1.4-.5-1.4-1.4-.5 1.4-.5z" fill="#fff"/>
+    <defs>
+      ${lg('a', '#ffffff', '#c6f7ff')}${lg('b', '#d9fbff', '#66d4ff')}${lg('c', '#7ddcff', '#2b8ff0')}
+      ${lg('d', '#3f9cf5', '#2448c4')}${lg('e', '#2a5fd6', '#2a1d8a')}${lg('p', '#b9f7ff', '#b79cff', '1')}
+      <radialGradient id="${k}h" cx=".5" cy=".5" r=".5">${stop(0, '#fff')}<stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+    </defs>
+    ${tri('L', 'TL', 'gA', 'c')}${tri('TL', 'T1', 'gA', 'b')}${tri('T1', 'gB', 'gA', 'a')}${tri('T1', 'Tm', 'gB', 'b')}${tri('Tm', 'gC', 'gB', 'a')}
+    ${tri('Tm', 'gD', 'gC', 'b')}${tri('Tm', 'T2', 'gD', 'a')}${tri('T2', 'gE', 'gD', 'c')}${tri('T2', 'TR', 'gE', 'b')}${tri('TR', 'R', 'gE', 'd')}
+    <polygon points="2.4,9 21.6,9 21.4,9.7 2.6,9.7" fill="#e9fdff" opacity=".85"/>
+    ${tri('L', 'gA', 'C', 'c')}${tri('gA', 'gB', 'C', 'p', '.95')}${tri('gB', 'gC', 'C', 'a', '.9')}${tri('gC', 'gD', 'C', 'd')}${tri('gD', 'gE', 'C', 'c')}${tri('gE', 'R', 'C', 'e')}
+    <path d="M2.4 9 6.4 3.3h11.2l4 5.7L12 22.4z" fill="none" stroke="#0b2c72" stroke-width=".5" stroke-linejoin="round"/>
+    <path d="M2.4 9h19.2M5.6 9 12 22.4 8.8 9M12 9v13.4M15.2 9 12 22.4l6.4-13.4M6.4 3.3 5.6 9 9 3.3 8.8 9 12 3.3 12 9M12 3.3 15.2 9 15 3.3 18.4 9 17.6 3.3"
+      fill="none" stroke="#fff" stroke-opacity=".32" stroke-width=".25" stroke-linejoin="round"/>
+    <ellipse cx="10.6" cy="5.2" rx="3.4" ry="1.4" fill="url(#${k}h)" opacity=".85"/>
+    <path d="M9.2 12.2 10.6 18.6" stroke="#fff" stroke-width=".55" stroke-linecap="round" opacity=".55"/>
+    <path d="M20.2.6l.5 1.5 1.5.5-1.5.5-.5 1.5-.5-1.5-1.5-.5 1.5-.5z" fill="#fff"/>
   </svg>`;
 }
 

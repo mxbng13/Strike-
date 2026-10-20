@@ -69,26 +69,37 @@ function boxesView(goToBox) {
   return el;
 }
 
-// --- Pièces puis Diamants (argent réel : interface prête, paiement pas encore connecté) ---
+// --- Pièces et Diamants (argent réel : interface prête, paiement pas encore connecté) ---
 const euro = (v) => v.toLocaleString('fr-FR', { style: 'currency', currency: CURRENCY });
+// Tas de diamants qui grossit avec le pack : [taille %, x %, y %, rotation°] (le premier est devant)
+const GEM_PILES = [
+  [[78, 50, 52, 0]],
+  [[72, 40, 54, -6], [52, 72, 62, 10]],
+  [[66, 50, 50, 0], [48, 24, 64, -14], [48, 76, 64, 12]],
+  [[62, 50, 42, 0], [46, 22, 58, -16], [46, 78, 58, 14], [38, 36, 74, -4], [38, 64, 74, 6]],
+  [[62, 50, 36, 0], [44, 20, 50, -18], [44, 80, 50, 16], [38, 33, 68, -6], [38, 67, 68, 8], [32, 50, 76, 0]],
+];
 function packCard(p, kind, i, n) {
   const ico = kind === 'coins' ? ICONS.coin : ICONS.gem;
   const amount = kind === 'coins' ? p.coins : p.gems;
+  const art = kind === 'gems'
+    ? `<span class="offer-ico gem-pile">${[...GEM_PILES[Math.min(i, GEM_PILES.length - 1)]].reverse().map(([sz, x, y, r]) => `<i style="width:${sz}%;left:${x}%;top:${y}%;transform:translate(-50%,-50%) rotate(${r}deg)">${ICONS.gem}</i>`).join('')}</span>`
+    : `<span class="offer-ico coin-stack">${ico}${i >= 2 ? ico : ''}${i >= 4 ? ico : ''}</span>`;
   return `
     <article class="offer ${kind}-offer ${i === n - 1 ? 'best' : ''}">
-      <span class="offer-ico coin-stack">${ico}${i >= 2 ? ico : ''}${i >= 4 ? ico : ''}</span>
+      ${art}
       <b class="offer-amount">${amount.toLocaleString('fr-FR')}</b>
       <span class="offer-sub">${kind === 'coins' ? 'pièces' : 'diamants'}</span>
       <button class="buy-btn" data-pack="${p.productId}">${euro(p.price)}</button>
     </article>`;
 }
-function coinsView() {
+/** Packs de pièces OU de diamants (onglets séparés). */
+function packsView(kind) {
   const el = document.createElement('div');
-  el.className = 'offer-grid';
-  el.innerHTML = `<h4 class="f-sec offer-title"><span class="pi">${ICONS.coin}</span> Pièces</h4>`
-    + COIN_PACKS.map((p, i) => packCard(p, 'coins', i, COIN_PACKS.length)).join('')
-    + `<h4 class="f-sec offer-title"><span class="pi">${ICONS.gem}</span> Diamants</h4>`
-    + GEM_PACKS.map((p, i) => packCard(p, 'gems', i, GEM_PACKS.length)).join('')
+  el.className = `offer-grid ${kind}-grid`;
+  const packs = kind === 'coins' ? COIN_PACKS : GEM_PACKS;
+  el.innerHTML = `<h4 class="f-sec offer-title"><span class="pi">${kind === 'coins' ? ICONS.coin : ICONS.gem}</span> ${kind === 'coins' ? 'Pièces' : 'Diamants'}</h4>`
+    + packs.map((p, i) => packCard(p, kind, i, packs.length)).join('')
     + `<p class="pay-note">${paymentsAvailable() ? '' : 'Les achats ne sont pas encore disponibles : aucun système de paiement n’est connecté. Aucune somme n’est débitée et rien n’est crédité.'}</p>`;
   el.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-pack]');
@@ -188,7 +199,8 @@ export function openShop(tab = 'daily') {
   const TABS = [
     { key: 'daily', label: 'Du jour', render: dailyView },
     { key: 'box', label: 'Box', render: () => boxesView(() => goToBoxImpl()) },
-    { key: 'coins', label: 'Pièces', render: coinsView },
+    { key: 'coins', label: 'Pièces', render: () => packsView('coins') },
+    { key: 'gems', label: 'Diamants', render: () => packsView('gems') },
   ];
   wrap.append(tabs(TABS, Math.max(0, TABS.findIndex((t) => t.key === tab))));
   showPanel({ title: 'BOUTIQUE', icon: ICONS.shop, accent: '#ffb422', content: wrap });
