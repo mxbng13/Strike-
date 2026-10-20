@@ -1962,12 +1962,17 @@ svg { width: 100%; height: 100%; display: block; }
 .op-info b { font: 400 clamp(30px, 9vw, 40px)/1.05 var(--font-display); color: #fff; text-shadow: 0 3px 0 rgba(0,0,0,.4); }
 .op-info span { font-size: 14px; font-weight: 800; color: #5cffc4; max-width: 30ch; }
 .opening:not(.special) .op-info span { color: var(--ink-dim); }
-.op-left { position: absolute; left: calc(var(--safe-l, 0px) + 18px); bottom: calc(var(--safe-b) + 16px); width: 56px; height: 56px; opacity: 0; pointer-events: none; }
-.opening.s-items .op-left { opacity: 1; transition: opacity .3s; }
-.ol-box, .ol-box svg { width: 100%; height: 100%; display: block; }
-.op-left b { position: absolute; top: -6px; right: -10px; min-width: 28px; height: 28px; padding: 0 6px; border-radius: 14px; display: grid; place-items: center;
-  background: #ff3d6e; border: 2px solid #fff; font: 400 16px var(--font-display); color: #fff; }
-.op-left.empty { opacity: .35 !important; }
+.op-count { position: absolute; right: calc(var(--safe-r, 0px) + 18px); bottom: calc(var(--safe-b) + 16px); width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center;
+  background: radial-gradient(circle at 40% 35%, #3a3d6e, #15162e); border: 2.5px solid rgba(255,255,255,.55); box-shadow: 0 4px 0 rgba(0,0,0,.4); opacity: 0; pointer-events: none; }
+.opening.s-items .op-count { opacity: 1; transition: opacity .3s; }
+.op-count b { font: 400 24px/1 var(--font-display); color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.4); }
+.op-count.tick b { animation: count-tick .3s cubic-bezier(.2,1.6,.4,1); }
+@keyframes count-tick { from { transform: scale(1.6); } }
+/* un skin ou un Striker arrive : le compteur brille en jaune */
+.op-count.glow { border-color: #ffe07a; background: radial-gradient(circle at 40% 35%, #ffe680, #f4a51c 70%); animation: count-glow 1s ease-in-out infinite; }
+.op-count.glow b { color: #3a1d00; text-shadow: 0 1px 0 rgba(255,255,255,.5); }
+@keyframes count-glow { 0%, 100% { box-shadow: 0 4px 0 #9a5208, 0 0 10px 2px rgba(255, 214, 90, .6); } 50% { box-shadow: 0 4px 0 #9a5208, 0 0 26px 10px rgba(255, 214, 90, .95); } }
+@media (prefers-reduced-motion: reduce) { .op-count.glow { animation: none; box-shadow: 0 0 18px 6px rgba(255, 214, 90, .8); } }
 .op-tap { position: absolute; left: 0; right: 0; bottom: calc(var(--safe-b) + 24px); margin: 0; text-align: center; font-size: 14px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
   color: rgba(255,255,255,.75); opacity: 0; pointer-events: none; }
 .opening.s-items .op-tap { opacity: 1; animation: tap-blink 1.4s ease-in-out infinite; }
@@ -1978,7 +1983,7 @@ svg { width: 100%; height: 100%; display: block; }
 .opening.flash2 .op-flash { animation: op-flash .5s ease-out; }
 .opening.special .op-rays { filter: saturate(1.6) brightness(1.2); }
 /* résumé : la scène s'efface derrière la carte */
-.opening.s-card .op-item, .opening.s-card .op-info, .opening.s-card .op-left, .opening.s-card .op-tap, .opening.s-card .op-skip { opacity: 0 !important; transition: opacity .2s; pointer-events: none; }
+.opening.s-card .op-item, .opening.s-card .op-info, .opening.s-card .op-count, .opening.s-card .op-tap, .opening.s-card .op-skip { opacity: 0 !important; transition: opacity .2s; pointer-events: none; }
 .op-totals { margin: 2px 0 6px; display: flex; justify-content: center; gap: 14px; font: 400 24px var(--font-display); }
 .op-totals > span { display: inline-flex; align-items: center; gap: 6px; }
 .op-totals .pi { width: 28px; height: 28px; } .op-totals .pi svg { width: 100%; height: 100%; }

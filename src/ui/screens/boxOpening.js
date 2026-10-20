@@ -1,5 +1,5 @@
 // Séquence d'ouverture d'une box : apparition, secousses, couvercle qui saute, puis UN GAIN À CHAQUE TOUCHER
-// (du plus simple au plus précieux, le compteur montre ce qu'il reste) et enfin le résumé de tous les gains.
+// (du plus simple au plus précieux, un petit compteur 1, 2, 3… qui brille si un skin ou un Striker arrive) et enfin le résumé de tous les gains.
 // Le résultat est tiré ET enregistré avant l'animation (boxService.openBox) : fermer le jeu
 // pendant l'animation ne fait rien perdre, le résultat sera réaffiché à la prochaine visite de MES BOX.
 import { BOX_TYPES } from '../../data/boxes.js';
@@ -92,7 +92,7 @@ async function run(typeId, source, done) {
     <p class="op-hint">${box.name}${reveal.source === 'free' ? ' gratuite' : ''}</p>
     <button class="op-skip" data-act="skip">TOUT VOIR ${ICONS.back}</button>
     <div class="op-info"><small></small><b></b><span></span></div>
-    <div class="op-left"><span class="ol-box">${boxArt(reveal.box)}</span><b></b></div>
+    <div class="op-count" aria-label="Gain numéro"><b></b></div>
     <p class="op-tap">Touche l’écran</p>
     <div class="op-card">
       <p class="rarity-text">Résumé · ${rewards.length} gains</p>
@@ -128,7 +128,8 @@ async function run(typeId, source, done) {
 
   // 2) un gain à chaque toucher, du plus simple au plus précieux
   phase = 'items';
-  const item = el.querySelector('.op-item'), inf = el.querySelector('.op-info'), left = el.querySelector('.op-left b');
+  const item = el.querySelector('.op-item'), inf = el.querySelector('.op-info'), counter = el.querySelector('.op-count'), num = counter.querySelector('b');
+  const isSpecial = (r) => !r.converted && ['striker', 'characterSkin', 'weaponSkin'].includes(r.type);
   for (let i = 0; i < order.length && !toSummary; i++) {
     const it = info(order[i]);
     el.style.setProperty('--rarity', it.color);
@@ -138,9 +139,10 @@ async function run(typeId, source, done) {
     inf.querySelector('b').textContent = it.title;
     inf.querySelector('span').textContent = it.sub;
     inf.classList.remove('in'); void inf.offsetWidth; inf.classList.add('in');
-    const remaining = order.length - i - 1;
-    left.textContent = remaining ? `${remaining}` : '0';
-    el.querySelector('.op-left').classList.toggle('empty', !remaining);
+    // petit compteur en bas à droite : 1, 2, 3… ; il brille en jaune s'il reste un skin ou un Striker à venir
+    num.textContent = `${i + 1}`;
+    counter.classList.remove('tick'); void counter.offsetWidth; counter.classList.add('tick');
+    counter.classList.toggle('glow', order.slice(i + 1).some(isSpecial));
     if (it.kind === 'special') { el.classList.remove('flash2'); void el.offsetWidth; el.classList.add('flash2'); navigator.vibrate?.([30, 40, 60]); } else navigator.vibrate?.(12);
     await new Promise((r) => { next = r; });
     next = null;
