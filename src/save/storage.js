@@ -30,7 +30,8 @@ const DEFAULT_SAVE = {
   skinsOwned: [],          // skins possédés (aucun skin pour l'instant)
   equippedSkin: {},        // id de Striker -> id du skin porté
   purchases: [],           // transactions de paiement réel déjà créditées (anti double crédit)
-  avatar: 'defaut',        // photo de profil (data/profile.js)
+  avatar: 'defaut',        // photo de profil (data/profile.js), ou 'photo' = photo personnelle
+  avatarPhoto: null,       // photo personnelle choisie dans la photothèque (JPEG carré 256 px, data URL)
   playerId: null,          // identifiant joueur (généré au premier lancement)
   trophies: 0,             // total des trophées des Strikers
   trophyBest: 0,           // record de ce total (sert à la migration du classement)

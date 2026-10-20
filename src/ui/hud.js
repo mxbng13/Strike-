@@ -90,6 +90,8 @@ export function createHud(container, { onShop, onFriends, onCollection, onBox, o
     if (card.dataset.rk !== rkKey) { card.dataset.rk = rkKey; bind('rankEmb').innerHTML = rankEmblem(r.tierIndex, r.level, { size: 46 }); bind('profileRank').innerHTML = rankEmblem(r.tierIndex, r.level, { size: 22, pips: false }); }
     container.querySelector('.tile-profile').style.setProperty('--rk', r.tier.main);
     card.style.setProperty('--rk', r.tier.main); card.style.setProperty('--rk-l', r.tier.light);
+    // contour de tous les boutons de l'accueil aux couleurs du rang (Ruine : gris-brun, Onde : turquoise…)
+    container.style.setProperty('--rank', r.tier.main); container.style.setProperty('--rank-l', r.tier.light); container.dataset.rank = r.tier.id;
     bind('rankName').textContent = r.label;
     bind('rankPts').textContent = pts.toLocaleString('fr-FR');
     bind('rankBar').style.width = `${r.isMax ? 100 : (r.progress / POINTS_PER_LEVEL) * 100}%`;

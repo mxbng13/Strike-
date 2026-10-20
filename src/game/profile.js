@@ -22,7 +22,15 @@ export function setPlayerName(raw) {
 }
 
 export function setAvatar(id) {
+  if (id === 'photo') { if (!save.get().avatarPhoto) return { ok: false }; save.update({ avatar: 'photo' }); return { ok: true }; }
   if (!AVATARS.some((a) => a.id === id)) return { ok: false };
   save.update({ avatar: id });
+  return { ok: true };
+}
+
+/** Photo personnelle : JPEG carré déjà recadré (data URL). Devient la photo de profil. */
+export function setAvatarPhoto(dataUrl) {
+  if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/') || dataUrl.length > 400000) return { ok: false };
+  save.update({ avatarPhoto: dataUrl, avatar: 'photo' });
   return { ok: true };
 }

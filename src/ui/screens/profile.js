@@ -2,7 +2,7 @@
 import { AVATARS, NAME_RULES } from '../../data/profile.js';
 import { CHARACTERS } from '../../data/characters.js';
 import { rankOf, nextRankStep, pointsDelta, RANKED_RULES } from '../../data/ranked.js';
-import { setPlayerName, setAvatar, validateName } from '../../game/profile.js';
+import { setPlayerName, setAvatar, setAvatarPhoto, validateName } from '../../game/profile.js';
 import { rankedPoints, rankedBest } from '../../game/ranked.js';
 import { TROPHY_RULES } from '../../data/trophies.js';
 import { rankEmblem } from '../rankEmblem.js';
@@ -48,7 +48,11 @@ export function openProfile() {
       ${mode === 'avatar' ? `
       <section class="pf-section">
         <h4 class="f-sec">Choisis ta photo</h4>
-        <div class="av-grid">${AVATARS.map((a) => `<button class="av-pick ${s.avatar === a.id ? 'sel' : ''}" data-avatar="${a.id}" aria-label="${a.name}">${avatarSvg(a.id)}</button>`).join('')}</div>
+        <div class="pf-photo">
+          <label class="pf-photo-btn" for="pf-photo-input">${ICONS.camera}<span><b>Choisir dans ma photothèque</b><small>Ta photo est recadrée en carré et reste sur cet appareil.</small></span></label>
+          <input id="pf-photo-input" type="file" accept="image/*" hidden />
+        </div>
+        <div class="av-grid">${s.avatarPhoto ? `<button class="av-pick ${s.avatar === 'photo' ? 'sel' : ''}" data-avatar="photo" aria-label="Ma photo">${avatarSvg('photo')}<span class="av-tag">Ma photo</span></button>` : ''}${AVATARS.map((a) => `<button class="av-pick ${s.avatar === a.id ? 'sel' : ''}" data-avatar="${a.id}" aria-label="${a.name}">${avatarSvg(a.id)}</button>`).join('')}</div>
         <div class="r-btns"><button class="r-btn ghost" data-cancel>ANNULER</button><button class="r-btn" data-confirm-avatar>CONFIRMER</button></div>
       </section>` : ''}
 
@@ -87,6 +91,19 @@ export function openProfile() {
       });
       setTimeout(() => input.focus(), 50);
     }
+    if (mode === 'avatar') {
+      el.querySelector('#pf-photo-input').addEventListener('change', async (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        if (!file) return;
+        try {
+          const res = setAvatarPhoto(await squarePhoto(file));
+          if (!res.ok) throw new Error('size');
+          toast('Photo de profil mise à jour', '#5cffc4', 'ok');
+          mode = null; render();
+        } catch { toast('Impossible d’utiliser cette image : choisis une photo (JPEG, PNG…).', '#ff5c7a', 'error'); }
+      });
+    }
   }
 
   let pickedAvatar = null;
@@ -116,4 +133,20 @@ export function openProfile() {
 
 function escapeHtml(t) {
   return String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/** Recadre une image de la photothèque en carré 256 × 256 (centre) et la compresse en JPEG. */
+async function squarePhoto(file) {
+  if (!file.type.startsWith('image/') || file.size > 25e6) throw new Error('type');
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image(); img.src = url; await img.decode();
+    const side = Math.min(img.naturalWidth, img.naturalHeight);
+    if (!side) throw new Error('empty');
+    const c = document.createElement('canvas'); c.width = c.height = 256;
+    const g = c.getContext('2d');
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, 256, 256);
+    return c.toDataURL('image/jpeg', 0.85);
+  } finally { URL.revokeObjectURL(url); }
 }

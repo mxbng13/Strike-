@@ -142,6 +142,7 @@ export const ICONS = {
   fragment: svg('<path d="M12 3l6 7-6 11-6-11z"/>'),
   token: svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 7v10M7 12h10"/>'),
   upgrade: svg('<path d="M12 4l6 6h-4v8h-4v-8H6z"/>'),
+  camera: svg('<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.6"/>'),
   copy: svg('<rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h2"/>'),
   card: svg('<rect x="5" y="3" width="14" height="18" rx="2"/>'),
   rare: svg('<path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6-4.5-4.2 6.1-.7z"/>'),
