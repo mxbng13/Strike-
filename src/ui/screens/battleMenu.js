@@ -5,6 +5,8 @@ import { DEFAULT_BATTLE_PREFS } from '../../data/battleModes.js';
 import { save } from '../../save/storage.js';
 import { ICONS, friendsArt } from '../icons.js';
 import { openFriendMatch } from './friendMatch.js';
+import { mapPickerHtml, fillMapPreviews } from '../mapPicker.js';
+import { CLOUD } from '../../arena/cloud.js';
 import { showPanel, closePanel } from '../panel.js';
 import { openArena, ARENA_FORMATS, KILL_TARGETS, DEFAULT_KILL_TARGET } from '../../arena/arenaGame.js';
 import { ARENA_MAPS } from '../../arena/maps.js';
@@ -19,6 +21,7 @@ const prefsOf = (s = save.get()) => {
   const p = { ...DEFAULT_BATTLE_PREFS, ...(s.battlePrefs ?? {}) };
   if (!ARENA_FORMATS[p.arenaFormat]) p.arenaFormat = DEFAULT_BATTLE_PREFS.arenaFormat;
   if (!KILL_TARGETS.includes(p.arenaKills)) p.arenaKills = DEFAULT_KILL_TARGET;
+  if (!ARENA_MAPS[p.arenaMap]) p.arenaMap = 'map1';
   return p;
 };
 const setPrefs = (patch) => save.update((s) => ({ battlePrefs: { ...(s.battlePrefs ?? {}), ...prefsOf(s), ...patch } }));
@@ -31,10 +34,9 @@ const MODE_INFO = {
 export function openBattleMenu() {
   const root = document.createElement('div');
   root.className = 'bm-screen';
-  const map = ARENA_MAPS.map1;
-
   function render() {
     const s = save.get(), p = prefsOf(s);
+    const map = ARENA_MAPS[p.arenaMap];
     const rec = s.arenaRecord ?? { wins: 0, losses: 0 };
     const me = getCharacter(s.selected), look = appearanceFor(s.selected, s);
     const myImg = getPortrait(me, look.rank);
@@ -45,7 +47,7 @@ export function openBattleMenu() {
     root.innerHTML = `
       <section class="bm-hero" style="--mc:${map.color}">
         <img class="bm-hero-img ${preview ? 'ready' : ''}" data-apreview="${map.id}" ${preview ? `src="${preview}"` : ''} alt="" />
-        <span class="bm-hero-name">ARÈNE DE COMBAT</span>
+        <span class="bm-hero-name">${map.title.toUpperCase()}</span>
         <span class="bm-rec"><span class="w">${rec.wins}<small>victoire${rec.wins > 1 ? 's' : ''}</small></span><span class="l">${rec.losses}<small>défaite${rec.losses > 1 ? 's' : ''}</small></span></span>
       </section>
 
@@ -54,6 +56,10 @@ export function openBattleMenu() {
         <div class="bm-me-txt"><small>Ton Striker</small><b>${me.name}</b><span>${ICONS.trophy}${strikerTrophies(me.id, s)}</span></div>
         <button class="bm-change" data-change>CHANGER</button>
       </section>
+
+      <div class="sh-banner bm-banner"><span class="sh-ic">${ICONS.map}</span><h4>Carte</h4></div>
+      ${mapPickerHtml(map.id)}
+      <p class="bm-rule mp-desc">${map.desc} Après ${CLOUD.start} s, le nuage noir avance depuis les bords.</p>
 
       <div class="sh-banner bm-banner"><span class="sh-ic">${ICONS.battle}</span><h4>Mode</h4></div>
       <div class="bm-modes2" role="radiogroup" aria-label="Mode de jeu">${Object.values(ARENA_FORMATS).map((f) => `
@@ -80,11 +86,12 @@ export function openBattleMenu() {
       <div class="bm-footer2">
         <button class="bm-go" data-play><span class="bm-go-ic">${ICONS.battle}</span><span><b>COMBAT</b><small>${ARENA_FORMATS[p.arenaFormat].name} · ${p.arenaKills} élim.</small></span></button>
       </div>`;
-    const img = root.querySelector('[data-apreview]:not([src])');
-    if (img) requestAnimationFrame(() => { if (!img.isConnected) return; img.src = arenaMapPreview(map.id); img.classList.add('ready'); });
+    fillMapPreviews(root);
   }
 
   root.addEventListener('click', (e) => {
+    const am = e.target.closest('[data-amap]');
+    if (am) { setPrefs({ arenaMap: am.dataset.amap }); navigator.vibrate?.(8); render(); return; }
     const af = e.target.closest('[data-aformat]');
     if (af) { setPrefs({ arenaFormat: af.dataset.aformat }); navigator.vibrate?.(8); render(); return; }
     const k = e.target.closest('[data-kills]');
@@ -94,7 +101,7 @@ export function openBattleMenu() {
     if (e.target.closest('[data-play]')) {
       const p = prefsOf();
       closePanel(true);
-      openArena({ format: p.arenaFormat, kills: p.arenaKills });
+      openArena({ format: p.arenaFormat, kills: p.arenaKills, map: p.arenaMap });
     }
   });
 

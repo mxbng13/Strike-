@@ -1,6 +1,6 @@
 // Construction 3D d'une carte de l'arène à partir de son plan (arena/grid.js, arena/maps.js).
 // Sol peint tuile par tuile, murs, caisses, rochers, buissons (cachettes), eau animée, clôture et décor
-// autour. Thème 'meadow' (prairie). Tout est généré par le code.
+// autour. Thèmes : prairie, rivière (ponts), désert, glacier. Tout est généré par le code.
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -18,7 +18,27 @@ export const THEMES = {
     outer: '#4c9140', outerDots: ['rgba(110,180,80,.4)', 'rgba(30,80,30,.4)'], edge: 0x9b7448, wood: 0x8a5a2e,
     tuft: 0x7cc456, flowers: true, decor: 'trees', wet: '#3f8f6a',
   },
+  desert: {
+    bg: 0xd9a65a, hemi: [0xfff1d6, 0xb07a3a, 1.1], sun: [0xffe7c2, 2.2],
+    tiles: ['#e8c27a', '#e0b86e'], blotch: ['255,225,160', '180,120,60'], blades: ['rgba(255,235,190,.35)', 'rgba(170,110,50,.3)'],
+    path: '#c98f4f', pathDots: ['rgba(140,90,40,.5)', 'rgba(255,225,170,.55)'], shade: '110,60,20',
+    stone: (s) => `rgb(${s + 70},${s + 30},${s - 25})`, stoneBase: '#c58a4c', moss: false, cap: 0xe2b27a,
+    rock: 0xb9814a, bushes: [0xc9a64a, 0xb8923a, 0xd8b85a, 0xa98432], bushStyle: 'grass',
+    outer: '#d8a95e', outerDots: ['rgba(255,230,170,.45)', 'rgba(160,100,40,.35)'], edge: 0xa8743a, wood: 0x7a4c22,
+    tuft: 0xb89a4a, flowers: false, decor: 'cactus', wet: '#8a7a4a', water: [[0.12, 0.45, 0.55], [0.45, 0.80, 0.80]],
+  },
+  snow: {
+    bg: 0xcfe3f2, hemi: [0xf2f8ff, 0x8aa4c0, 1.15], sun: [0xffffff, 1.7],
+    tiles: ['#eef5fb', '#e3edf7'], blotch: ['255,255,255', '150,185,220'], blades: ['rgba(255,255,255,.55)', 'rgba(160,190,225,.35)'],
+    path: '#a9c3dc', pathDots: ['rgba(120,150,190,.45)', 'rgba(255,255,255,.7)'], shade: '60,90,130',
+    stone: (s) => `rgb(${s - 10},${s + 40},${s + 75})`, stoneBase: '#8fc4e6', moss: false, snowCap: true, cap: 0xffffff,
+    rock: 0x8f9fb2, bushes: [0x2f6f5a, 0x3a7f68, 0x285f4e, 0x447f6c], bushStyle: 'leaves', bushSnow: true,
+    outer: '#e6eff8', outerDots: ['rgba(255,255,255,.7)', 'rgba(150,180,215,.35)'], edge: 0x9fb6cc, wood: 0x6e5a48,
+    tuft: 0xd9e8f5, flowers: false, decor: 'pines', wet: '#9cc8e4', water: [[0.20, 0.50, 0.72], [0.70, 0.90, 1.0]],
+  },
 };
+// Rivière : la prairie avec de l'eau plus vive
+THEMES.river = { ...THEMES.meadow, bg: 0x3b8a46, wet: '#2f7f6a', water: [[0.06, 0.42, 0.70], [0.38, 0.80, 0.95]] };
 let T = THEMES.meadow;
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 const range = (a, b) => a + rnd() * (b - a);
@@ -64,7 +84,7 @@ function groundTexture() {
     // bord mouillé autour de l'eau (l'eau elle-même est un maillage animé)
     const wcv = document.createElement('canvas'); wcv.width = w; wcv.height = h;
     const wg = wcv.getContext('2d'); wg.fillStyle = T.wet;
-    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (LAYOUT[r][c] === 'w') wg.fillRect(c * P - 9, r * P - 9, P + 18, P + 18);
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if ('wH'.includes(LAYOUT[r][c])) wg.fillRect(c * P - 9, r * P - 9, P + 18, P + 18);
     g.save(); g.filter = 'blur(6px)'; g.globalAlpha = 0.85; g.drawImage(wcv, 0, 0); g.restore();
     // cailloux et traces sur la terre
     for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
@@ -178,6 +198,12 @@ export function buildArenaMap(scene, { theme = 'meadow', isMobile = false } = {}
   });
   wallMesh.castShadow = wallMesh.receiveShadow = capMesh.castShadow = capMesh.receiveShadow = true;
   scene.add(wallMesh, capMesh);
+  // neige sur les murs (glacier)
+  if (T.snowCap) {
+    const snowMat = track(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 }));
+    const snowGeo = track(new THREE.SphereGeometry(0.5, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2));
+    for (const [c, r] of walls) { const [x, z] = cellCenter(c, r); const sn = new THREE.Mesh(snowGeo, snowMat); sn.scale.set(1.35, 0.32, 1.35); sn.position.set(x, 1.64, z); scene.add(sn); }
+  }
   // mousse sur certains chaperons
   const mossMat = track(new THREE.MeshStandardMaterial({ color: 0x5d9a3c, roughness: 0.9 }));
   for (const [c, r] of walls) {
@@ -252,7 +278,8 @@ export function buildArenaMap(scene, { theme = 'meadow', isMobile = false } = {}
         for (let v = 0; v < g.attributes.position.count; v++) {
           const y = g.attributes.position.getY(v);
           const shade = 0.75 + Math.min(0.4, (y - 0.3) * 0.5); // plus clair en haut
-          colors.set([col.r * shade, col.g * shade, col.b * shade], v * 3);
+          if (T.bushSnow && y > 1.05) colors.set([0.93, 0.97, 1], v * 3);   // neige sur le dessus
+          else colors.set([col.r * shade, col.g * shade, col.b * shade], v * 3);
         }
         g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
         geos.push(g);
@@ -318,6 +345,22 @@ export function buildArenaMap(scene, { theme = 'meadow', isMobile = false } = {}
       t.position.set(x, 0, z); t.rotation.y = rnd() * 6;
       scene.add(t);
     }
+  } else if (T.decor === 'pines') {
+    // sapins enneigés
+    const pineMat = track(new THREE.MeshStandardMaterial({ color: 0x2f6a55, roughness: 0.85, flatShading: true }));
+    const snowMat = track(new THREE.MeshStandardMaterial({ color: 0xf4f9ff, roughness: 0.7, flatShading: true }));
+    const coneGeo = track(new THREE.ConeGeometry(1, 1.4, 7));
+    const trunkGeo = track(new THREE.CylinderGeometry(0.15, 0.2, 0.8, 6));
+    for (let i = 0; i < 60; i++) {
+      const [x, z] = outside();
+      const t = new THREE.Group(), s = range(0.9, 1.5);
+      const trunk = new THREE.Mesh(trunkGeo, trunkMat); trunk.position.y = 0.4; t.add(trunk);
+      for (let k = 0; k < 3; k++) {
+        const cone = new THREE.Mesh(coneGeo, pineMat); cone.position.y = 1.1 + k * 0.75; cone.scale.setScalar(1 - k * 0.25); cone.castShadow = true; t.add(cone);
+        const cap = new THREE.Mesh(coneGeo, snowMat); cap.position.y = 1.32 + k * 0.75; cap.scale.setScalar((1 - k * 0.25) * 0.62); t.add(cap);
+      }
+      t.position.set(x, 0, z); t.scale.setScalar(s); t.rotation.y = rnd() * 6; scene.add(t);
+    }
   } else {
     // cactus (saguaro) à épines dessinées
     const spines = track(canvasTex(128, 128, (g) => {
@@ -354,20 +397,21 @@ export function buildArenaMap(scene, { theme = 'meadow', isMobile = false } = {}
 
   // --- Eau : bassins animés (on ne les traverse pas, les tirs passent au-dessus) ---
   const waterTiles = findTiles('w');
+  const bridgeTiles = findTiles('H');
   let waterMat = null;
   if (waterTiles.length) {
-    const geos = waterTiles.map(([c, r]) => { const [x, z] = cellCenter(c, r); return new THREE.PlaneGeometry(TILE * 1.02, TILE * 1.02).rotateX(-Math.PI / 2).translate(x, 0.06, z); });
+    const geos = [...waterTiles, ...bridgeTiles].map(([c, r]) => { const [x, z] = cellCenter(c, r); return new THREE.PlaneGeometry(TILE * 1.02, TILE * 1.02).rotateX(-Math.PI / 2).translate(x, 0.06, z); });
     const geo = track(mergeGeometries(geos)); geos.forEach((g) => g.dispose());
     waterMat = track(new THREE.ShaderMaterial({
       transparent: true,
-      uniforms: { uTime: { value: 0 } },
+      uniforms: { uTime: { value: 0 }, uDeep: { value: new THREE.Vector3(...(T.water?.[0] ?? [0.10, 0.48, 0.66])) }, uLight: { value: new THREE.Vector3(...(T.water?.[1] ?? [0.42, 0.82, 0.90])) } },
       vertexShader: 'varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
-      fragmentShader: `varying vec3 vW; uniform float uTime;
+      fragmentShader: `varying vec3 vW; uniform float uTime; uniform vec3 uDeep; uniform vec3 uLight;
         void main(){
           float a = sin(vW.x * 2.3 + uTime * 1.6) * sin(vW.z * 2.1 - uTime * 1.3);
           float b = sin((vW.x + vW.z) * 3.7 + uTime * 2.2);
           float n = a * 0.5 + b * 0.25;
-          vec3 deep = vec3(0.10, 0.48, 0.66), light = vec3(0.42, 0.82, 0.90);
+          vec3 deep = uDeep, light = uLight;
           vec3 col = mix(deep, light, smoothstep(-0.4, 0.8, n));
           col += vec3(1.0) * smoothstep(0.62, 0.75, n) * 0.55;
           gl_FragColor = vec4(col, 0.92);
@@ -382,11 +426,38 @@ export function buildArenaMap(scene, { theme = 'meadow', isMobile = false } = {}
     const reedGeo = track(new THREE.ConeGeometry(0.05, 0.9, 4));
     for (const [c, r] of waterTiles) {
       for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        if (tileAt(c + dc, r + dr) === 'w' || rnd() > 0.5) continue;
+        if ('wH'.includes(tileAt(c + dc, r + dr)) || rnd() > 0.5) continue;
         const [x, z] = cellCenter(c, r);
         const reed = new THREE.Mesh(reedGeo, reedMat);
         reed.position.set(x + dc * TILE * 0.5 + range(-0.3, 0.3), 0.45, z + dr * TILE * 0.5 + range(-0.3, 0.3)); reed.rotation.z = range(-0.2, 0.2);
         scene.add(reed);
+      }
+    }
+  }
+
+  // --- Ponts de bois (on marche dessus, au-dessus de l'eau) ---
+  if (bridgeTiles.length) {
+    const plankMat = track(new THREE.MeshStandardMaterial({ color: 0xa0703c, roughness: 0.85 }));
+    const plankDark = track(new THREE.MeshStandardMaterial({ color: 0x6e4a24, roughness: 0.9 }));
+    const plankGeo = track(new RoundedBoxGeometry(TILE * 0.98, 0.12, TILE * 0.2, 1, 0.03));
+    const n = bridgeTiles.length * 5;
+    const planks = new THREE.InstancedMesh(plankGeo, plankMat, n);
+    let i = 0;
+    for (const [c, r] of bridgeTiles) {
+      const [x, z] = cellCenter(c, r);
+      for (let k = 0; k < 5; k++) planks.setMatrixAt(i++, new THREE.Matrix4().compose(new THREE.Vector3(x, 0.14, z - TILE / 2 + TILE * (k + 0.5) / 5), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, range(-0.03, 0.03), 0)), new THREE.Vector3(1, 1, 0.92)));
+    }
+    planks.receiveShadow = planks.castShadow = true; scene.add(planks);
+    // rambardes sur les bords du pont qui donnent sur l'eau
+    const railGeo = track(new THREE.BoxGeometry(0.1, 0.1, TILE));
+    const postGeo2 = track(new THREE.BoxGeometry(0.14, 0.5, 0.14));
+    for (const [c, r] of bridgeTiles) {
+      const [x, z] = cellCenter(c, r);
+      for (const dc of [-1, 1]) {
+        if (tileAt(c + dc, r) !== 'w') continue;
+        const rx = x + dc * (TILE / 2 - 0.08);
+        const rail = new THREE.Mesh(railGeo, plankDark); rail.position.set(rx, 0.52, z); rail.castShadow = true; scene.add(rail);
+        for (const dz of [-0.45, 0.45]) { const p = new THREE.Mesh(postGeo2, plankDark); p.position.set(rx, 0.3, z + dz * TILE); scene.add(p); }
       }
     }
   }

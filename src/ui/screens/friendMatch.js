@@ -13,6 +13,8 @@ import { getCharacter } from '../../data/characters.js';
 import { getPortrait } from '../../render/portraits.js';
 import { getRank } from '../../data/ranks.js';
 import { ICONS, swordsArt } from '../icons.js';
+import { ARENA_MAPS } from '../../arena/maps.js';
+import { mapPickerHtml, fillMapPreviews } from '../mapPicker.js';
 import { avatarSvg } from '../avatar.js';
 import { rankEmblem } from '../rankEmblem.js';
 import { showPanel, closePanel, toast } from '../panel.js';
@@ -49,6 +51,7 @@ export function openFriendMatch({ join = null } = {}) {
   const role = join ? 'guest' : 'host';
   let code = join ? cleanCode(join) : newRoomCode();
   let room = null, foe = null, started = false, connected = false, tries = 0;
+  let map = ARENA_MAPS[save.get().battlePrefs?.arenaMap] ? save.get().battlePrefs.arenaMap : 'map1';
   let kills = KILL_TARGETS.includes(save.get().battlePrefs?.arenaKills) ? save.get().battlePrefs.arenaKills : DEFAULT_KILL_TARGET;
   let status = role === 'host' ? 'creating' : 'joining', errorKind = null;
 
@@ -107,15 +110,18 @@ export function openFriendMatch({ join = null } = {}) {
       </section>
       ${body}
       ${ready ? `
+        <div class="sh-banner bm-banner"><span class="sh-ic">${ICONS.map}</span><h4>Carte</h4></div>
+        ${mapPickerHtml(map, 'fmap', role === 'guest')}
         <div class="sh-banner bm-banner"><span class="sh-ic">${ICONS.trophy}</span><h4>Victoire à</h4></div>
         <div class="bm-kills2 fm-kills" role="radiogroup" aria-label="Nombre d’éliminations pour gagner">${KILL_TARGETS.map((k) => `
           <button class="bm-kill2 ${kills === k ? 'sel' : ''}" data-fkills="${k}" role="radio" aria-checked="${kills === k}" ${role === 'guest' ? 'disabled' : ''}><b>${k}</b><small>éliminations</small></button>`).join('')}
         </div>
         <div class="bm-footer2">
           ${role === 'host'
-            ? `<button class="bm-go" data-start><span class="bm-go-ic">${ICONS.battle}</span><span><b>LANCER</b><small>Duel · ${kills} élim.</small></span></button>`
-            : `<p class="fm-wait-host">${ICONS.clock}<span>${esc(foe.name)} va lancer le combat…</span></p>`}
+            ? `<button class="bm-go" data-start><span class="bm-go-ic">${ICONS.battle}</span><span><b>LANCER</b><small>${ARENA_MAPS[map].title} · ${kills} élim.</small></span></button>`
+            : `<p class="fm-wait-host" data-wait-map="${map}">${ICONS.clock}<span>${esc(foe.name)} va lancer le combat…</span></p>`}
         </div>` : ''}`;
+    fillMapPreviews(root);
   }
 
   function fail(kind) {
@@ -151,7 +157,8 @@ export function openFriendMatch({ join = null } = {}) {
         navigator.vibrate?.(20);
         render();
       } else if (m.t === 'kills' && role === 'guest') { kills = m.k; render(); }
-      else if (m.t === 'start' && role === 'guest') launch(m.k);
+      else if (m.t === 'map' && role === 'guest' && ARENA_MAPS[m.map]) { map = m.map; render(); }
+      else if (m.t === 'start' && role === 'guest') { if (ARENA_MAPS[m.map]) map = m.map; launch(m.k); }
     });
   }
 
@@ -160,7 +167,7 @@ export function openFriendMatch({ join = null } = {}) {
     started = true;
     const r = room;
     closePanel(true);
-    const api = openArena({ online: { room: r, kills: k, foe: { ...foe.fighter, name: foe.name } } });
+    const api = openArena({ online: { room: r, kills: k, map, foe: { ...foe.fighter, name: foe.name } } });
     window.__arena = api;   // accès de debug / tests automatisés
   }
 
@@ -168,7 +175,9 @@ export function openFriendMatch({ join = null } = {}) {
     if (e.target.closest('[data-retry]')) { tries = 0; connect(); return; }
     const k = e.target.closest('[data-fkills]');
     if (k && role === 'host') { kills = Number(k.dataset.fkills); room?.send({ t: 'kills', k: kills }); navigator.vibrate?.(8); render(); return; }
-    if (e.target.closest('[data-start]')) { room.send({ t: 'start', k: kills }); launch(kills); return; }
+    const fm = e.target.closest('[data-fmap]');
+    if (fm && role === 'host') { map = fm.dataset.fmap; room?.send({ t: 'map', map }); navigator.vibrate?.(8); render(); return; }
+    if (e.target.closest('[data-start]')) { room.send({ t: 'start', k: kills, map }); launch(kills); return; }
     const link = inviteLink(code);
     if (e.target.closest('[data-share]')) {
       if (navigator.share) { try { await navigator.share({ title: 'STRIKE', text: `Viens m’affronter sur STRIKE ! Code : ${code}`, url: link }); } catch { /* partage annulé */ } return; }

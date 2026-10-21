@@ -1,6 +1,6 @@
-// Plan de l'arène (une seule carte : Map1). Chaque carte est décrite par sa moitié haute (côté ennemi) et sa rangée
+// Plans des cartes de l'arène. Chaque carte est décrite par sa moitié haute (côté ennemi) et sa rangée
 // centrale : la moitié basse est obtenue par symétrie centrale, donc les deux camps sont à égalité.
-// Légende : . sol   - chemin   B buisson   W mur   C caisse   R rocher   w eau   E départ ennemi
+// Légende : . sol   - chemin   B buisson   W mur   C caisse   R rocher   w eau   H pont   E départ ennemi
 // `bonus` : cases où apparaissent les bonus à ramasser (colonne, rangée), symétriques eux aussi.
 const mirror = (top, middle) => [...top, middle, ...[...top].reverse().map((r) => [...r].reverse().join('').replace('E', 'P'))];
 
@@ -25,6 +25,72 @@ export const ARENA_MAPS = {
       '..RR....-BBB-....RR..',
       '.WWW....-----....WWW.',
     ], 'BB...C...-R-...C...BB'),
+    bonus: [[10, 13], [10, 17], [2, 15], [18, 15]],
+  },
+  river: {
+    id: 'river', name: 'Rivière', title: 'Rivière', theme: 'river', color: '#3fb6e8',
+    desc: 'Une rivière coupe l’arène en deux : trois ponts pour passer, les tirs volent au-dessus de l’eau.',
+    layout: mirror([
+      'BBB.....-----.....BBB',
+      'BB......--E--......BB',
+      '.....CC.-----.CC.....',
+      '..R......---......R..',
+      '.......WW.-.WW.......',
+      '.BBB......-......BBB.',
+      '.BBB..C...-...C..BBB.',
+      '..........-..........',
+      'WW...BB...-...BB...WW',
+      '.....BB..---..BB.....',
+      '..C......---......C..',
+      '...BB....---....BB...',
+      'w..BB...-----...BB..w',
+      'ww.....R..-..R.....ww',
+      'wwwHHwwwwHHHwwwwHHwww',
+    ], 'wwwHHwwwwHHHwwwwHHwww'),
+    bonus: [[10, 13], [10, 17], [3, 15], [17, 15]],
+  },
+  desert: {
+    id: 'desert', name: 'Désert', title: 'Désert', theme: 'desert', color: '#e8b45a',
+    desc: 'Sable brûlant, ruines de grès et hautes herbes sèches pour se cacher.',
+    layout: mirror([
+      'RR......-----......RR',
+      'R.......--E--.......R',
+      '...BB...-----...BB...',
+      '...BB.....-.....BB...',
+      '.......WWW-WWW.......',
+      '..C.......-.......C..',
+      '..C..BBB..-..BBB..C..',
+      '.....BBB..-..BBB.....',
+      'WWW.......-.......WWW',
+      '.......R..-..R.......',
+      '.BB.....-----.....BB.',
+      '.BB..WW.--.--.WW..BB.',
+      '.BB..W..-...-..W..BB.',
+      '......R.-.-.-.R......',
+      'RR.......BBB.......RR',
+    ], '.....CC..BBB..CC.....'),
+    bonus: [[10, 13], [10, 17], [2, 15], [18, 15]],
+  },
+  glacier: {
+    id: 'glacier', name: 'Glacier', title: 'Glacier', theme: 'snow', color: '#9fdcff',
+    desc: 'Neige, murs de glace et lacs gelés : le terrain est ouvert, reste en mouvement.',
+    layout: mirror([
+      'BB.......---.......BB',
+      'B........-E-........B',
+      '....W....---....W....',
+      '....W.....-.....W....',
+      '..RRW..BB.-.BB..WRR..',
+      '.......BB.-.BB.......',
+      '..........-..........',
+      'CC...WWWW.-.WWWW...CC',
+      '..........-..........',
+      '..BBB...-----...BBB..',
+      '..BBB..ww-.-ww..BBB..',
+      '.......ww-.-ww.......',
+      '.R.......---.......R.',
+      '...BB.C..-.-..C.BB...',
+      '...BB...........BB...',
+    ], 'WW....RR..B..RR....WW'),
     bonus: [[10, 13], [10, 17], [2, 15], [18, 15]],
   },
 };

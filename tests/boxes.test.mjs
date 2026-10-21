@@ -240,7 +240,7 @@ check(new Set(CHARACTERS.map((c) => c.id)).size === CHARACTERS.length, 'identifi
 {
   const { DEFAULT_BATTLE_PREFS } = await import('../src/data/battleModes.js');
   const { ARENA_MAPS, ARENA_MAP_LIST } = await import('../src/arena/maps.js');
-  check(ARENA_MAP_LIST.length === 1 && ARENA_MAPS.map1 && !ARENA_MAPS.map2, 'une seule carte : l’arène (Map1)');
+  check(ARENA_MAP_LIST.length === 4 && ARENA_MAPS.map1 && !ARENA_MAPS.map2, 'l’arène compte 4 cartes (Prairie en premier)');
   check(DEFAULT_BATTLE_PREFS.arenaFormat === 'duel' && DEFAULT_BATTLE_PREFS.arenaKills === 5 && save.get().battlePrefs.arenaKills === 5, 'par défaut : Duel, 5 éliminations pour gagner');
   let gone = 0;
   for (const m of ['../src/ui/screens/battle.js', '../src/game/battleEngine.js', '../src/render/battleScene.js', '../src/render/arenas.js']) { try { await import(m); } catch { gone++; } }
@@ -410,6 +410,26 @@ check(new Set(CHARACTERS.map((c) => c.id)).size === CHARACTERS.length, 'identifi
   save.update((st) => ({ weaponSkin: { ...st.weaponSkin, [other]: 'test-only' } }));
   check(sk.equippedWeaponSkin(other) === null, 'un skin incompatible n’est jamais affiché sur une autre arme');
   data.WEAPON_SKINS.pop();
+}
+// --- Cartes de l'arène et nuage noir ---
+{
+  const { ARENA_MAPS } = await import('../src/arena/maps.js');
+  const { safeHalf, cloudDist, CLOUD } = await import('../src/arena/cloud.js');
+  check(Object.keys(ARENA_MAPS).join() === 'map1,river,desert,glacier', '4 cartes : Prairie, Rivière, Désert, Glacier');
+  for (const m of Object.values(ARENA_MAPS)) {
+    const L = m.layout, R = L.length, C = L[0].length;
+    let sym = L.every((r) => r.length === C);
+    for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) { const n = (x) => (x === 'P' ? 'E' : x); if (n(L[r][c]) !== n(L[R - 1 - r][C - 1 - c])) sym = false; }
+    const pos = (ch) => { for (let r = 0; r < R; r++) { const c = L[r].indexOf(ch); if (c >= 0) return [c, r]; } };
+    const block = (c, r) => c < 0 || r < 0 || c >= C || r >= R || 'WCRw'.includes(L[r][c]);
+    const seen = new Set([pos('P').join()]), q = [pos('P')];
+    while (q.length) { const [c, r] = q.pop(); for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const k = `${c + dc},${r + dr}`; if (!block(c + dc, r + dr) && !seen.has(k)) { seen.add(k); q.push([c + dc, r + dr]); } } }
+    let free = 0; for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) if (!block(c, r)) free++;
+    check(sym && seen.has(pos('E').join()) && seen.size === free && m.bonus.every(([c, r]) => !block(c, r)), `${m.title} : symétrique, tout est accessible, bonus sur des cases libres`);
+  }
+  const [x0, z0] = safeHalf(0), [x1, z1] = safeHalf(CLOUD.start + CLOUD.shrink / 2), [x2, z2] = safeHalf(999);
+  check(safeHalf(CLOUD.start)[0] === x0 && x1 < x0 && z1 < z0 && Math.abs(x2 - CLOUD.minHX) < 1e-9 && Math.abs(z2 - CLOUD.minHZ) < 1e-9, 'nuage : immobile avant 25 s, puis se resserre jusqu’à la zone minimale');
+  check(cloudDist(0, 0, x2, z2) < 0 && cloudDist(0, z2 + 1, x2, z2) > 0 && cloudDist(x2 + 1, 0, x2, z2) > 0, 'nuage : le centre est sûr, les bords sont dans le nuage');
 }
 console.log(fail ? `${fail} échec(s)` : "TOUS LES TESTS PASSENT");
 if (fail) process.exit(1);

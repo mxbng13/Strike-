@@ -2204,3 +2204,34 @@ svg { width: 100%; height: 100%; display: block; }
 .ac-card .r-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .ac-card .r-btn { min-width: 0; padding-left: 6px; padding-right: 6px; font-size: 13px; white-space: nowrap; }
 @media (max-width: 340px) { .ac-card .r-btn { font-size: 12px; } .ac-card .r-btn svg { display: none; } }
+
+/* ===== Choix de la carte ===== */
+.mp-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.mp-card { position: relative; display: grid; gap: 4px; padding: 5px 5px 7px; border-radius: 16px; color: #fff; text-align: center;
+  background: linear-gradient(180deg, #23284a, #171a33); border: 2px solid #2f3768; box-shadow: 0 4px 0 #0b0c18; }
+.mp-card img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 11px; background: color-mix(in srgb, var(--mc) 35%, #0d1022); opacity: 0; transition: opacity .3s; }
+.mp-card img.ready { opacity: 1; }
+.mp-card b { font-family: var(--font-display); font-size: 15px; letter-spacing: .03em; text-shadow: 0 2px 0 rgba(0,0,0,.4); }
+.mp-card.sel { border-color: var(--mc); box-shadow: 0 4px 0 #0b0c18, 0 0 0 2px var(--mc), 0 0 18px color-mix(in srgb, var(--mc) 45%, transparent); }
+.mp-card:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 2px 0 #0b0c18; }
+.mp-card:disabled { opacity: 1; } .mp-card:disabled:not(.sel) { opacity: .5; }
+.mp-check { position: absolute; top: 9px; right: 9px; width: 24px; height: 24px; display: none; place-items: center; border-radius: 50%; background: var(--mc); color: #10131f; box-shadow: 0 2px 0 rgba(0,0,0,.35); }
+.mp-check svg { width: 15px; height: 15px; }
+.mp-card.sel .mp-check { display: grid; }
+.mp-desc { margin-top: 2px; }
+
+/* ===== Nuage noir (arène) ===== */
+.ar-cloudwarn { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); display: grid; justify-items: center; gap: 2px; width: min(320px, calc(100% - 32px));
+  padding: 10px 14px; border-radius: 16px; text-align: center; pointer-events: none;
+  background: linear-gradient(180deg, rgba(24,14,34,.92), rgba(8,6,14,.92)); border: 2px solid #8a5cff; box-shadow: 0 6px 22px rgba(0,0,0,.5), 0 0 20px rgba(138,92,255,.35);
+  animation: cw-in .35s ease-out, cw-pulse 1.1s ease-in-out infinite .35s; }
+.ar-cloudwarn[hidden] { display: none; }
+.ar-cloudwarn span { font-size: 26px; line-height: 1; filter: grayscale(1) brightness(.35) drop-shadow(0 0 6px #b48cff); }
+.ar-cloudwarn b { font-family: var(--font-display); font-size: 17px; letter-spacing: .03em; color: #fff; }
+.ar-cloudwarn small { font-size: 12px; color: #cdb8ff; }
+@keyframes cw-in { from { opacity: 0; transform: translate(-50%, -12px) scale(.9); } }
+@keyframes cw-pulse { 50% { border-color: #c4a6ff; } }
+.ar-cloudfx { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .35s;
+  background: radial-gradient(ellipse at center, transparent 35%, rgba(18,8,30,.55) 70%, rgba(6,2,12,.92) 100%); }
+#arena.incloud .ar-cloudfx { opacity: 1; animation: cloud-throb 1s ease-in-out infinite; }
+@keyframes cloud-throb { 50% { filter: brightness(1.25); } }

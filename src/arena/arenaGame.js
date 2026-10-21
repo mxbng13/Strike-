@@ -13,6 +13,8 @@ import { sfx } from '../audio/sfx.js';
 import { createProjectiles } from './projectiles.js';
 import { createAI, canSee } from './ai.js';
 import { createControls } from './controls.js';
+import { createCloud, CLOUD } from './cloud.js';
+import { ARENA_MAPS } from './maps.js';
 import { CHARACTERS, getCharacter, shortName } from '../data/characters.js';
 import { save } from '../save/storage.js';
 import { appearanceFor } from '../game/appearance.js';
@@ -64,14 +66,15 @@ const ALLY_RING = 0x4fb6ff;
  * reçue est retournée de 180°). Chacun fait foi pour les coups qu'il REÇOIT (vie, élimination) et l'annonce à l'autre.
  * Pas de bonus, d'IA, de trophées ni de récompenses dans ce mode.
  */
-export function openArena({ onExit, format: formatId = null, kills: killsOpt = null, online = null } = {}) {
+export function openArena({ onExit, format: formatId = null, kills: killsOpt = null, map: mapOpt = null, online = null } = {}) {
   const renderer = ctx.renderer;
   ctx.stage.pause();
   document.getElementById('hud').classList.add('hidden-for-battle');
   const isTouch = matchMedia('(pointer: coarse)').matches;
   const prefs = save.get().battlePrefs ?? {};
   const format = online ? ARENA_FORMATS.duel : ARENA_FORMATS[formatId ?? prefs.arenaFormat] ?? ARENA_FORMATS.duel;
-  const mapDef = useMap('map1');   // une seule carte : l'arène
+  if (online) mapOpt = online.map;
+  const mapDef = useMap(ARENA_MAPS[mapOpt] ? mapOpt : ARENA_MAPS[prefs.arenaMap] ? prefs.arenaMap : 'map1');
   if (online) killsOpt = online.kills;
   const killTarget = KILL_TARGETS.includes(killsOpt) ? killsOpt : KILL_TARGETS.includes(prefs.arenaKills) ? prefs.arenaKills : DEFAULT_KILL_TARGET;
 
@@ -124,6 +127,7 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
   const teamOf = (f) => (f.team === 'player' ? [player, ally].filter(Boolean) : enemies);
   const foesOf = (f) => (f.team === 'player' ? enemies : [player, ally].filter(Boolean));
   const shots = createProjectiles(scene);
+  const cloud = createCloud(scene);   // nuage noir qui resserre l'arène (arena/cloud.js)
 
   // indicateur de visée au sol (portée de l'arme)
   const aimLine = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 1), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.28, depthWrite: false }));
@@ -263,6 +267,7 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
   const root = document.createElement('div');
   root.id = 'arena';
   root.innerHTML = `
+    <div class="ar-cloudfx"></div>
     <div class="ar-top">
       <button class="ar-quit" aria-label="Quitter">${ICONS.close}</button>
     </div>
@@ -275,6 +280,7 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
     <div class="ar-me" role="meter" aria-label="Points de vie"><div class="ar-bar player big"><i></i></div></div>
     <button class="ar-ulti" hidden aria-label="Ulti"><span class="ar-ulti-ic">${ICONS.ulti}</span><i class="ar-ulti-knob"></i></button>
     <div class="ar-count"></div>
+    <div class="ar-cloudwarn" hidden><span>☁</span><b>LE NUAGE NOIR ARRIVE !</b><small>Il avance depuis les bords : reste vers le centre</small></div>
     <div class="ar-end" hidden></div>`;
   document.body.append(root);
   const $ = (s) => root.querySelector(s);
@@ -391,12 +397,13 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
     controls.setHidden(false);
     ulti = ultiForStriker(playerDef.id);
     clearUltis();
+    cloud.reset(); cloudWarned = false; $('.ar-cloudwarn').hidden = true;
     ultiBtn.hidden = !ulti;
     if (ulti) ultiRange.scale.setScalar(ulti.range);
     shockT = 1; shake = 0; finishFocus = null; slowT = 0; lastCount = '';
     for (const m of markers.values()) m.visible = false;
     camera.zoom = 1; camera.updateProjectionMatrix();
-    root.classList.remove('lowhp', 'down');
+    root.classList.remove('lowhp', 'down', 'incloud');
     const rec = save.get().arenaRecord ?? { wins: 0, losses: 0 };
     buildUi();
     camTarget.set(px, 0, pz - 1);
@@ -460,7 +467,7 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
     if (!remote && target.hp <= 0) eliminate(target, shooter, fromUlti);
   }
 
-  function eliminate(target, killer, fromUlti) {
+  function eliminate(target, killer, fromUlti, byCloud = false) {
     // une même vie ne rapporte qu'un point, quel que soit le nombre de coups qui l'achèvent
     const key = `${target.name}#${target.team}#${target.life}`;
     if (scoredKills.has(key)) return;
@@ -471,8 +478,8 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
     markers.get(target) && (markers.get(target).visible = false);
     shots.spark(target.x, target.z, target.team === 'player' ? 0x5cffc4 : 0xff3d7f, 18, 0.6);
     sfx('ko');
-    killer.stats.kills++;
-    if (killer === player) { trackPass('kill'); if (player.inBush && !fromUlti) trackPass('bush_kill'); }
+    if (!byCloud) killer.stats.kills++;   // tué par le nuage : le point va quand même à l'équipe adverse
+    if (killer === player && !byCloud) { trackPass('kill'); if (player.inBush && !fromUlti) trackPass('bush_kill'); }
     // point pour l'équipe du tireur, mis à jour tout de suite
     const side = killer.team === 'player' ? 'player' : 'enemy';
     score[side]++;
@@ -489,7 +496,7 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
   function respawn(f) {
     const ch = f.team === 'player' ? 'P' : 'E';
     const mates = teamOf(f);
-    const [x, z] = spawnAt(ch, [0, -1, 1][mates.indexOf(f)] ?? 0);
+    const [x, z] = safeSpot(...spawnAt(ch, [0, -1, 1][mates.indexOf(f)] ?? 0));
     f.respawn(x, z, ch === 'P' ? Math.PI : 0);
     f.shieldT = SPAWN_SHIELD;
     f.life++;
@@ -760,7 +767,8 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
     controls.setHidden(true);   // plus de joysticks ni de bouton ULTI une fois la partie finie
     ultiBtn.hidden = true; ultiRange.visible = false; aimLine.visible = false;
     $('.ar-respawn').hidden = true;
-    root.classList.remove('down');
+    root.classList.remove('down', 'incloud');
+    $('.ar-cloudwarn').hidden = true;
     for (const f of fighters()) if (f.leap) { f.leap = null; f.y = 0; }
     for (const m of markers.values()) m.visible = false;
     finishFocus = { x: lastDown.x, z: lastDown.z }; slowT = 1.1;
@@ -822,6 +830,49 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
     if (f.team === 'player' || !f.alive) return true;
     if (!f.hidden) return true;
     return [player, ally].some((m) => m?.alive && Math.hypot(m.x - f.x, m.z - f.z) < BUSH_SEE);
+  }
+
+  // --- Nuage noir ---
+  let cloudWarned = false;
+  /** Case libre la plus proche de (x, z) à l'intérieur de la zone sûre (réapparition hors du nuage). */
+  function safeSpot(x, z) {
+    const [hx, hz] = cloud.half;
+    if (!cloud.active || cloud.dist(x, z) < -1.2) return [x, z];
+    const tx = THREE.MathUtils.clamp(x, -hx + 1.6, hx - 1.6), tz = THREE.MathUtils.clamp(z, -hz + 1.6, hz - 1.6);
+    const [c0, r0] = toCell(tx, tz);
+    for (let d = 0; d < 6; d++) for (let dr = -d; dr <= d; dr++) for (let dc = -d; dc <= d; dc++) {
+      if (Math.max(Math.abs(dc), Math.abs(dr)) !== d || blocksMove(c0 + dc, r0 + dr)) continue;
+      const [cx, cz] = cellCenter(c0 + dc, r0 + dr);
+      if (cloud.dist(cx, cz) < -0.8) return [cx, cz];
+    }
+    return [tx, tz];
+  }
+  function updateCloud(dt) {
+    cloud.update(matchT, t, dt);
+    if (!player.alive) root.classList.remove('incloud');
+    // annonce quelques secondes avant l'arrivée du nuage
+    const warn = matchT >= CLOUD.start - CLOUD.warn && matchT < CLOUD.start + 2.5;
+    const w = $('.ar-cloudwarn');
+    if (warn !== !w.hidden) { w.hidden = !warn; if (warn && !cloudWarned) { cloudWarned = true; sfx('count'); navigator.vibrate?.([20, 40, 20]); } }
+    for (const f of fighters()) {
+      if (!f.alive || isRemote(f)) continue;   // en ligne, le téléphone de l'ami gère sa propre vie
+      const inside = !f.leap && cloud.dist(f.x, f.z) > 0;
+      if (f === player) root.classList.toggle('incloud', inside);
+      if (!inside) { f.cloudT = 0; continue; }
+      f.cloudT = (f.cloudT ?? 0) - dt;
+      if (f.cloudT > 0) continue;
+      f.cloudT = CLOUD.tick;
+      if (f.shieldT > 0) continue;
+      const d = Math.round(f.maxHp * CLOUD.dmg);
+      f.hp = Math.max(0, f.hp - d);
+      f.lastHurtT = t;
+      f.hitFlash(0x9a5cff);
+      if (f === player) { sfx('hurt', 0.04); navigator.vibrate?.(15); }
+      if (f.hp <= 0) {
+        const foes = foesOf(f);
+        eliminate(f, foes.find((o) => o.alive) ?? foes[0], false, true);
+      }
+    }
   }
 
   // --- Combat amical en ligne ---
@@ -975,6 +1026,9 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
     if (f.leap) { updateLeap(f, dt); return; }
     const a = ais.get(f);
     const dec = aiEnabled && a ? a.update(t, dt) : { mx: 0, mz: 0, aim: null, fire: false, reload: false };
+    // nuage tout proche : l'IA rentre vers le centre de l'arène
+    const cd = cloud.dist(f.x, f.z);
+    if (aiEnabled && cd > -1.4) { const l = Math.hypot(f.x, f.z) || 1; dec.mx = -f.x / l; dec.mz = -f.z / l; }
     f.move(dec.mx, dec.mz, dt);
     if (dec.aim !== null) { f.aiming = true; f.aimFace = dec.aim; } else f.aiming = false;
     if (dec.fire && dec.aim !== null) tryFire(f, dec.aim);
@@ -1051,6 +1105,8 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
       for (const f of fighters()) if (f !== player && f.alive) (isRemote(f) ? runRemote(f, dt) : runAI(f, dt));
     }
     if (online) sendState(realDt);
+    if (playing() && !over) updateCloud(dt);
+    else cloud.update(matchT, t, dt);
     updateUltis(dt);
     shots.update(dt, fighters(), onHit, () => sfx('wall', 0.06));
     updateBonuses(dt);
@@ -1175,6 +1231,7 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
     controls.dispose();
     shots.dispose();
     clearUltis();
+    cloud.dispose();
     for (const f of fighters()) f.dispose();
     map.dispose();
     aimLine.geometry.dispose(); aimLine.material.dispose();
@@ -1206,7 +1263,7 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
     get fx() { return fx.length; }, enemyUlti: () => { enemies[0].ulti = 1; tryUlti(enemies[0]); },
     get player() { return player; }, get enemy() { return enemies[0]; }, get enemies() { return enemies; }, get ally() { return ally; },
     get ai() { return ais.get(enemies[0]); }, get phase() { return phase; }, get zones() { return zones.length; }, get over() { return over; }, get score() { return { ...score }; }, get target() { return killTarget; }, get fighters() { return fighters(); }, get bonuses() { return bonuses; },
-    get format() { return format.id; }, get online() { return !!online; }, netFire: (a) => fireNet(a), netUlti: (aim) => ultiNet(aim), get map() { return mapDef.id; },
+    get format() { return format.id; }, get online() { return !!online; }, get cloud() { return { half: cloud.half, active: cloud.active, dist: cloud.dist(player.x, player.z) }; }, setMatchTime: (v) => { matchT = v; }, get matchT() { return matchT; }, netFire: (a) => fireNet(a), netUlti: (aim) => ultiNet(aim), get map() { return mapDef.id; },
     hit: (f, dmg, by) => onHit(f, dmg, f.x, f.z, by ?? player),
     zoneList: () => zones.map((z) => ({ kind: z.kind, x: z.x, z: z.z })),
     close, setAIEnabled: (v) => { aiEnabled = v; }, ulti: () => tryUlti(), canSee, fire: (f, angle) => tryFire(f, angle), bullets: () => shots.count,
