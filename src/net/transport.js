@@ -31,15 +31,19 @@ function supabaseRoom(code, role) {
   const { emit, api } = base(code, role);
   const me = `${role}-${Math.random().toString(36).slice(2, 10)}`;
   let opened = false, closed = false, ch = null;
+  const early = [];   // messages de l'ami arrivés avant qu'on le voie dans la salle : rejoués à l'ouverture
   const sb = supabase();
   ch = sb.channel(PREFIX + code, { config: { broadcast: { self: false, ack: false }, presence: { key: me } } });
-  ch.on('broadcast', { event: 'm' }, ({ payload }) => { if (!closed && opened) emit('message', payload); });
+  ch.on('broadcast', { event: 'm' }, ({ payload }) => {
+    if (closed) return;
+    if (opened) emit('message', payload); else if (early.length < 20) early.push(payload);
+  });
   ch.on('presence', { event: 'sync' }, () => {
     if (closed) return;
     const others = Object.entries(ch.presenceState()).filter(([k]) => k !== me).map(([, v]) => v[0]?.role);
     if (!opened && role === 'host' && others.includes('host')) { emit('error', 'taken'); return; }   // code déjà utilisé
     const peer = others.includes(role === 'host' ? 'guest' : 'host');
-    if (peer && !opened) { opened = true; emit('open'); }
+    if (peer && !opened) { opened = true; emit('open'); early.splice(0).forEach((m) => emit('message', m)); }
     else if (!peer && opened) { opened = false; emit('close', 'left'); }
   });
   let guestTimer = null;

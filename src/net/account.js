@@ -104,7 +104,17 @@ export async function signUp(name, password) {
   if (!accountAvailable()) return { ok: false, error: 'Comptes pas encore disponibles.' };
   const v = checkUsername(name);
   if (!v.ok) return v;
-  const { data, error } = await sb().auth.signUp({ email: usernameEmail(v.value), password, options: { data: { username: v.value } } });
+  // compte créé déjà confirmé par la fonction serveur « signup » (aucun e-mail envoyé), puis connexion normale
+  const made = await sb().functions.invoke('signup', { body: { username: v.value, password } });
+  let data, error;
+  if (!made.error) ({ data, error } = await sb().auth.signInWithPassword({ email: usernameEmail(v.value), password }));
+  else {
+    const code = await made.error.context?.json?.().then((b) => b?.error).catch(() => null);
+    if (code === 'taken') return { ok: false, error: FR['User already registered'] };
+    if (code) return { ok: false, error: code === 'password' ? FR['Password should be at least 6 characters.'] : 'Création du compte impossible, réessaie.' };
+    // fonction injoignable : inscription classique
+    ({ data, error } = await sb().auth.signUp({ email: usernameEmail(v.value), password, options: { data: { username: v.value } } }));
+  }
   if (error) return { ok: false, error: msg(error) };
   if (!data.session) return { ok: false, error: FR['Email not confirmed'] };
   user = data.user;

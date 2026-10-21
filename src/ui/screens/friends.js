@@ -116,8 +116,8 @@ export function openFriends() {
     const el = document.createElement('div');
     el.innerHTML = `
       <form class="fr-search" id="friend-search-form">
-        <label for="friend-search">Rechercher un joueur</label>
-        <div class="frs-field"><span class="frs-ic2">${ICONS.search}</span><input id="friend-search" type="search" placeholder="Nom de joueur" autocomplete="off" enterkeyhint="search" /></div>
+        <label for="friend-search">Ajouter avec l’ID joueur ou le nom</label>
+        <div class="frs-field"><span class="frs-ic2">${ICONS.search}</span><input id="friend-search" type="search" placeholder="STK-XXXXXX ou nom de joueur" autocapitalize="characters" autocomplete="off" enterkeyhint="search" /></div>
         <button class="fr-cta" type="submit">${ICONS.search}RECHERCHER</button>
       </form>
       <div class="fr-results"></div>
@@ -139,7 +139,11 @@ export function openFriends() {
     });
     el.addEventListener('click', async (e) => {
       const add = e.target.closest('[data-add]');
-      if (add) { const r = await sendFriendRequest(add.dataset.add); toast(r.ok ? 'Demande envoyée' : 'Envoi impossible', r.ok ? '#5cffc4' : '#ff5c7a', r.ok ? 'ok' : 'error'); }
+      if (add) {
+        const r = await sendFriendRequest(add.dataset.add);
+        toast(!r.ok ? 'Envoi impossible' : r.already ? 'Vous êtes déjà amis' : r.pending ? 'Demande déjà envoyée' : 'Demande envoyée', r.ok ? '#5cffc4' : '#ff5c7a', r.ok ? 'ok' : 'error');
+        if (r.ok) { add.disabled = true; add.innerHTML = `${ICONS.check}Envoyée`; }
+      }
     });
     return el;
   }

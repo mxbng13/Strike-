@@ -68,7 +68,7 @@ requestAnimationFrame(() => requestAnimationFrame(() => {
   const join = new URLSearchParams(location.search).get('join');
   if (join) {
     history.replaceState(null, '', location.pathname + location.hash);
-    openFriendMatch({ join });
+    accountReady.then(() => openFriendMatch({ join }));   // sans compte : création du compte d'abord
   } else {
     // pas encore de compte sur cet appareil : on propose de se connecter (ou de jouer sans compte)
     accountReady.then(() => { if (accountAvailable() && !currentUser() && !save.get().loginSkipped && !document.querySelector('.panel')) openLogin({ fromStart: true }); });

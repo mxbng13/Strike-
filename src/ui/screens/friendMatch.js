@@ -7,7 +7,8 @@ import { PUBLIC_URL } from '../../net/config.js';
 import { openArena, onlineFighterInfo, KILL_TARGETS, DEFAULT_KILL_TARGET } from '../../arena/arenaGame.js';
 import { save } from '../../save/storage.js';
 import { playerId, rememberFriend, sendFriendRequest } from '../../game/social.js';
-import { currentUser } from '../../net/account.js';
+import { currentUser, accountAvailable } from '../../net/account.js';
+import { openLogin } from './login.js';
 import { sendInvite } from '../../net/friendsOnline.js';
 import { rankedPoints } from '../../game/ranked.js';
 import { rankOf } from '../../data/ranked.js';
@@ -51,6 +52,8 @@ async function helloMsg() {
  */
 /** `invite` : ami (compte en ligne) à défier directement : il reçoit le code de la salle dès qu'elle est prête. */
 export function openFriendMatch({ join = null, invite = null } = {}) {
+  // jouer avec un ami demande un compte STRIKE (amis, ID joueur) : on le crée d'abord, puis on revient ici
+  if (accountAvailable() && !currentUser()) { openLogin({ reason: join ? 'join' : 'host', then: () => openFriendMatch({ join, invite }) }); return; }
   let invited = false;
   const role = join ? 'guest' : 'host';
   let code = join ? cleanCode(join) : newRoomCode();
