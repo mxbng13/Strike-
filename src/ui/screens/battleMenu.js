@@ -3,7 +3,8 @@
 // (battlePrefs) et transmis à l'arène au lancement.
 import { DEFAULT_BATTLE_PREFS } from '../../data/battleModes.js';
 import { save } from '../../save/storage.js';
-import { ICONS } from '../icons.js';
+import { ICONS, friendsArt } from '../icons.js';
+import { openFriendMatch } from './friendMatch.js';
 import { showPanel, closePanel } from '../panel.js';
 import { openArena, ARENA_FORMATS, KILL_TARGETS, DEFAULT_KILL_TARGET } from '../../arena/arenaGame.js';
 import { ARENA_MAPS } from '../../arena/maps.js';
@@ -69,6 +70,13 @@ export function openBattleMenu() {
       </div>
       <p class="bm-rule">${p.arenaFormat === 'duo' ? `La première équipe à ${p.arenaKills} éliminations gagne.` : `Le premier à ${p.arenaKills} éliminations gagne.`} Réapparition après 3 s.</p>
 
+      <div class="sh-banner bm-banner"><span class="sh-ic">${ICONS.friends}</span><h4>Avec un ami</h4></div>
+      <button class="bm-friend" data-friend>
+        <span class="bmf-art">${friendsArt()}</span>
+        <span class="bmf-txt"><b>JOUER AVEC UN AMI</b><small>Envoie ton lien : ton ami te rejoint en ligne pour un duel</small></span>
+        <span class="bmf-go">${ICONS.share}</span>
+      </button>
+
       <div class="bm-footer2">
         <button class="bm-go" data-play><span class="bm-go-ic">${ICONS.battle}</span><span><b>COMBAT</b><small>${ARENA_FORMATS[p.arenaFormat].name} · ${p.arenaKills} élim.</small></span></button>
       </div>`;
@@ -81,6 +89,7 @@ export function openBattleMenu() {
     if (af) { setPrefs({ arenaFormat: af.dataset.aformat }); navigator.vibrate?.(8); render(); return; }
     const k = e.target.closest('[data-kills]');
     if (k) { setPrefs({ arenaKills: Number(k.dataset.kills) }); navigator.vibrate?.(8); render(); return; }
+    if (e.target.closest('[data-friend]')) { closePanel(true); openFriendMatch(); return; }
     if (e.target.closest('[data-change]')) { closePanel(true); openCollection(true, 0); return; }
     if (e.target.closest('[data-play]')) {
       const p = prefsOf();

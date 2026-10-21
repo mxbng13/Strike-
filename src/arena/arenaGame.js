@@ -21,9 +21,17 @@ import { applyBattleTrophies } from '../game/trophies.js';
 import { trophyResultHtml, rankedResultHtml } from '../ui/trophyResult.js';
 import { applyRankedResult } from '../game/ranked.js';
 import { applyEnvMap } from '../render/environment.js';
+import { getCharacterSkin, getWeaponSkin } from '../data/skins.js';
+import { getRank } from '../data/ranks.js';
 import { ICONS } from '../ui/icons.js';
 
 let ctx = null; // { renderer, stage }
+const hpOf = (pv) => Math.round((pv * 8) / 10) * 10;
+/** Ce que l'ami doit savoir de notre Striker pour l'afficher en combat amical (net/friendMatch.js). */
+export function onlineFighterInfo(s = save.get()) {
+  const def = getCharacter(s.selected), look = appearanceFor(def.id, s);
+  return { strikerId: def.id, look: { rank: look.rank, skin: look.skin?.id ?? null, weaponSkin: look.weaponSkin?.id ?? null }, maxHp: hpOf(statsAt(def, COMBAT_LEVEL, look.rank).pv) };
+}
 export const initArena = (c) => { ctx = c; };
 
 const PITCH = THREE.MathUtils.degToRad(55);   // inclinaison fixe de la caméra (vue du dessus)
@@ -50,14 +58,21 @@ const BONUS = {
 };
 const ALLY_RING = 0x4fb6ff;
 
-export function openArena({ onExit, format: formatId = null, kills: killsOpt = null } = {}) {
+/**
+ * `online` (combat amical contre un vrai joueur, net/friendMatch.js) : { room, foe: { strikerId, look, maxHp, name }, kills }.
+ * Chaque téléphone joue son Striker et voit l'arène de son côté (l'arène est symétrique : la position de l'ami
+ * reçue est retournée de 180°). Chacun fait foi pour les coups qu'il REÇOIT (vie, élimination) et l'annonce à l'autre.
+ * Pas de bonus, d'IA, de trophées ni de récompenses dans ce mode.
+ */
+export function openArena({ onExit, format: formatId = null, kills: killsOpt = null, online = null } = {}) {
   const renderer = ctx.renderer;
   ctx.stage.pause();
   document.getElementById('hud').classList.add('hidden-for-battle');
   const isTouch = matchMedia('(pointer: coarse)').matches;
   const prefs = save.get().battlePrefs ?? {};
-  const format = ARENA_FORMATS[formatId ?? prefs.arenaFormat] ?? ARENA_FORMATS.duel;
+  const format = online ? ARENA_FORMATS.duel : ARENA_FORMATS[formatId ?? prefs.arenaFormat] ?? ARENA_FORMATS.duel;
   const mapDef = useMap('map1');   // une seule carte : l'arène
+  if (online) killsOpt = online.kills;
   const killTarget = KILL_TARGETS.includes(killsOpt) ? killsOpt : KILL_TARGETS.includes(prefs.arenaKills) ? prefs.arenaKills : DEFAULT_KILL_TARGET;
 
   const scene = new THREE.Scene();
@@ -72,7 +87,6 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
   const playerDef = getCharacter(state.selected);
   const look = appearanceFor(playerDef.id, state);
   const pStats = statsAt(playerDef, COMBAT_LEVEL, look.rank);
-  const hpOf = (pv) => Math.round((pv * 8) / 10) * 10;
   const player = createFighter(scene, playerDef, look, {
     team: 'player', name: shortName(playerDef), maxHp: hpOf(pStats.pv), dmgMult: 1,
   });
@@ -87,6 +101,17 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
   function makeTeams() {
     for (const f of [ally, ...enemies]) f?.dispose();
     ais.clear();
+    if (online) {
+      // l'adversaire est l'ami : son Striker, son apparence, sa vie ; aucune IA
+      const def = getCharacter(online.foe.strikerId) ?? CHARACTERS[0];
+      const lk = online.foe.look ?? {};
+      ally = null;
+      // apparence reçue : on ne garde que des valeurs qui existent dans le jeu
+      const sk = getCharacterSkin(lk.skin), wsk = getWeaponSkin(lk.weaponSkin);
+      enemies = [createFighter(scene, def, { rank: getRank(lk.rank).id, weapon: weaponOf(def.id).id, skin: sk?.strikerId === def.id ? sk : null, weaponSkin: wsk },
+        { team: 'enemy', name: String(online.foe.name ?? shortName(def)).slice(0, 16), maxHp: online.foe.maxHp ?? 1000, dmgMult: 1 })];
+      return;
+    }
     const pool = [...CHARACTERS.filter((c) => c.id !== playerDef.id)].sort(() => Math.random() - 0.5);
     const take = () => pool.shift() ?? CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
     ally = format.size > 1 ? makeAIFighter(take(), 'player') : null;
@@ -227,7 +252,7 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
   }
   function updateBonuses(dt) {
     for (const b of bonuses) {
-      if (!b.active) { if (playing() && (b.t -= dt) <= 0) spawnBonus(b); continue; }
+      if (!b.active) { if (!online && playing() && (b.t -= dt) <= 0) spawnBonus(b); continue; }
       b.item.rotation.y = t * 2; b.item.position.y = 0.95 + Math.sin(t * 3 + b.x) * 0.12;
       b.base.scale.setScalar(1 + Math.sin(t * 4) * 0.08);
       for (const f of fighters()) if (f.alive && !f.leap && Math.hypot(f.x - b.x, f.z - b.z) < 0.85) { pickBonus(b, f); break; }
@@ -356,7 +381,8 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
     for (const b of bonuses) { b.active = false; b.g.visible = false; b.item.userData.mat?.dispose(); }
     bonuses.forEach((b, i) => { b.t = i < 2 ? 7 : 12; });
     controls.reset();
-    phase = 'count'; countT = 3; over = false; matchT = 0; rewarded = false;
+    phase = online ? 'wait' : 'count'; countT = 3; over = false; matchT = 0; rewarded = false;
+    if (online) { netIn = null; meAgain = foeAgain = false; net.send({ t: 'ready' }); if (foeReady) beginOnline(); }
     matchId = `arena-${Date.now()}-${Math.floor(Math.random() * 1e6)}`; // un identifiant par combat (anti double attribution)
     score.player = score.enemy = 0; scoredKills.clear(); renderScore();
     for (const f of fighters()) { f.respawnT = 0; f.shieldT = 0; f.life = 0; }
@@ -411,7 +437,9 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
     if (over || !target.alive) return;
     if (target.shieldT > 0) return;   // vient de réapparaître : protégé
     const d = Math.round(dmg * (0.9 + Math.random() * 0.2));
-    target.hp = Math.max(0, target.hp - d);
+    // en ligne, la vie de l'ami est décidée par SON téléphone (reçue avec sa position) : ici, effet visuel seulement
+    const remote = online && target === enemies[0];
+    if (!remote) target.hp = Math.max(0, target.hp - d);
     target.lastHurtT = t;
     target.revealT = Math.max(target.revealT, 0.6);
     if (!fromUlti) shooter.stats.hits++; // la précision ne compte que les balles
@@ -429,7 +457,7 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
       ui.dmgdir.style.setProperty('--a', `${Math.atan2(by - ay, bx - ax) + Math.PI / 2}rad`);
       ui.dmgdir.classList.remove('show'); void ui.dmgdir.offsetWidth; ui.dmgdir.classList.add('show');
     }
-    if (target.hp <= 0) eliminate(target, shooter, fromUlti);
+    if (!remote && target.hp <= 0) eliminate(target, shooter, fromUlti);
   }
 
   function eliminate(target, killer, fromUlti) {
@@ -437,6 +465,7 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
     const key = `${target.name}#${target.team}#${target.life}`;
     if (scoredKills.has(key)) return;
     scoredKills.add(key);
+    if (online && target === player) net.send({ t: 'died', life: player.life, ulti: fromUlti });
     target.kill();
     if (target.leap) { target.leap = null; target.y = 0; }
     markers.get(target) && (markers.get(target).visible = false);
@@ -621,7 +650,7 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
       if (!o.alive || d > L.u.radius) continue;
       hitAny = true;
       onHit(o, L.u.dmg * f.dmgMult, o.x, o.z, f, { fromUlti: true });
-      if (o.alive) { const k = 1.3 / (d || 1); [o.x, o.z] = collide(o.x + (o.x - f.x) * k, o.z + (o.z - f.z) * k, RADIUS); }
+      if (o.alive && !isRemote(o)) { const k = 1.3 / (d || 1); [o.x, o.z] = collide(o.x + (o.x - f.x) * k, o.z + (o.z - f.z) * k, RADIUS); }
     }
   }  /** Ultis en cours : salves, ondes de choc, zones de feu et vortex. */
   function updateUltis(dt) {
@@ -659,7 +688,7 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
           if (!o.alive || d > u.radius) continue;
           hitAny = true;
           onHit(o, u.dmg * f.dmgMult, o.x, o.z, f, { fromUlti: true });
-          if (!o.alive) continue;
+          if (!o.alive || isRemote(o)) continue;
           const k = 1.6 / (d || 1);
           [o.x, o.z] = collide(o.x + (o.x - f.x) * k, o.z + (o.z - f.z) * k, RADIUS);
           o.stunT = u.stun; o.burst = null;
@@ -706,7 +735,7 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
         if (!o.alive) continue;
         const dx = Z.x - o.x, dz = Z.z - o.z, d = Math.hypot(dx, dz);
         if (d > u.radius) continue;
-        if (Z.kind === 'vortex' && d > 0.3 && !o.leap) [o.x, o.z] = collide(o.x + (dx / d) * u.pull * dt, o.z + (dz / d) * u.pull * dt, RADIUS);
+        if (Z.kind === 'vortex' && d > 0.3 && !o.leap && !isRemote(o)) [o.x, o.z] = collide(o.x + (dx / d) * u.pull * dt, o.z + (dz / d) * u.pull * dt, RADIUS);
         if (Z.tick <= 0) onHit(o, u.dps * 0.25 * f.dmgMult, o.x, o.z, f, { fromUlti: true });
       }
       if (Z.tick <= 0) Z.tick = 0.25;
@@ -736,6 +765,7 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
     for (const m of markers.values()) m.visible = false;
     finishFocus = { x: lastDown.x, z: lastDown.z }; slowT = 1.1;
     setTimeout(() => sfx(victory ? 'victory' : 'defeat'), 900);
+    if (online) { rewarded = true; setTimeout(() => running && showOnlineEnd(victory), 1300); return; }
     // récompenses (une seule fois par partie)
     let reward = null, passGain = null, tr = null, rk = null;
     if (!rewarded) {
@@ -794,6 +824,136 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
     return [player, ally].some((m) => m?.alive && Math.hypot(m.x - f.x, m.z - f.z) < BUSH_SEE);
   }
 
+  // --- Combat amical en ligne ---
+  // Le monde de l'ami est le nôtre retourné de 180° (arène symétrique centrée sur l'origine) :
+  // (x, z) -> (-x, -z) et angle -> angle + π, dans les deux sens.
+  const net = online?.room ?? { send() {} };
+  const isRemote = (f) => !!online && f === enemies[0];
+  let netIn = null, sendT = 0, foeReady = false, meAgain = false, foeAgain = false, foeLeft = false;
+  const r2 = (v) => Math.round(v * 100) / 100;
+  function beginOnline() {
+    if (phase !== 'wait') return;
+    foeReady = false;
+    phase = 'count'; countT = 3; ui.count.innerHTML = '';
+  }
+  function sendState(dt) {
+    if ((sendT -= dt) > 0) return;
+    sendT = 1 / 15;
+    const p = player;
+    net.send({ t: 's', x: r2(p.x), z: r2(p.z), f: r2(p.face), a: r2(p.aimFace), ai: p.aiming ? 1 : 0, vx: r2(p.vx), vz: r2(p.vz), hp: Math.round(p.hp), al: p.alive ? 1 : 0, l: p.life });
+  }
+  /** Tir du joueur : partout pareil, plus l'annonce à l'ami (direction et position de départ). */
+  function fireNet(a) {
+    if (tryFire(player, a) && online) net.send({ t: 'fire', a: r2(a), x: r2(player.x), z: r2(player.z) });
+  }
+  function ultiNet(aim = null) {
+    if (!tryUlti(player, aim) || !online) return;
+    // on envoie le point réellement visé (bond, zone) ou la direction (salve, rayon, séisme)
+    const zn = zones[zones.length - 1];
+    const tgt = player.leap ? [player.leap.tx, player.leap.tz] : zn?.owner === player && zn.t < 0 ? [zn.x, zn.z] : null;
+    const ang = player.face;
+    net.send({ t: 'ulti', a: r2(ang), d: tgt ? r2(Math.hypot(tgt[0] - player.x, tgt[1] - player.z)) : null, x: r2(player.x), z: r2(player.z) });
+  }
+  /** Déplacement de l'ami : glisse vers la dernière position reçue (téléportée si l'écart est trop grand). */
+  function runRemote(f, dt) {
+    if (f.leap) { updateLeap(f, dt); return; }
+    const s = netIn;
+    if (!s) { f.moving = false; f.vx = f.vz = 0; return; }
+    const tx = -s.x, tz = -s.z;
+    const dx = tx - f.x, dz = tz - f.z;
+    if (Math.hypot(dx, dz) > 3) { f.x = tx; f.z = tz; }
+    else { const k = 1 - Math.exp(-dt * 14); f.x += dx * k; f.z += dz * k; }
+    f.vx = -s.vx; f.vz = -s.vz;
+    f.moving = Math.hypot(s.vx, s.vz) > 0.4;
+    f.aiming = !!s.ai;
+    f.aimFace = s.a + Math.PI;
+    if (!f.aiming && !f.moving) f.aimFace = s.f + Math.PI;
+    if (s.al && s.l === f.life) f.hp = Math.max(1, Math.min(f.maxHp, s.hp));
+  }
+  /** Place l'ami à la position du message (tir, ulti) pour que le coup parte du bon endroit. */
+  const snap = (f, m) => { if (Math.hypot(-m.x - f.x, -m.z - f.z) < 3) { f.x = -m.x; f.z = -m.z; } };
+  function onNet(m) {
+    if (!m || !running) return;
+    const foe = enemies[0];
+    switch (m.t) {
+      case 's': netIn = m; break;
+      case 'ready': foeReady = true; beginOnline(); break;
+      case 'fire':
+        if (!playing() || over || !foe.alive) break;
+        snap(foe, m);
+        foe.ammo = Math.max(foe.ammo, 1); foe.fireCd = 0; foe.burst = null; foe.stunT = 0;
+        tryFire(foe, m.a + Math.PI);
+        break;
+      case 'ulti':
+        if (!playing() || over || !foe.alive) break;
+        snap(foe, m);
+        foe.ulti = 1; foe.leap = foe.salvo = foe.slam = null; foe.stunT = 0;
+        tryUlti(foe, { ang: m.a + Math.PI, dist: m.d ?? undefined });
+        break;
+      case 'died':
+        // l'ami annonce qu'il est éliminé (c'est son téléphone qui décide de ses dégâts) : point pour nous
+        if (foe.alive && !over) { foe.hp = 0; eliminate(foe, player, !!m.ulti); }
+        break;
+      case 'again': foeAgain = true; tryAgain(); break;
+      case 'bye': friendLeft(); break;
+    }
+  }
+  function tryAgain() {
+    const btn = $('[data-end="again"]');
+    if (btn) btn.classList.toggle('foe-ok', foeAgain);
+    const w = $('.ar-end-wait');
+    if (w) w.textContent = meAgain ? (foeAgain ? '' : 'En attente de ton ami…') : foeAgain ? 'Ton ami veut une revanche !' : '';
+    if (meAgain && foeAgain && !foeLeft) { makeTeams(); startMatch(); }
+  }
+  function friendLeft() {
+    if (foeLeft || !running) return;
+    foeLeft = true;
+    if (!over) {
+      // fin du combat : l'ami est parti (aucune récompense, combat amical)
+      over = true; phase = 'end';
+      controls.setHidden(true); ultiBtn.hidden = true; ultiRange.visible = false; aimLine.visible = false;
+      $('.ar-respawn').hidden = true; root.classList.remove('down');
+      showOnlineEnd(null);
+    } else {
+      const b = $('[data-end="again"]'); if (b) b.disabled = true;
+      const w = $('.ar-end-wait'); if (w) w.textContent = 'Ton ami a quitté le combat.';
+    }
+  }
+  if (online) { online.room.onMessage(onNet); online.room.onClose(friendLeft); }
+  /** Écran de fin du combat amical : score, statistiques, REVANCHE (quand les deux le veulent) ou QUITTER. */
+  function showOnlineEnd(victory) {
+    const el = $('.ar-end');
+    const foe = enemies[0];
+    const acc = player.stats.shots ? Math.round((player.stats.hits / player.stats.shots) * 100) : 0;
+    el.className = `ar-end ${victory === false ? 'lose' : 'win'} friendly`;
+    el.innerHTML = `
+      <div class="ar-end-box">
+        <p class="ar-end-map">COMBAT AMICAL · ${killTarget} ÉLIMINATIONS</p>
+        <h2>${victory === null ? 'FIN' : victory ? 'VICTOIRE !' : 'DÉFAITE'}</h2>
+        <p class="ar-end-winner">${victory === null ? 'Ton ami a quitté le combat' : victory ? `${save.get().playerName} GAGNE` : `${foe.name} GAGNE`}</p>
+        <div class="ar-end-score"><span class="me"><small>Toi</small><b>${score.player}</b></span><i>–</i><span class="foe"><small>${foe.name}</small><b>${score.enemy}</b></span></div>
+        <div class="ar-stats">
+          <div><b>${Math.floor(matchT / 60)}:${String(Math.floor(matchT % 60)).padStart(2, '0')}</b><small>Durée</small></div>
+          <div><b>${player.stats.dmg}</b><small>Dégâts infligés</small></div>
+          <div><b>${player.stats.kills}</b><small>Élimination${player.stats.kills > 1 ? 's' : ''}</small></div>
+          <div><b>${acc} %</b><small>Précision</small></div>
+        </div>
+        <p class="ar-end-rec">Combat amical : pas de trophées ni de récompenses.</p>
+        <p class="ar-end-wait" aria-live="polite">${foeLeft ? 'Ton ami a quitté le combat.' : ''}</p>
+        <div class="r-btns">
+          <button class="r-btn ghost" data-end="quit">QUITTER</button>
+          <button class="r-btn" data-end="again" ${foeLeft ? 'disabled' : ''}>REVANCHE</button>
+        </div>
+      </div>`;
+    el.hidden = false;
+    el.querySelector('[data-end="quit"]').addEventListener('click', close);
+    el.querySelector('[data-end="again"]').addEventListener('click', (e) => {
+      if (meAgain || foeLeft) return;
+      meAgain = true; e.currentTarget.classList.add('sent'); net.send({ t: 'again' }); tryAgain();
+    });
+    tryAgain();
+  }
+
   // --- Boucle ---
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.85), hitP = new THREE.Vector3();
   let running = true, last = performance.now(), fleeArmed = 0, aiEnabled = true;
@@ -830,7 +990,7 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
   }
   function frame(now) {
     if (!running) return;
-    const realDt = Math.min((now - last) / 1000, 0.05);
+    const realDt = Math.max(0, Math.min((now - last) / 1000, 0.05));
     last = now;
     // ralenti à l'élimination finale
     if (slowT > 0) slowT -= realDt;
@@ -839,6 +999,7 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
     adaptResolution(realDt);
     const input = controls.read();
 
+    if (phase === 'wait' && !ui.count.querySelector('.ar-wait')) ui.count.innerHTML = '<small class="ar-wait">En attente de ton ami…</small>';
     if (phase === 'count') {
       countT -= dt;
       const c = ui.count;
@@ -859,12 +1020,12 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
         // ulti : part au relâchement de son joystick, dans la direction (et à la distance) visée
         if (input.ulti && ulti) {
           const q = input.ulti;
-          if (q.tap) tryUlti(player);                       // appui bref : vers l'ennemi visible le plus proche
+          if (q.tap) ultiNet();                             // appui bref : vers l'ennemi visible le plus proche
           else if (q.pointer) {                             // clavier (E) : vers la souris
             const P = input.pointer && groundAt(input.pointer);
-            if (P) tryUlti(player, { ang: Math.atan2(P.x - player.x, P.z - player.z), dist: Math.hypot(P.x - player.x, P.z - player.z) });
-            else tryUlti(player);
-          } else tryUlti(player, { ang: Math.atan2(q.x, q.y), dist: ultiDist(ulti, q.mag) });
+            if (P) ultiNet({ ang: Math.atan2(P.x - player.x, P.z - player.z), dist: Math.hypot(P.x - player.x, P.z - player.z) });
+            else ultiNet();
+          } else ultiNet({ ang: Math.atan2(q.x, q.y), dist: ultiDist(ulti, q.mag) });
         }
         let aimAngle = null;
         if (input.stick) aimAngle = Math.atan2(input.stick.x, input.stick.y);
@@ -879,16 +1040,17 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
           // tir rapide : vers l'ennemi visible le plus proche, sinon droit devant
           let best = null, bd = Infinity;
           for (const e of enemies) { if (!e.alive || !shownToPlayer(e)) continue; const d = Math.hypot(e.x - player.x, e.z - player.z); if (d < bd) { bd = d; best = e; } }
-          tryFire(player, best ? Math.atan2(best.x - player.x, best.z - player.z) : player.face);
+          fireNet(best ? Math.atan2(best.x - player.x, best.z - player.z) : player.face);
         } else if (input.release) {
           // le tir part quand on lâche le joystick (ou le clic) : dans la dernière direction visée
           const a = input.release.pointer ? aimAngle : Math.atan2(input.release.x, input.release.y);
-          if (a !== null) tryFire(player, a);
+          if (a !== null) fireNet(a);
         }
       }
-      // IA (allié et adversaires)
-      for (const f of fighters()) if (f !== player && f.alive) runAI(f, dt);
+      // IA (allié et adversaires) ; en ligne, l'adversaire suit ce que son téléphone envoie
+      for (const f of fighters()) if (f !== player && f.alive) (isRemote(f) ? runRemote(f, dt) : runAI(f, dt));
     }
+    if (online) sendState(realDt);
     updateUltis(dt);
     shots.update(dt, fighters(), onHit, () => sfx('wall', 0.06));
     updateBonuses(dt);
@@ -1008,6 +1170,7 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
   function close() {
     if (!running) return;
     running = false;
+    if (online) { net.send({ t: 'bye' }); setTimeout(() => online.room.close(), 300); }
     removeEventListener('resize', resize);
     controls.dispose();
     shots.dispose();
@@ -1031,7 +1194,7 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
     // double appui pour abandonner (évite les sorties accidentelles)
     if (performance.now() - fleeArmed > 2500) { fleeArmed = performance.now(); e.currentTarget.classList.add('armed'); setTimeout(() => $('.ar-quit')?.classList.remove('armed'), 2500); return; }
     // abandon d'un combat commencé : compté comme une défaite pour le classement (data/ranked.js, RANKED_RULES)
-    if (phase === 'play' && !rewarded) { rewarded = true; applyRankedResult(matchId, 'flee'); }
+    if (phase === 'play' && !rewarded && !online) { rewarded = true; applyRankedResult(matchId, 'flee'); }
     close();
   });
 
@@ -1043,7 +1206,7 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
     get fx() { return fx.length; }, enemyUlti: () => { enemies[0].ulti = 1; tryUlti(enemies[0]); },
     get player() { return player; }, get enemy() { return enemies[0]; }, get enemies() { return enemies; }, get ally() { return ally; },
     get ai() { return ais.get(enemies[0]); }, get phase() { return phase; }, get zones() { return zones.length; }, get over() { return over; }, get score() { return { ...score }; }, get target() { return killTarget; }, get fighters() { return fighters(); }, get bonuses() { return bonuses; },
-    get format() { return format.id; }, get map() { return mapDef.id; },
+    get format() { return format.id; }, get online() { return !!online; }, netFire: (a) => fireNet(a), netUlti: (aim) => ultiNet(aim), get map() { return mapDef.id; },
     hit: (f, dmg, by) => onHit(f, dmg, f.x, f.z, by ?? player),
     zoneList: () => zones.map((z) => ({ kind: z.kind, x: z.x, z: z.z })),
     close, setAIEnabled: (v) => { aiEnabled = v; }, ulti: () => tryUlti(), canSee, fire: (f, angle) => tryFire(f, angle), bullets: () => shots.count,

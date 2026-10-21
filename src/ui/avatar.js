@@ -15,9 +15,9 @@ const SHAPES = {
 };
 
 /** SVG carré de l'avatar (fond + motif). */
-export function avatarSvg(id) {
-  // photo personnelle (photothèque) : image recadrée en carré
-  const photo = id === 'photo' ? save.get().avatarPhoto : null;
+export function avatarSvg(id, friendPhoto = null) {
+  // photo personnelle (photothèque) : image recadrée en carré ; `friendPhoto` : celle d'un ami
+  const photo = id === 'photo' ? friendPhoto ?? save.get().avatarPhoto : null;
   if (photo) return `<svg viewBox="0 0 100 100" class="avatar-svg" aria-hidden="true"><image href="${photo}" width="100" height="100" preserveAspectRatio="xMidYMid slice"/></svg>`;
   const a = getAvatar(id);
   return `<svg viewBox="0 0 100 100" class="avatar-svg" aria-hidden="true">

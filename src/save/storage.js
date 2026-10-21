@@ -7,6 +7,7 @@ import { migrateRanked } from '../data/ranked.js';
 
 // Clé de sauvegarde historique : NE PAS la renommer (sinon toutes les progressions seraient perdues).
 const KEY = 'eclats-ether-save-v1';
+export const BACKUP_KEY = 'eclats-ether-save-backup'; // copie de secours avant de reprendre la partie d'un compte
 export const SAVE_VERSION = 3;
 
 const DEFAULT_SAVE = {
@@ -72,11 +73,8 @@ let state = load();
 persist(); // enregistre tout de suite les migrations et dotations appliquées au chargement
 const listeners = new Set();
 
-function load() {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
+/** Normalise et migre une sauvegarde lue (appareil ou compte en ligne). */
+function fromData(parsed) {
       const s = { ...structuredClone(DEFAULT_SAVE), ...parsed };
       // trophées par Striker absents (sauvegarde d'avant leur création) : migrés depuis les trophées enregistrés
       if (parsed.strikerTrophies === undefined) s.strikerTrophies = migrateStrikerTrophies(s);
@@ -87,7 +85,11 @@ function load() {
       s.grants = s.grants ?? [];
       s.version = SAVE_VERSION;
       return finalize(s);
-    }
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) return fromData(JSON.parse(raw));
   } catch { /* stockage indisponible : valeurs par défaut */ }
   return finalize(structuredClone(DEFAULT_SAVE));
 }
@@ -173,5 +175,9 @@ export const save = {
     listeners.forEach((fn) => fn(state));
   },
   subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
+  /** Remplace la partie (sauvegarde du compte en ligne), migrée comme au chargement. */
+  replace(data) {
+    state = fromData(structuredClone(data)); persist(); listeners.forEach((fn) => fn(state));
+  },
   reset() { state = finalize(structuredClone(DEFAULT_SAVE)); persist(); listeners.forEach((fn) => fn(state)); },
 };

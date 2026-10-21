@@ -17,6 +17,8 @@ import { appearanceFor, appearanceKey } from './game/appearance.js';
 import { openPass } from './ui/screens/pass.js';
 import { openDaily } from './ui/screens/daily.js';
 import { ensurePass } from './game/battlePass.js';
+import { openFriendMatch } from './ui/screens/friendMatch.js';
+import { initAccount } from './net/account.js';
 import { registerPaymentProvider, paymentsAvailable } from './game/payments.js';
 
 ensurePass(); // saison et missions du jour à jour dès le lancement
@@ -51,11 +53,18 @@ function sync(state) {
 save.subscribe(sync);
 sync(save.get());
 stage.start();
+initAccount(); // compte connecté sur cet appareil : sauvegarde en ligne reprise automatiquement
 
 requestAnimationFrame(() => requestAnimationFrame(() => {
   const loader = document.getElementById('loader');
   loader.classList.add('hide');
   setTimeout(() => loader.remove(), 600);
+  // lien d'invitation d'un ami (…/?join=CODE) : on rejoint directement sa salle de combat amical
+  const join = new URLSearchParams(location.search).get('join');
+  if (join) {
+    history.replaceState(null, '', location.pathname + location.hash);
+    openFriendMatch({ join });
+  }
 }));
 
 // Point d'entrée des achats intégrés pour l'application native (StoreKit / Google Play Billing) :
@@ -63,4 +72,4 @@ requestAnimationFrame(() => requestAnimationFrame(() => {
 window.STRIKE_PAYMENTS = { registerPaymentProvider, paymentsAvailable };
 
 // Accès de debug depuis la console : __game.save.reset()
-window.__game = { save, stage, openBattleMenu, openArena, openPass };
+window.__game = { save, stage, openBattleMenu, openArena, openPass, openFriendMatch };

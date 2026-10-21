@@ -12,6 +12,7 @@ import { save } from '../../save/storage.js';
 import { ICONS } from '../icons.js';
 import { avatarSvg } from '../avatar.js';
 import { showPanel, toast } from '../panel.js';
+import { accountCard } from '../accountCard.js';
 
 export function openProfile() {
   const el = document.createElement('div');
@@ -128,7 +129,11 @@ export function openProfile() {
     }
   });
   render();
-  showPanel({ title: 'PROFIL', icon: ICONS.user, accent: '#5cc8ff', content: el });
+  // carte COMPTE (gérée à part : elle reste en place quand le reste du profil est redessiné)
+  const page = document.createElement('div');
+  page.className = 'profile-wrap';
+  page.append(el, accountCard());
+  showPanel({ title: 'PROFIL', icon: ICONS.user, accent: '#5cc8ff', content: page });
 }
 
 function escapeHtml(t) {
