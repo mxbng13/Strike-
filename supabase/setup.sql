@@ -41,9 +41,11 @@ begin
 end; $$;
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created after insert on auth.users for each row execute function public.handle_new_user();
+-- appelée seulement par le déclencheur, jamais directement depuis le jeu
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
 
 -- le nom de joueur ne peut pas être changé après coup (le nom affiché, lui, peut l'être)
-create or replace function public.keep_username() returns trigger language plpgsql as $$
+create or replace function public.keep_username() returns trigger language plpgsql set search_path = '' as $$
 begin new.username := old.username; return new; end; $$;
 drop trigger if exists profiles_keep_username on public.profiles;
 create trigger profiles_keep_username before update on public.profiles for each row execute function public.keep_username();
