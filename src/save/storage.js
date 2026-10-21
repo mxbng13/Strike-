@@ -13,6 +13,8 @@ export const SAVE_VERSION = 3;
 const DEFAULT_SAVE = {
   version: SAVE_VERSION,
   playerName: 'Voyageur',
+  account: null,           // nom du compte en ligne connecté sur cet appareil (null : pas de compte)
+  loginSkipped: false,     // « Jouer sans compte » choisi à l'écran de connexion
   level: 1,
   xp: 0,
   coins: 800,

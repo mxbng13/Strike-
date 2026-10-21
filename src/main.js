@@ -18,7 +18,10 @@ import { openPass } from './ui/screens/pass.js';
 import { openDaily } from './ui/screens/daily.js';
 import { ensurePass } from './game/battlePass.js';
 import { openFriendMatch } from './ui/screens/friendMatch.js';
-import { initAccount } from './net/account.js';
+import { initAccount, accountAvailable, currentUser } from './net/account.js';
+import { initFriendsOnline } from './net/friendsOnline.js';
+import { initInviteBanner } from './ui/inviteBanner.js';
+import { openLogin } from './ui/screens/login.js';
 import { registerPaymentProvider, paymentsAvailable } from './game/payments.js';
 
 ensurePass(); // saison et missions du jour à jour dès le lancement
@@ -53,7 +56,9 @@ function sync(state) {
 save.subscribe(sync);
 sync(save.get());
 stage.start();
-initAccount(); // compte connecté sur cet appareil : sauvegarde en ligne reprise automatiquement
+initFriendsOnline(); // amis en ligne, présence et défis dès que le compte est connecté
+initInviteBanner();  // « Untel te défie ! »
+const accountReady = initAccount(); // compte connecté sur cet appareil : sauvegarde en ligne reprise automatiquement
 
 requestAnimationFrame(() => requestAnimationFrame(() => {
   const loader = document.getElementById('loader');
@@ -64,6 +69,9 @@ requestAnimationFrame(() => requestAnimationFrame(() => {
   if (join) {
     history.replaceState(null, '', location.pathname + location.hash);
     openFriendMatch({ join });
+  } else {
+    // pas encore de compte sur cet appareil : on propose de se connecter (ou de jouer sans compte)
+    accountReady.then(() => { if (accountAvailable() && !currentUser() && !save.get().loginSkipped && !document.querySelector('.panel')) openLogin({ fromStart: true }); });
   }
 }));
 
@@ -72,4 +80,4 @@ requestAnimationFrame(() => requestAnimationFrame(() => {
 window.STRIKE_PAYMENTS = { registerPaymentProvider, paymentsAvailable };
 
 // Accès de debug depuis la console : __game.save.reset()
-window.__game = { save, stage, openBattleMenu, openArena, openPass, openFriendMatch };
+window.__game = { save, stage, openBattleMenu, openArena, openPass, openFriendMatch, openLogin };

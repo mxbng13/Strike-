@@ -2235,3 +2235,28 @@ svg { width: 100%; height: 100%; display: block; }
   background: radial-gradient(ellipse at center, transparent 35%, rgba(18,8,30,.55) 70%, rgba(6,2,12,.92) 100%); }
 #arena.incloud .ar-cloudfx { opacity: 1; animation: cloud-throb 1s ease-in-out infinite; will-change: opacity; }
 @keyframes cloud-throb { 50% { opacity: .75; } }
+
+/* ===== Compte : écran de connexion, défis ===== */
+.lg-screen { display: flex; flex-direction: column; gap: 12px; }
+.lg-hero { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 20px; background: radial-gradient(circle at 15% 0%, #3d7fe6, #1a2c66 70%); border: 2px solid #5cc8ff; box-shadow: 0 4px 0 #0f1d45; }
+.lg-art { width: 58px; height: 58px; flex: none; } .lg-art svg { width: 100%; height: 100%; }
+.lg-hero h3 { margin: 0; font-family: var(--font-display); font-size: 21px; letter-spacing: .03em; text-shadow: 0 2px 0 rgba(0,0,0,.4); }
+.lg-hero p { margin: 3px 0 0; font-size: 13px; line-height: 1.35; color: #cfe6ff; }
+.lg-perks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.lg-perks li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: rgba(255,255,255,.05); font-size: 13px; font-weight: 700; }
+.lg-perks svg { width: 20px; height: 20px; flex: none; color: #5cffc4; }
+.lg-skip { min-height: 48px; border-radius: 14px; font: 800 14px var(--font-body); color: #cfd6ff; background: transparent; border: 2px solid #39406a; }
+.fr-handle { display: block; font-size: 12px; font-weight: 800; color: #5cc8ff; }
+.fr-invite.login { background: linear-gradient(180deg, #2fae6a, #1a6e43); border-color: #5cffc4; box-shadow: 0 3px 0 #0e4a2c; }
+.fr-btn.ok:disabled { filter: grayscale(1); opacity: .55; }
+.fr-btn span { font-size: 12px; }
+.fm-sent { font-size: 12px; font-weight: 800; color: #5cffc4; }
+.inv-banner { position: fixed; z-index: 90; left: 12px; right: 12px; top: calc(var(--safe-t, 0px) + 12px); max-width: 420px; margin: 0 auto;
+  display: grid; grid-template-columns: 48px 1fr auto auto; align-items: center; gap: 10px; padding: 10px; border-radius: 18px;
+  background: linear-gradient(180deg, #2b6fd6, #1a3f8f); border: 2px solid #5cc8ff; box-shadow: 0 10px 30px rgba(0,0,0,.5); animation: inv-in .35s cubic-bezier(.2,1.4,.4,1); }
+@keyframes inv-in { from { transform: translateY(-120%); } }
+.inv-av { width: 48px; height: 48px; border-radius: 14px; overflow: hidden; } .inv-av .avatar-svg { width: 100%; height: 100%; }
+.inv-txt { min-width: 0; } .inv-txt b { display: block; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .inv-txt small { font-size: 12px; color: #cfe6ff; }
+.inv-no { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; background: rgba(0,0,0,.25); color: #fff; } .inv-no svg { width: 18px; height: 18px; }
+.inv-yes { display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 12px; border-radius: 13px; font: 800 13px var(--font-body); color: #3a1d00; background: linear-gradient(180deg, #ffd23d, #f59a12); box-shadow: 0 3px 0 #a35a00; }
+.inv-yes svg { width: 18px; height: 18px; }

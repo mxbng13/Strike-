@@ -1,5 +1,6 @@
 // AMIS : carte du joueur (photo, nom, rang, ID à partager), puis Amis / Demandes / Ajouter.
-// Interface prête pour un serveur en ligne ; tant qu'il n'est pas branché, aucun joueur n'est simulé.
+// Avec un compte (net/friendsOnline.js) : recherche par nom, demandes, amis en ligne et défis. Sans compte :
+// amis rencontrés par lien d'invitation. Aucun joueur n'est jamais simulé.
 import { socialAvailable, playerId, searchPlayers, listFriends, listRequests, sendFriendRequest, acceptRequest, declineRequest, removeFriend } from '../../game/social.js';
 import { currentRank, rankedPoints } from '../../game/ranked.js';
 import { rankOf } from '../../data/ranked.js';
@@ -9,13 +10,21 @@ import { avatarSvg } from '../avatar.js';
 import { rankEmblem } from '../rankEmblem.js';
 import { showPanel, closePanel, toast } from '../panel.js';
 import { openFriendMatch } from './friendMatch.js';
+import { openLogin } from './login.js';
+import { accountAvailable, currentUser } from '../../net/account.js';
+import { onOnlineChange } from '../../net/friendsOnline.js';
 import { tabs } from '../tabs.js';
 
 const fmt = (n) => (n ?? 0).toLocaleString('fr-FR');
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
-/** Bandeau d'état du service en ligne (plein, sans pointillés). */
-const statusBanner = () => `
+/** Bandeau du haut : se connecter (amis par nom) ou inviter par lien. */
+const statusBanner = () => (accountAvailable() && !currentUser() ? `
+  <button class="fr-invite login" data-login>
+    <span class="frs-ic">${ICONS.user}</span>
+    <div><b>Connecte-toi pour ajouter des amis</b><small>Crée ton compte avec ton nom de joueur : tes amis te trouvent et te défient.</small></div>
+    <span class="fri-go">${ICONS.plus}</span>
+  </button>` : '') + `
   <button class="fr-invite" data-invite>
     <span class="frs-ic">${ICONS.share}</span>
     <div><b>Inviter un ami</b><small>Envoie ton lien de combat : ton ami te rejoint en ligne et s’ajoute ici.</small></div>
@@ -40,7 +49,7 @@ function meCard() {
     <section class="fr-me" style="--rk:${r.tier.main};--rk-l:${r.tier.light}">
       <span class="fr-me-av">${avatarSvg(s.avatar)}</span>
       <div class="fr-me-info">
-        <h3>${esc(s.playerName)}</h3>
+        <h3>${esc(s.playerName)}</h3>${currentUser() ? `<small class="fr-handle">@${esc(currentUser().username)}</small>` : ''}
         <p><span class="fr-emb">${rankEmblem(r.tierIndex, r.level, { size: 20, pips: false })}</span>${r.label} · ${ICONS.trophy}${fmt(rankedPoints(s))}</p>
       </div>
       <div class="fr-id">
@@ -62,14 +71,21 @@ export function openFriends() {
 
   function friendsView() {
     const el = document.createElement('div');
+    el.className = 'fr-friends';
     el.innerHTML = '<p class="fr-loading">Chargement…</p>';
+    let shown = [];
     listFriends().then((list) => {
+      shown = list;
       el.innerHTML = list.length
-        ? `<h4 class="fr-sec">Mes amis <span>${list.length}</span></h4>` + list.map((p) => row(p, `<button class="fr-btn ok" data-invite aria-label="Défier ${esc(p.name)}">${ICONS.battle}</button><button class="fr-btn danger" data-remove="${p.id}" aria-label="Retirer ${esc(p.name)}">${ICONS.close}</button>`)).join('')
+        ? `<h4 class="fr-sec">Mes amis <span>${list.length}</span></h4>` + list.map((p) => row(p, `${p.username
+          ? `<button class="fr-btn ok" data-challenge="${p.id}" ${p.online ? '' : 'disabled'} aria-label="Défier ${esc(p.name)}">${ICONS.battle}<span>${p.online ? 'Défier' : 'Hors ligne'}</span></button>`
+          : `<button class="fr-btn ok" data-invite aria-label="Défier ${esc(p.name)}">${ICONS.battle}</button>`}<button class="fr-btn danger" data-remove="${p.id}" aria-label="Retirer ${esc(p.name)}">${ICONS.close}</button>`)).join('')
         : emptyState('Pas encore d’amis', 'Envoie ton lien de combat à un ami : dès qu’il le rejoint, il apparaît ici.', `<button class="fr-cta" data-goto-add>${ICONS.plus}AJOUTER UN AMI</button>`);
     });
     el.addEventListener('click', async (e) => {
       if (e.target.closest('[data-goto-add]')) { tabEl.show(2); return; }
+      const ch = e.target.closest('[data-challenge]');
+      if (ch) { const p = shown.find((x) => x.id === ch.dataset.challenge); if (p) { closePanel(true); openFriendMatch({ invite: p }); } return; }
       const b = e.target.closest('[data-remove]');
       if (b) { const r = await removeFriend(b.dataset.remove); if (r.ok) el.replaceWith(friendsView()); }
     });
@@ -101,7 +117,7 @@ export function openFriends() {
     el.innerHTML = `
       <form class="fr-search" id="friend-search-form">
         <label for="friend-search">Rechercher un joueur</label>
-        <div class="frs-field"><span class="frs-ic2">${ICONS.search}</span><input id="friend-search" type="search" placeholder="Nom ou ID (STK-…)" autocomplete="off" enterkeyhint="search" /></div>
+        <div class="frs-field"><span class="frs-ic2">${ICONS.search}</span><input id="friend-search" type="search" placeholder="Nom de joueur" autocomplete="off" enterkeyhint="search" /></div>
         <button class="fr-cta" type="submit">${ICONS.search}RECHERCHER</button>
       </form>
       <div class="fr-results"></div>
@@ -117,7 +133,7 @@ export function openFriends() {
       e.preventDefault();
       const q = input.value.trim();
       if (!q) { input.focus(); return; }
-      if (!socialAvailable()) { results.innerHTML = '<p class="fr-none">La recherche sera disponible dès que les serveurs du jeu seront en ligne.</p>'; return; }
+      if (!socialAvailable()) { results.innerHTML = accountAvailable() ? `<p class="fr-none">Connecte-toi à ton compte pour chercher tes amis par leur nom.</p><button class="fr-cta" data-login>${ICONS.user}SE CONNECTER</button>` : '<p class="fr-none">La recherche par nom s’active dès que le serveur du jeu est branché. En attendant, invite tes amis avec ton lien.</p>'; return; }
       const found = await searchPlayers(q);
       results.innerHTML = found.length ? found.map((p) => row(p, `<button class="fr-btn add" data-add="${p.id}">${ICONS.plus}Ajouter</button>`)).join('') : '<p class="fr-none">Aucun joueur trouvé.</p>';
     });
@@ -138,11 +154,14 @@ export function openFriends() {
   // copier l'ID (presse-papiers ; à défaut, l'ID est sélectionné pour une copie manuelle)
   wrap.addEventListener('click', async (e) => {
     if (e.target.closest('[data-invite]')) { closePanel(true); openFriendMatch(); return; }
+    if (e.target.closest('[data-login]')) { closePanel(true); openLogin(); return; }
     const b = e.target.closest('[data-copy]');
     if (!b) return;
     const id = playerId();
     try { await navigator.clipboard.writeText(id); toast(`ID copié : ${id}`, '#5cffc4', 'ok'); b.classList.add('done'); setTimeout(() => b.classList.remove('done'), 1500); }
     catch { const t = wrap.querySelector('#my-player-id'); const r = document.createRange(); r.selectNodeContents(t); getSelection().removeAllRanges(); getSelection().addRange(r); toast('ID sélectionné : copie-le avec ton téléphone', '#5cffc4', 'info'); }
   });
-  showPanel({ title: 'AMIS', icon: ICONS.friends, accent: '#5cffc4', content: wrap });
+  // amis qui se connectent / se déconnectent : la liste se met à jour
+  const offOnline = onOnlineChange(() => { const v = wrap.querySelector('.fr-friends'); if (v) v.replaceWith(friendsView()); });
+  showPanel({ title: 'AMIS', icon: ICONS.friends, accent: '#5cffc4', content: wrap, onClose: offOnline });
 }

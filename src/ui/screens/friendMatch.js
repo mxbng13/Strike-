@@ -6,7 +6,9 @@ import { openRoom, newRoomCode, cleanCode } from '../../net/transport.js';
 import { PUBLIC_URL } from '../../net/config.js';
 import { openArena, onlineFighterInfo, KILL_TARGETS, DEFAULT_KILL_TARGET } from '../../arena/arenaGame.js';
 import { save } from '../../save/storage.js';
-import { playerId, rememberFriend } from '../../game/social.js';
+import { playerId, rememberFriend, sendFriendRequest } from '../../game/social.js';
+import { currentUser } from '../../net/account.js';
+import { sendInvite } from '../../net/friendsOnline.js';
 import { rankedPoints } from '../../game/ranked.js';
 import { rankOf } from '../../data/ranked.js';
 import { getCharacter } from '../../data/characters.js';
@@ -41,13 +43,15 @@ function photoThumb() {
 
 async function helloMsg() {
   const s = save.get();
-  return { t: 'hello', v: 1, id: playerId(), name: s.playerName, avatar: s.avatar, photo: await photoThumb(), trophies: rankedPoints(s), fighter: onlineFighterInfo(s) };
+  return { t: 'hello', v: 1, uid: currentUser()?.id ?? null, id: playerId(), name: s.playerName, avatar: s.avatar, photo: await photoThumb(), trophies: rankedPoints(s), fighter: onlineFighterInfo(s) };
 }
 
 /**
  * Ouvre la salle. `join` : code d'une salle à rejoindre (lien d'invitation) ; sinon on en crée une.
  */
-export function openFriendMatch({ join = null } = {}) {
+/** `invite` : ami (compte en ligne) à défier directement : il reçoit le code de la salle dès qu'elle est prête. */
+export function openFriendMatch({ join = null, invite = null } = {}) {
+  let invited = false;
   const role = join ? 'guest' : 'host';
   let code = join ? cleanCode(join) : newRoomCode();
   let room = null, foe = null, started = false, connected = false, tries = 0;
@@ -72,7 +76,7 @@ export function openFriendMatch({ join = null } = {}) {
   };
   const meInfo = () => { const s = save.get(); return { name: s.playerName, avatar: s.avatar, photo: null, trophies: rankedPoints(s), fighter: onlineFighterInfo(s) }; };
   const waitingCard = () => `
-    <div class="fm-player empty"><span class="fm-av fm-q">?</span><b class="fm-name">${role === 'host' ? 'Ton ami' : 'Connexion…'}</b><span class="fm-dots"><i></i><i></i><i></i></span></div>`;
+    <div class="fm-player empty"><span class="fm-av fm-q">?</span><b class="fm-name">${role === 'host' ? esc(invite?.name ?? 'Ton ami') : 'Connexion…'}</b>${invite && invited ? '<small class="fm-sent">Défi envoyé !</small>' : ''}<span class="fm-dots"><i></i><i></i><i></i></span></div>`;
 
   function render() {
     const link = inviteLink(code);
@@ -139,7 +143,13 @@ export function openFriendMatch({ join = null } = {}) {
     const r = room = openRoom(code, role);
     // l'hôte est prêt dès que la salle est enregistrée (petit délai de la messagerie PeerJS)
     // l'hôte peut partager son lien dès que la salle est enregistrée sur le serveur
-    r.onReady(() => { if (room === r && role === 'host' && status === 'creating') { status = 'open'; render(); } });
+    r.onReady(() => {
+      if (room !== r || role !== 'host' || status !== 'creating') return;
+      status = 'open';
+      // défi direct à un ami connecté : il reçoit le code de la salle
+      if (invite && !invited) sendInvite(invite.id, code).then((ok) => { if (ok && room === r) { invited = true; render(); toast(`Défi envoyé à ${invite.name}`, '#5cffc4', 'ok'); } });
+      render();
+    });
     let joinTimer = role === 'guest' ? setTimeout(() => { if (room === r && !connected) fail('timeout'); }, 20000) : null;
     r.onOpen(async () => { if (room !== r) return; connected = true; clearTimeout(joinTimer); r.send(await helloMsg()); });
     r.onError((k) => { if (room === r) fail(k); });
@@ -153,6 +163,8 @@ export function openFriendMatch({ join = null } = {}) {
       if (m.t === 'hello') {
         foe = { ...m, name: String(m.name ?? 'Ami').slice(0, 16) };
         rememberFriend(foe);   // ajouté aux amis (des deux côtés)
+        // deux joueurs avec un compte : ils deviennent amis en ligne (chacun demande, la 2e demande accepte)
+        if (m.uid && currentUser() && m.uid !== currentUser().id) sendFriendRequest(m.uid).catch(() => {});
         if (role === 'host') status = 'open';
         navigator.vibrate?.(20);
         render();

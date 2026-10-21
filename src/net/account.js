@@ -1,19 +1,34 @@
 // COMPTE JOUEUR ET SAUVEGARDE EN LIGNE (Supabase).
-// Se connecter (e-mail + mot de passe) relie la partie à un compte : la sauvegarde est envoyée dans le cloud
-// (table « saves », une ligne par compte, protégée : chacun ne lit et n'écrit que la sienne) et retrouvée
-// sur n'importe quel téléphone. La sauvegarde locale reste la référence pendant le jeu ; rien n'est effacé :
-// avant de remplacer la partie de l'appareil par celle du compte, une copie de secours est gardée.
+// On se connecte avec son NOM DE JOUEUR et un mot de passe (pas d'e-mail). N'importe qui peut créer un compte ;
+// le nom est unique. Le compte relie la partie au serveur : la sauvegarde est envoyée dans le cloud (table
+// « saves », chacun ne lit et n'écrit que la sienne) et retrouvée sur n'importe quel téléphone ; le profil public
+// (nom, photo par défaut, trophées) sert à la recherche d'amis. La session reste enregistrée sur l'appareil.
+// La sauvegarde locale reste la référence pendant le jeu ; rien n'est effacé : avant de remplacer la partie
+// de l'appareil par celle du compte, une copie de secours est gardée.
 import { supabase as sb } from './supabase.js';
 import { save, BACKUP_KEY } from '../save/storage.js';
 import { CHARACTERS } from '../data/characters.js';
 
 export const accountAvailable = () => !!sb();
 
+// Le serveur d'identification attend une adresse : on en fabrique une à partir du nom (jamais utilisée pour
+// envoyer de mail : domaine réservé « example.com », confirmation par e-mail désactivée sur le projet).
+export const USERNAME_RULES = { min: 3, max: 16, re: /^[A-Za-z0-9_]+$/ };
+export const usernameEmail = (name) => `${name.toLowerCase()}@joueurs.strike.example.com`;
+export function checkUsername(name) {
+  const n = String(name ?? '').trim();
+  if (n.length < USERNAME_RULES.min || n.length > USERNAME_RULES.max) return { ok: false, error: `Le nom doit faire ${USERNAME_RULES.min} à ${USERNAME_RULES.max} caractères.` };
+  if (!USERNAME_RULES.re.test(n)) return { ok: false, error: 'Lettres sans accent, chiffres et _ uniquement.' };
+  return { ok: true, value: n };
+}
+
 let user = null, status = 'off', lastSync = null, pending = null, timer = null, unsub = null;
 const listeners = new Set();
 const emit = () => listeners.forEach((fn) => fn(accountState()));
 export const onAccount = (fn) => { listeners.add(fn); return () => listeners.delete(fn); };
-export const accountState = () => ({ available: accountAvailable(), user: user ? { id: user.id, email: user.email } : null, status, lastSync });
+const usernameOf = (u) => u?.user_metadata?.username ?? u?.email?.split('@')[0] ?? '';
+export const accountState = () => ({ available: accountAvailable(), user: user ? { id: user.id, username: usernameOf(user) } : null, status, lastSync });
+export const currentUser = () => (user ? { id: user.id, username: usernameOf(user) } : null);
 
 /** Résumé lisible d'une sauvegarde (pour choisir entre celle de l'appareil et celle du compte). */
 export function saveSummary(s) {
@@ -21,9 +36,10 @@ export function saveSummary(s) {
 }
 
 const FR = {
-  'Invalid login credentials': 'E-mail ou mot de passe incorrect.',
-  'User already registered': 'Un compte existe déjà avec cet e-mail : connecte-toi.',
-  'Email not confirmed': 'Confirme d’abord ton e-mail (lien reçu par mail).',
+  'Invalid login credentials': 'Nom de joueur ou mot de passe incorrect.',
+  'User already registered': 'Ce nom de joueur est déjà pris : choisis-en un autre (ou connecte-toi si c’est le tien).',
+  'Database error saving new user': 'Ce nom de joueur est déjà pris : choisis-en un autre.',
+  'Email not confirmed': 'Le serveur demande une confirmation par e-mail : désactive « Confirm email » dans Supabase.',
   'Password should be at least 6 characters.': 'Le mot de passe doit faire au moins 6 caractères.',
 };
 const msg = (e) => FR[e?.message] ?? (/fetch|network/i.test(e?.message ?? '') ? 'Pas de connexion Internet.' : e?.message || 'Erreur inconnue.');
@@ -33,11 +49,17 @@ async function fetchCloud() {
   if (error) throw error;
   return data;
 }
+/** Profil public (recherche d'amis) : nom affiché, photo (dessin, pas la photo perso), trophées. */
+async function pushProfile() {
+  const s = save.get();
+  await sb().from('profiles').update({ name: s.playerName, avatar: s.avatar === 'photo' ? 'defaut' : s.avatar, trophies: s.ranked?.points ?? 0, updated_at: new Date().toISOString() }).eq('id', user.id);
+}
 async function pushCloud() {
   if (!user) return;
   clearTimeout(timer); timer = null;
   status = 'syncing'; emit();
   const { error } = await sb().from('saves').upsert({ user_id: user.id, data: save.get(), updated_at: new Date().toISOString() });
+  await pushProfile().catch(() => {});
   status = error ? 'error' : 'synced';
   if (!error) lastSync = Date.now();
   emit();
@@ -56,9 +78,10 @@ addEventListener('visibilitychange', () => { if (document.visibilityState === 'h
  */
 async function afterLogin(fresh) {
   status = 'syncing'; emit();
+  save.update({ account: usernameOf(user) });   // le compte connecté est noté dans la sauvegarde
   const row = await fetchCloud();
   if (!row?.data) { await pushCloud(); watch(); return { ok: true, uploaded: true }; }
-  const same = JSON.stringify(row.data) === JSON.stringify(save.get());
+  const same = JSON.stringify({ ...row.data, account: null }) === JSON.stringify({ ...save.get(), account: null });
   if (same) { status = 'synced'; lastSync = Date.now(); emit(); watch(); return { ok: true }; }
   // reconnexion automatique (même appareil) : la partie de l'appareil est la plus récente, on l'envoie
   if (!fresh) { await pushCloud(); watch(); return { ok: true }; }
@@ -71,23 +94,28 @@ export async function resolveChoice(keep) {
   const data = pending; pending = null;
   if (keep === 'cloud' && data) {
     try { localStorage.setItem(BACKUP_KEY, JSON.stringify(save.get())); } catch { /* stockage plein */ }
-    save.replace(data);
+    save.replace({ ...data, account: usernameOf(user) });
   }
   await pushCloud();
   watch();
 }
 
-export async function signUp(email, password) {
+export async function signUp(name, password) {
   if (!accountAvailable()) return { ok: false, error: 'Comptes pas encore disponibles.' };
-  const { data, error } = await sb().auth.signUp({ email, password });
+  const v = checkUsername(name);
+  if (!v.ok) return v;
+  const { data, error } = await sb().auth.signUp({ email: usernameEmail(v.value), password, options: { data: { username: v.value } } });
   if (error) return { ok: false, error: msg(error) };
-  if (!data.session) return { ok: true, confirm: true };   // confirmation par e-mail demandée par le serveur
+  if (!data.session) return { ok: false, error: FR['Email not confirmed'] };
   user = data.user;
-  return afterLogin(true).catch((e) => ({ ok: false, error: msg(e) }));
+  save.update({ playerName: v.value });   // le nom du compte devient le nom affiché en jeu
+  return afterLogin(true).then((r) => (r.ok ? { ...r, created: true } : r)).catch((e) => ({ ok: false, error: msg(e) }));
 }
-export async function signIn(email, password) {
+export async function signIn(name, password) {
   if (!accountAvailable()) return { ok: false, error: 'Comptes pas encore disponibles.' };
-  const { data, error } = await sb().auth.signInWithPassword({ email, password });
+  const v = checkUsername(name);
+  if (!v.ok) return { ok: false, error: FR['Invalid login credentials'] };
+  const { data, error } = await sb().auth.signInWithPassword({ email: usernameEmail(v.value), password });
   if (error) return { ok: false, error: msg(error) };
   user = data.user;
   return afterLogin(true).catch((e) => { status = 'error'; emit(); return { ok: false, error: msg(e) }; });
@@ -96,7 +124,9 @@ export async function signOut() {
   if (timer) await pushCloud().catch(() => {});
   unsub?.(); unsub = null;
   await sb()?.auth.signOut().catch(() => {});
-  user = null; status = 'off'; pending = null; emit();
+  user = null; status = 'off'; pending = null;
+  save.update({ account: null });
+  emit();
 }
 export const syncNow = () => pushCloud();
 
@@ -107,6 +137,7 @@ export async function initAccount() {
     const { data } = await sb().auth.getSession();
     if (!data.session) return;
     user = data.session.user;
+    emit();
     await afterLogin(false);
   } catch { status = 'error'; emit(); }
 }
