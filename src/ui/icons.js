@@ -120,6 +120,42 @@ export function shopArt() {
   </svg>`;
 }
 
+/** COMBAT : deux épées croisées (lames d'acier, gardes dorées) devant un éclat. */
+export function swordsArt() {
+  const k = `sw${artUid++}`;
+  const sword = (rot) => `<g transform="rotate(${rot} 24 24)">
+      <path d="M22.4 3.5h3.2l.6 25h-4.4z" fill="url(#${k}b)" stroke="#2a2f44" stroke-width="1.2" stroke-linejoin="round"/>
+      <path d="M24 4.5v23" stroke="#fff" stroke-width=".9" opacity=".7"/>
+      <rect x="15.5" y="28" width="17" height="4.2" rx="2.1" fill="url(#${k}g)" stroke="#5a3204" stroke-width="1.2"/>
+      <rect x="22" y="32" width="4" height="8.5" rx="1.4" fill="#7a3d14" stroke="#3a1d08" stroke-width="1.1"/>
+      <circle cx="24" cy="42.3" r="2.6" fill="url(#${k}g)" stroke="#5a3204" stroke-width="1.1"/>
+    </g>`;
+  return `<svg viewBox="0 0 48 48" aria-hidden="true" class="hud-art">
+    <defs>
+      <linearGradient id="${k}b" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#e9f0ff"/><stop offset=".5" stop-color="#ffffff"/><stop offset="1" stop-color="#9aa8c8"/></linearGradient>
+      <linearGradient id="${k}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff0a0"/><stop offset="1" stop-color="#e0950f"/></linearGradient>
+      <radialGradient id="${k}f" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff6c8" stop-opacity=".95"/><stop offset="1" stop-color="#ffb02e" stop-opacity="0"/></radialGradient>
+    </defs>
+    <circle cx="24" cy="22" r="16" fill="url(#${k}f)"/>
+    ${sword(-38)}${sword(38)}
+  </svg>`;
+}
+/** PASSE DE COMBAT : médaillon doré à étoile et rubans. */
+export function passArt() {
+  const k = `pa${artUid++}`;
+  return `<svg viewBox="0 0 48 48" aria-hidden="true" class="hud-art">
+    <defs>
+      <linearGradient id="${k}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff4b8"/><stop offset=".5" stop-color="#ffc83d"/><stop offset="1" stop-color="#c9800c"/></linearGradient>
+      <linearGradient id="${k}r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b47bff"/><stop offset="1" stop-color="#5a24c8"/></linearGradient>
+    </defs>
+    <path d="M14 30 9 45l6-3 4 5 5-14zM34 30l5 15-6-3-4 5-5-14z" fill="url(#${k}r)" stroke="#2a0f5e" stroke-width="1.4" stroke-linejoin="round"/>
+    <circle cx="24" cy="21" r="17" fill="url(#${k}g)" stroke="#6b3b06" stroke-width="1.8"/>
+    <circle cx="24" cy="21" r="13" fill="none" stroke="#fff3c0" stroke-width="1.2" opacity=".75"/>
+    <path d="M24 9.5l3.4 7 7.7 1.1-5.6 5.4 1.3 7.6-6.8-3.6-6.8 3.6 1.3-7.6-5.6-5.4 7.7-1.1z" fill="#fff8d8" stroke="#a8660a" stroke-width="1.2" stroke-linejoin="round"/>
+    <path d="M12 15c2-4 6-7 11-7.5" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity=".8"/>
+  </svg>`;
+}
+
 // Logo XP : hexagone dégradé bleu-violet, chevrons de montée de niveau et lettres « XP » dessinées.
 let xpUid = 0;
 export function xpLogo() {

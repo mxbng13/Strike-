@@ -1,7 +1,10 @@
 // HUD de l'écran principal : monnaies (haut gauche), TROPHÉES (haut centre), AMIS puis PROFIL (haut droite),
 // cadeau du jour (sous le profil), STRIKER puis BOX juste dessous (à gauche), PASSE (bas gauche),
 // BOUTIQUE (bas centre) et COMBAT (bas droite).
-import { ICONS, friendsArt, giftArt, shopArt } from './icons.js';
+import { ICONS, friendsArt, giftArt, shopArt, swordsArt, passArt } from './icons.js';
+import { passLevel } from '../game/battlePass.js';
+import { PASS_TIER_XP } from '../data/battlePass.js';
+import { BOX_ORDER } from '../data/boxes.js';
 import { getCharacter } from '../data/characters.js';
 import { getPortrait } from '../render/portraits.js';
 import { appearanceFor, appearanceKey } from '../game/appearance.js';
@@ -49,23 +52,24 @@ export function createHud(container, { onShop, onFriends, onCollection, onBox, o
         <span class="stk-portrait"><img data-bind="strikerPortrait" alt="" /></span><span class="btn-label">STRIKERS</span>
       </button>
       <button class="btn btn-side2 btn-box" data-action="box" aria-label="Box">
-        <span class="sn-ico">${ICONS.chest}</span><span class="btn-label">BOX</span>
+        <span class="box-rays" aria-hidden="true"></span><span class="box-chest" data-bind="boxChest"></span><span class="btn-label">BOX</span>
         <span class="badge" data-bind="boxBadge" hidden></span>
       </button>
     </nav>
 
     <div class="hud-bottom">
       <button class="btn btn-corner btn-pass" data-action="pass" aria-label="Passe de combat">
-        <span class="btn-icon">${ICONS.ulti}</span><span class="btn-label">PASSE DE COMBAT</span>
+        <span class="pass-medal">${passArt()}<b data-bind="passTier">0</b></span>
+        <span class="pass-txt"><small>PASSE DE COMBAT</small><b data-bind="passLabel">PALIER 0</b><span class="pass-bar"><i data-bind="passBar"></i></span></span>
         <span class="badge" data-bind="passBadge" hidden></span>
       </button>
       <button class="btn btn-corner btn-shop-bottom" data-action="shop" aria-label="Boutique">
         <span class="shop-art">${shopArt()}</span><span class="btn-label">BOUTIQUE</span>
         <span class="badge" data-bind="shopBadge" hidden>!</span>
       </button>
-      <button class="btn btn-battle" data-action="battle">
+      <button class="btn btn-battle" data-action="battle" aria-label="Combat">
         <span class="battle-shine"></span>
-        <span class="btn-icon">${ICONS.battle}</span><span class="btn-label">COMBAT</span>
+        <span class="battle-art">${swordsArt()}</span><span class="btn-label">COMBAT</span><small class="battle-mode" data-bind="battleMode"></small>
       </button>
     </div>`;
 
@@ -119,6 +123,14 @@ export function createHud(container, { onShop, onFriends, onCollection, onBox, o
     const gift = dailyStatus(Date.now(), state).claimable;
     bind('giftBadge').hidden = !gift;
     container.querySelector('.btn-gift').classList.toggle('glow', gift);
+    // PASSE DE COMBAT : palier atteint et XP vers le suivant
+    const pl = passLevel(state.pass?.xp ?? 0);
+    bind('passTier').textContent = pl.tier;
+    bind('passLabel').textContent = pl.max ? 'PALIER MAX' : `PALIER ${pl.tier}`;
+    bind('passBar').style.width = `${pl.max ? 100 : (pl.into / PASS_TIER_XP) * 100}%`;
+    // COMBAT : mode choisi
+    const bp = state.battlePrefs ?? {};
+    bind('battleMode').textContent = `${bp.arenaFormat === 'duo' ? 'Duo' : 'Duel'} · ${bp.arenaKills ?? 5} élim.`;
     const pb = bind('passBadge'), pc = passClaimable(state);
     pb.hidden = !pc; pb.textContent = pc;
     if (state.avatar !== lastAvatar) { lastAvatar = state.avatar; bind('avatar').innerHTML = avatarSvg(state.avatar); }
@@ -130,6 +142,10 @@ export function createHud(container, { onShop, onFriends, onCollection, onBox, o
     box.textContent = n;
     box.classList.toggle('free', free > 0);
     container.querySelector('.btn-box').classList.toggle('glow', free > 0);
+    container.querySelector('.btn-box').classList.toggle('has-box', n > 0);
+    // BOX : le plus beau coffre en stock (sinon la box normale)
+    const bestBox = [...BOX_ORDER].reverse().find((id) => (state.boxes?.[id] ?? 0) > 0) ?? 'normale';
+    if (bind('boxChest').dataset.k !== bestBox) { bind('boxChest').dataset.k = bestBox; bind('boxChest').innerHTML = boxArt(bestBox); }
   }
   // La box gratuite peut devenir disponible pendant que le joueur est sur l'écran principal.
   setInterval(() => lastState && render(), 5000);
