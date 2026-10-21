@@ -6,7 +6,7 @@ import { weaponOf } from '../data/weapons.js';
 
 export const MODEL_SCALE = 0.84;   // hauteur du Striker ≈ 2 (une tuile = 1,4)
 export const RADIUS = 0.45;        // rayon de collision
-export const SPEED = 4.2;          // unités / seconde
+export const SPEED = 3.7;          // unités / seconde
 
 /** Arme d'arène d'un Striker : la sienne (data/weapons.js), avec son nom. */
 export function arenaGun(strikerId) {

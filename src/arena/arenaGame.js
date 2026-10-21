@@ -3,7 +3,7 @@
 // l'IA, les bonus à ramasser, les commandes et l'interface.
 import * as THREE from 'three';
 import { buildArenaMap } from './mapBuilder.js';
-import { useMap, WIDTH, DEPTH, toCell, cellCenter, findTiles, blocksMove, collide } from './grid.js';
+import { useMap, WIDTH, DEPTH, toCell, cellCenter, findTiles, blocksMove, collide, findPath } from './grid.js';
 import { createFighter, RADIUS } from './fighter.js';
 import { weaponOf } from '../data/weapons.js';
 import { ultiOf as ultiForStriker } from '../data/ultis.js';
@@ -28,7 +28,9 @@ import { getRank } from '../data/ranks.js';
 import { ICONS } from '../ui/icons.js';
 
 let ctx = null; // { renderer, stage }
-const hpOf = (pv) => Math.round((pv * 8) / 10) * 10;
+// Vie en arène : ×11 la vie du Striker (combats plus longs) ; tous les dégâts sont réduits de DMG_SCALE.
+const hpOf = (pv) => Math.round((pv * 11) / 10) * 10;
+export const DMG_SCALE = 0.8;
 /** Ce que l'ami doit savoir de notre Striker pour l'afficher en combat amical (net/friendMatch.js). */
 export function onlineFighterInfo(s = save.get()) {
   const def = getCharacter(s.selected), look = appearanceFor(def.id, s);
@@ -443,7 +445,7 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
     if (fromUlti && shooter === player && t - lastUltiTrack > 1.5) { lastUltiTrack = t; trackPass('ulti_hit'); }
     if (over || !target.alive) return;
     if (target.shieldT > 0) return;   // vient de réapparaître : protégé
-    const d = Math.round(dmg * (0.9 + Math.random() * 0.2));
+    const d = Math.round(dmg * DMG_SCALE * (0.9 + Math.random() * 0.2));
     // en ligne, la vie de l'ami est décidée par SON téléphone (reçue avec sa position) : ici, effet visuel seulement
     const remote = online && target === enemies[0];
     if (!remote) target.hp = Math.max(0, target.hp - d);
@@ -496,7 +498,7 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
   function respawn(f) {
     const ch = f.team === 'player' ? 'P' : 'E';
     const mates = teamOf(f);
-    const [x, z] = safeSpot(...spawnAt(ch, [0, -1, 1][mates.indexOf(f)] ?? 0));
+    const [x, z] = respawnSpot(...spawnAt(ch, [0, -1, 1][mates.indexOf(f)] ?? 0));
     f.respawn(x, z, ch === 'P' ? Math.PI : 0);
     f.shieldT = SPAWN_SHIELD;
     f.life++;
@@ -834,16 +836,20 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
 
   // --- Nuage noir ---
   let cloudWarned = false;
-  /** Case libre la plus proche de (x, z) à l'intérieur de la zone sûre (réapparition hors du nuage). */
-  function safeSpot(x, z) {
+  /**
+   * Point de réapparition : son départ tant que le nuage n'est pas là ; ensuite, de son côté de l'arène mais
+   * plus près du milieu (à mi-chemin du bord de la zone sûre), sur une case libre hors du nuage.
+   */
+  function respawnSpot(x, z) {
     const [hx, hz] = cloud.half;
-    if (!cloud.active || cloud.dist(x, z) < -1.2) return [x, z];
-    const tx = THREE.MathUtils.clamp(x, -hx + 1.6, hx - 1.6), tz = THREE.MathUtils.clamp(z, -hz + 1.6, hz - 1.6);
+    if (!cloud.active) return [x, z];
+    const tx = THREE.MathUtils.clamp(x, -hx + 1.6, hx - 1.6);
+    const tz = Math.sign(z || 1) * Math.min(Math.abs(z), Math.max(1.5, hz * 0.5));
     const [c0, r0] = toCell(tx, tz);
     for (let d = 0; d < 6; d++) for (let dr = -d; dr <= d; dr++) for (let dc = -d; dc <= d; dc++) {
       if (Math.max(Math.abs(dc), Math.abs(dr)) !== d || blocksMove(c0 + dc, r0 + dr)) continue;
       const [cx, cz] = cellCenter(c0 + dc, r0 + dr);
-      if (cloud.dist(cx, cz) < -0.8) return [cx, cz];
+      if (cloud.dist(cx, cz) < -0.8 && (Math.sign(cz) === Math.sign(tz) || Math.abs(cz) < 1)) return [cx, cz];
     }
     return [tx, tz];
   }
@@ -1026,9 +1032,17 @@ export function openArena({ onExit, format: formatId = null, kills: killsOpt = n
     if (f.leap) { updateLeap(f, dt); return; }
     const a = ais.get(f);
     const dec = aiEnabled && a ? a.update(t, dt) : { mx: 0, mz: 0, aim: null, fire: false, reload: false };
-    // nuage tout proche : l'IA rentre vers le centre de l'arène
+    // nuage tout proche : l'IA rentre vers le centre (chemin autour des murs), jusqu'à être bien à l'abri
     const cd = cloud.dist(f.x, f.z);
-    if (aiEnabled && cd > -1.4) { const l = Math.hypot(f.x, f.z) || 1; dec.mx = -f.x / l; dec.mz = -f.z / l; }
+    if (cd > -0.6) f.fleeing = true; else if (cd < -2.2) { f.fleeing = false; f.fleePath = null; }
+    if (aiEnabled && f.fleeing) {
+      if (!f.fleePath?.length || (f.fleeT = (f.fleeT ?? 0) - dt) <= 0) { f.fleePath = findPath(f.x, f.z, 0, Math.sign(f.z || 1) * 1.5); f.fleeT = 0.7; }
+      let wp = f.fleePath[0];
+      if (wp && Math.hypot(wp[0] - f.x, wp[1] - f.z) < 0.5) { f.fleePath.shift(); wp = f.fleePath[0]; }
+      const tx = wp ? wp[0] : -f.x, tz = wp ? wp[1] : -f.z;
+      const dx = wp ? tx - f.x : tx, dz = wp ? tz - f.z : tz, l = Math.hypot(dx, dz) || 1;
+      dec.mx = dx / l; dec.mz = dz / l;
+    }
     f.move(dec.mx, dec.mz, dt);
     if (dec.aim !== null) { f.aiming = true; f.aimFace = dec.aim; } else f.aiming = false;
     if (dec.fire && dec.aim !== null) tryFire(f, dec.aim);
