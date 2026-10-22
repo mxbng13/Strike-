@@ -178,19 +178,19 @@ export function fabrique(o) {
     s.bezierCurveTo(-0.72, 0.0, -0.62, 0.14, -0.42, 0.18); s.bezierCurveTo(-0.3, 0.22, -0.18, 0.36, 0, 0.34);
     const geo = new THREE.ExtrudeGeometry(s, { depth: 0.012, bevelEnabled: true, bevelThickness: 0.006, bevelSize: 0.008, bevelSegments: 3, curveSegments: 64 });
     const feutre = normalesDepuis(512, 512, (x, y) => bruit(x * 300, y * 300) * 0.6 + bruit(x * 900, y * 40) * 0.3, 2.0);
-    const mat = new THREE.MeshPhysicalMaterial({ color: 0x141416, roughness: 0.95, sheen: 1, sheenColor: new THREE.Color(0x555560), sheenRoughness: 0.8,
+    const mat = new THREE.MeshPhysicalMaterial({ color: 0x1e1e22, roughness: 0.9, sheen: 1, sheenColor: new THREE.Color(0x70707c), sheenRoughness: 0.6,
       normalMap: feutre, normalScale: V2(0.6, 0.6), envMap: env, envMapIntensity: 0.5 });
     const uvA = gg => { const p = gg.attributes.position, uv = []; for (let i = 0; i < p.count; i++) uv.push(p.getX(i), p.getY(i)); gg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); };
     uvA(geo);
     // éventail de patchs, un peu de relief (chacun légèrement bombé)
-    const P = [[-0.05, 0.38, 0.0, 0.18], [0.05, 0.05, 0.08, -0.08], [0.0, -0.3, 0.16, 0.06]];
+    const P = [[-0.78, 0.46, 0.0, 0.06], [0.78, 0.46, 0.04, -0.05], [-0.78, -0.46, 0.08, -0.04], [0.78, -0.46, 0.12, 0.07]]; // grille 2 x 2, comme sur la photo produit
     for (const [x, y, z, rot] of P) {
       const gg = geo.clone(); const p = gg.attributes.position;
       for (let i = 0; i < p.count; i++) p.setZ(i, p.getZ(i) + 0.08 * (1 - (p.getX(i) / 0.7) ** 2));
       gg.computeVertexNormals();
       const m = new THREE.Mesh(gg, mat); m.position.set(x, y, z); m.rotation.z = rot; g.add(m);
     }
-    g.scale.setScalar(1.25);
+    g.scale.setScalar(0.9);
     return ombres(g);
   }
 

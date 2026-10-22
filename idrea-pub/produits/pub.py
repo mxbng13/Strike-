@@ -224,7 +224,7 @@ def scene4(T, t):
     plate = M.clip("s4" + "abc"[k], ct)
     if plate is None:
         # trois cadrages du produit posé sur le comptoir : plan large, gros plan, plan décalé
-        z, cx, cy = ((1.05 + 0.03 * ct, W / 2, 1000), (1.3 + 0.04 * ct, W / 2, 1100), (1.25 - 0.03 * ct, W / 2 - 90, 1050))[k]
+        z, cx, cy = ((1.0 + 0.03 * ct, W / 2, 1000), (1.18 + 0.04 * ct, W / 2, 1100), (1.12 - 0.03 * ct, W / 2 - 70, 1050))[k]
         plate = camera(R.comptoir.copy(), z, cx, cy)
     pc = e_out(prog(t, s0 + 0.05, s0 + 0.4))
     if pc > 0:
@@ -247,7 +247,7 @@ def scene4(T, t):
                 d.line(pts[:2] if pchk < 0.5 else pts, fill=BLANC + (255,), width=6, joint="curve")
             card.alpha_composite(fondu(img, cl(pi * 2)), (int(136 + 30 * (1 - e_out(pi))), y))
         card = avec_ombre(card, 14, 10, 0.3)
-        poser(plate, card, W / 2, 1290 + 60 * (1 - pc), 0.9 + 0.1 * pc, 0, pc)
+        poser(plate, card, W / 2, 430 - 60 * (1 - pc), 0.9 + 0.1 * pc, 0, pc)  # en haut : le produit reste visible
     return plate
 
 

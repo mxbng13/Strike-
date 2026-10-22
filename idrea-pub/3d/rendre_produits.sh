@@ -3,7 +3,7 @@
 set -e
 cd "$(dirname "$0")"
 node rendre.mjs sdb '{"w":2160,"nom":"sdb"}' | grep png
-declare -A ECH=([glace]=1.1 [guasha]=1.7 [tondeuse]=1.0 [langue]=1.5 [patchs]=0.95)
+declare -A ECH=([glace]=0.85 [guasha]=1.25 [tondeuse]=0.85 [langue]=1.15 [patchs]=1.0)
 declare -A ROT=([glace]=0.3 [guasha]=0 [tondeuse]=-1.5708 [langue]=0.2 [patchs]=0)
 for p in ${1:-patchs guasha tondeuse glace langue}; do
   node rendre.mjs sdb "{\"w\":2160,\"nom\":\"sdb_$p\",\"produit\":\"$p\",\"echelle\":${ECH[$p]},\"rotation\":${ROT[$p]}}" | grep png
