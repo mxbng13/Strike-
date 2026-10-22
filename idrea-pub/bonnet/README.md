@@ -11,13 +11,25 @@ Même style que la pub derma roller / huile de ricin (voir `../README.md`), en v
 
 ## L'accroche (0 à 2 s)
 
-- **Image 0** : le titre « CHEVEUX EN PAGAILLE AU RÉVEIL ? » est déjà à l'écran, sans fondu, sur un oreiller couvert de mèches en vrac. Un impact sonore marque le départ, et la musique démarre directement avec la batterie.
+- **Image 0** : le titre « CHEVEUX EN PAGAILLE AU RÉVEIL ? » est déjà à l'écran, sans fondu, sur l'oreiller où traînent quelques cheveux. Un impact sonore marque le départ, et la musique démarre directement avec la batterie.
 - **0 à 0,5 s** : zoom d'entrée doux, puis lente poussée continue. Il n'y a plus de tremblement de caméra ni de saut de zoom, qui donnaient l'impression d'un bug.
 - **≈ 2 s** : la question bascule sur la cause, avec la puce « LA FAUTE À TON OREILLER ? » et une flèche.
 
-## Le produit
+## Le produit et les décors : modélisés en 3D
 
-Le bonnet affiché est la vraie photo du produit (`assets/bonnet_photo.jpg`), détourée automatiquement (`assets/bonnet_detoure.png`), avec un reflet de lumière qui balaie le satin. Pour changer de photo, remplacez `bonnet_photo.jpg` (produit sur fond blanc), supprimez `bonnet_detoure.png` et relancez le rendu.
+Le bonnet, l'oreiller, les draps et les cheveux sont modélisés en 3D avec three.js (`../3d/scene.js`), puis rendus dans Chromium headless :
+
+- **bonnet** : calotte en satin noir bouffante, avec des fronces serrées près de l'élastique et de grands plis souples. Le bandeau élastique est en maille et l'ouverture est visible, comme sur la photo produit (`assets/bonnet_photo.jpg`, gardée comme référence). Il est rendu sous 72 angles pour tourner sur lui-même ;
+- **oreiller et draps** : oreiller en coton bombé avec l'empreinte de la tête, draps en lin froissé, ombres douces ;
+- **cheveux** : quelques cheveux tombés sur l'oreiller, brin par brin, avec l'ombrage spécifique des cheveux (reflet brillant le long du brin) ;
+- 3 éclairages pour la routine : soir (lampe chaude), nuit (lune bleutée), matin (lumière de fenêtre).
+
+```bash
+cd ../3d && npm install
+node rendre.mjs lit '{"lumiere":"jour","nom":"lit_jour","w":2160,"cheveux":true}'
+for l in soir nuit matin; do node rendre.mjs lit "{\"lumiere\":\"$l\",\"nom\":\"lit_$l\",\"w\":2160,\"bonnet\":true}"; done
+node rendre.mjs bonnet '{"n":72,"taille":1100}'     # ≈ 5 min
+```
 
 ## Script
 
@@ -36,7 +48,7 @@ Les formulations restent prudentes : « peut donner », « moins de frottements 
 ```bash
 python3 ../voix_off.py script.json build   # voix off (modifiable dans script.json)
 python3 bonnet.py --apercu 0 1 14          # aperçus
-python3 bonnet.py                          # vidéo -> build/idrea_bonnet_satin.mp4
+python3 bonnet.py                          # vidéo (nécessite les rendus 3D, voir plus haut) -> build/idrea_bonnet_satin.mp4
 ```
 
 Pour de vrais plans (ce qui rend le résultat le plus « réel ») : déposez `s1.mp4` (réveil, cheveux en bataille sur l'oreiller), `s2.mp4` (gros plan sur une taie en coton), `s3.mp4` (le vrai bonnet IDREA, packshot), `s4a/s4b/s4c.mp4` (le soir / la nuit / le matin) et `s5.mp4` dans `clips/`. Les textes et les sous-titres restent par-dessus.

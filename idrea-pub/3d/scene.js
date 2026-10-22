@@ -307,8 +307,8 @@ window.preparer = (mode, o) => {
     if (o.cheveux) scene.add(cheveux('epars'));
     if (o.bonnet) {
       // posé sur l'oreiller, légèrement incliné vers la caméra
-      const b = bonnet(); b.scale.setScalar(0.52); b.rotation.set(-0.22, 0.5, 0.05);
-      b.position.set(0.1, hauteurOreiller(0.1, 0.15) - 0.04, 0.15); scene.add(b);
+      const b = bonnet(); b.scale.setScalar(0.52); b.rotation.set(-1.0, 0.3, 0.1);
+      b.position.set(0.1, hauteurOreiller(0.1, 0.15) + 0.2, 0.15); scene.add(b);
     }
     const cam = new THREE.PerspectiveCamera(30, 9 / 16, 0.1, 100);
     cam.position.set(0, 9.2, 4.2); cam.lookAt(0, 0, 0.35);

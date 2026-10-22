@@ -247,7 +247,7 @@ def scene4(T, t):
                 d.line(pts[:2] if pchk < 0.5 else pts, fill=BLANC + (255,), width=6, joint="curve")
             card.alpha_composite(fondu(img, cl(pi * 2)), (int(136 + 30 * (1 - e_out(pi))), y))
         card = avec_ombre(card, 14, 10, 0.3)
-        poser(plate, card, W / 2, 440 - 60 * (1 - pc), 0.9 + 0.1 * pc, 0, pc)
+        poser(plate, card, W / 2, 1290 + 60 * (1 - pc), 0.9 + 0.1 * pc, 0, pc)
     return plate
 
 
