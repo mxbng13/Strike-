@@ -11,6 +11,22 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const pmrem = new THREE.PMREMGenerator(renderer);
 const envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+// studio photo : pièce sombre + grandes boîtes à lumière -> longs reflets doux sur le satin noir
+function studioEnv() {
+  const e = new THREE.Scene();
+  e.add(new THREE.Mesh(new THREE.BoxGeometry(20, 20, 20), new THREE.MeshBasicMaterial({ color: 0x0c0c0e, side: THREE.BackSide })));
+  const panneau = (w, h, x, y, z, rx, ry, k, teinte = 0xffffff) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(teinte).multiplyScalar(k), side: THREE.DoubleSide }));
+    m.position.set(x, y, z); m.rotation.set(rx, ry, 0); e.add(m);
+  };
+  panneau(9, 5, 0, 8, 1, Math.PI / 2, 0, 3.2);            // grande boîte au-dessus
+  panneau(2.2, 12, -8, 2, 3, 0, Math.PI / 2, 4.0);        // bande verticale gauche
+  panneau(1.4, 12, 8, 2, -2, 0, -Math.PI / 2, 2.4, 0xfff0e0); // bande droite chaude
+  panneau(10, 3, 0, 1, -9, 0, 0, 1.6);                     // contre-jour (liseré)
+  panneau(6, 4, 3, 3, 9, 0, Math.PI, 0.9);                 // débouchage face
+  return pmrem.fromScene(e, 0).texture;
+}
+const envStudio = studioEnv();
 
 // ------------------------------------------------------------------ bruit (valeur 3D lissée)
 function hash(x, y, z) {
@@ -80,13 +96,18 @@ function bonnet() {
       const u = i / NU, th = u * Math.PI * 2;
       // fronces serrées près de l'élastique, grands plis souples vers le sommet
       const cx = Math.cos(th), sx = Math.sin(th);
-      const ph = 3.0 * fbm(cx * 1.1, sx * 1.1, v * 1.8);
-      const ampl = 0.55 + 0.45 * fbm(cx * 2.2 + 5, sx * 2.2, v * 1.5);   // plis irréguliers
-      const serre = Math.pow(1 - v, 2.6);
+      // plis amples et fluides (aucun bruit fin : le satin doit paraître lisse et luxueux)
+      const ph = 3.2 * fbm(cx * 0.9, sx * 0.9, v * 1.1, 2);
+      const ampl = 0.6 + 0.6 * fbm(cx * 1.6 + 5, sx * 1.6, v * 1.0, 2);
+      const serre = Math.pow(1 - v, 3.0);
       const lisse = (t, a, b) => { const x = Math.min(1, Math.max(0, (t - a) / (b - a))); return x * x * (3 - 2 * x); };
-      const plis = Math.sin(th * 34 + ph * 4) * 0.05 * serre * ampl
-        + Math.sin(th * 9 + ph * 2.5 + v * 2) * 0.07 * Math.sin(Math.PI * Math.min(1, v * 1.15)) * (1 - v * 0.5) * ampl
-        + fbm(cx * 2.5, sx * 2.5, v * 4, 4) * 0.06 * (1 - v * 0.6);
+      const fronce = Math.sin(th * 30 + ph * 3);
+      const plis = Math.sign(fronce) * Math.pow(Math.abs(fronce), 0.8) * 0.05 * serre * ampl
+        + (Math.sin(th * 5 + ph * 2.2 + v * 2.4) * 0.055 + Math.sin(th * 8 - ph * 1.7 - v * 1.8) * 0.045
+           + Math.sin(th * 11 + ph * 3.1 + v * 3.5) * 0.025 * (0.5 + 0.5 * Math.sin(th * 2 + ph)))
+          * Math.sin(Math.PI * Math.min(1, v * 1.1)) * (1 - v * 0.55) * (0.7 + 0.6 * ampl)
+        + fbm(cx * 0.7 + 11, sx * 0.7, 0.5, 2) * 0.09 * Math.sin(Math.PI * Math.min(1, v * 1.05))  // volume asymétrique
+        + fbm(cx * 1.2, sx * 1.2, v * 1.2, 2) * 0.05 * (1 - v * 0.6);
       const sommet = Math.min(1, (1 - v) * 5); // le sommet reste lisse
       const d = plis * sommet * lisse(v, 0.0, 0.07); // couture propre avec le bandeau
       const rr = Math.max(0, p.x + n2.x * d), yy = p.y + n2.y * d;
@@ -106,9 +127,9 @@ function bonnet() {
   geo.computeTangents();
   const tissage = normalesDepuis(256, 256, (x, y) => Math.sin(x * Math.PI * 2 * 64) * 0.5 + Math.sin(y * Math.PI * 2 * 48) * 0.5, 0.15);
   const satin = new THREE.MeshPhysicalMaterial({
-    color: 0x0b0b0d, roughness: 0.34, metalness: 0, sheen: 1, sheenColor: new THREE.Color(0x3a3a44), sheenRoughness: 0.45,
-    anisotropy: 0.5, anisotropyRotation: Math.PI / 2, specularIntensity: 0.9, envMap, envMapIntensity: 1.05,
-    normalMap: tissage, normalScale: new THREE.Vector2(0.15, 0.15), side: THREE.DoubleSide,
+    color: 0x070708, roughness: 0.2, metalness: 0, sheen: 1.0, sheenColor: new THREE.Color(0x5a5a66), sheenRoughness: 0.3,
+    anisotropy: 0.55, anisotropyRotation: Math.PI / 2, specularIntensity: 1.0, envMap: envStudio, envMapIntensity: 2.3,
+    normalMap: tissage, normalScale: new THREE.Vector2(0.04, 0.04), side: THREE.DoubleSide,
   });
   const calotte = new THREE.Mesh(geo, satin);
   calotte.castShadow = calotte.receiveShadow = true;

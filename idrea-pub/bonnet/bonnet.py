@@ -202,8 +202,15 @@ def scene3(T, t):
                 plate.alpha_composite(halo(W, H, W / 2, 900, 520 * (1.2 - fl * 0.4), 520 * (1.2 - fl * 0.4), (255, 244, 230), int(230 * fl)))
             bob = 10 * math.sin(lt * 1.5)
             poser(plate, R.ombre, W / 2, 1230, 1.1 + 0.05 * math.sin(lt * 1.5), 0, 0.8 * pb)
-            poser(plate, bonnet(lt - 2.0, 1.0), W / 2, 900 + bob + 120 * (1 - e_out(pb)), 1.25 * (0.7 + 0.3 * e_back(pb)),
-                  0, cl(pb * 2))
+            spr = bonnet(lt - 2.0, 1.0)
+            sc = 1.25 * (0.7 + 0.3 * e_back(pb))
+            yb = 900 + bob + 120 * (1 - e_out(pb))
+            # reflet doux sur le sol, comme sur un plateau photo
+            refl = spr.transpose(Image.FLIP_TOP_BOTTOM)
+            grad = Image.linear_gradient("L").resize(refl.size).point(lambda v: int(max(0, 255 - v * 2.2) * 0.22))
+            refl.putalpha(Image.fromarray((np.asarray(refl.getchannel("A"), np.uint16) * np.asarray(grad) // 255).astype(np.uint8)))
+            poser(plate, refl, W / 2, yb + spr.height * sc * 0.93, sc, 0, cl(pb * 2))
+            poser(plate, spr, W / 2, yb, sc, 0, cl(pb * 2))
         plate = camera(plate, 1.0 + 0.05 * e_io(prog(lt, 0, 6)), W / 2, 950)
     titre(plate, t, s0 + 0.05, "LA SOLUTION", None)
     pn = prog(t, tb - 0.05, tb + 0.35)
