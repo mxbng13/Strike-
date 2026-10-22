@@ -76,6 +76,50 @@ def puce_x(txt, taille, icone="cross"):
     return avec_ombre(im, 10, 6, 0.28)
 
 
+def carte_avant_apres(chemin, w_moitie=470):
+    """Carte AVANT / APRÈS à partir d'une image côte à côte (séparée au milieu), + mention d'illustration."""
+    src = Image.open(chemin).convert("RGB")
+    m = src.width // 2
+    moities = [src.crop((0, 0, m - 4, src.height)), src.crop((m + 4, 0, src.width, src.height))]
+    h_moitie = int(w_moitie * moities[0].height / moities[0].width)
+    pad, gap = 22, 14
+    carte = Image.new("RGBA", (2 * w_moitie + gap + 2 * pad, h_moitie + 2 * pad + 56), (0, 0, 0, 0))
+    ImageDraw.Draw(carte).rounded_rectangle((0, 0, carte.width - 1, carte.height - 1), radius=36, fill=(255, 252, 246, 245))
+    vues = []
+    for k, (im, lab) in enumerate(zip(moities, ("AVANT", "APRÈS"))):
+        v = im.resize((w_moitie, h_moitie), Image.LANCZOS).convert("RGBA")
+        masque = Image.new("L", v.size, 0)
+        ImageDraw.Draw(masque).rounded_rectangle((0, 0, v.width - 1, v.height - 1), radius=24, fill=255)
+        v.putalpha(masque)
+        t = texte(lab, font(BLACK, 34), (NOIR if k else BLANC) + (255,), track=3)
+        pill = Image.new("RGBA", (t.width + 36, t.height + 12), (0, 0, 0, 0))
+        ImageDraw.Draw(pill).rounded_rectangle((0, 0, pill.width - 1, pill.height - 1), radius=pill.height // 2,
+                                               fill=(OR_VIF if k else (30, 28, 26)) + (235,))
+        pill.alpha_composite(t, (18, 6))
+        v.alpha_composite(pill, (16, 16))
+        vues.append(v)
+    mention = texte("Photo d'illustration – résultats variables selon les peaux", font(MED, 28), (120, 110, 100, 255))
+    return {"carte": carte, "vues": vues, "pos": [(pad, pad), (pad + w_moitie + gap, pad)], "mention": mention,
+            "y_mention": pad + h_moitie + 10}
+
+
+def dessiner_avant_apres(base, t, t0, cy=900):
+    p = prog(t, t0 - 0.1, t0 + 0.35)
+    if p <= 0:
+        return
+    A = R.aa
+    carte = A["carte"].copy()
+    carte.alpha_composite(A["vues"][0], A["pos"][0])
+    # l'« après » se dévoile de gauche à droite
+    pr = e_io(prog(t, t0 + 0.35, t0 + 0.95))
+    if pr > 0:
+        v = A["vues"][1]
+        larg = max(1, int(v.width * pr))
+        carte.alpha_composite(v.crop((0, 0, larg, v.height)), A["pos"][1])
+    carte.alpha_composite(A["mention"], ((carte.width - A["mention"].width) // 2, A["y_mention"]))
+    poser(base, avec_ombre(carte, 14, 10, 0.3), W / 2, cy + 50 * (1 - e_out(p)), 0.9 + 0.1 * e_back(p), 0, cl(p * 2))
+
+
 def titre_img(s, taille=100):
     im = texte(s, font(BLACK, taille), BLANC + (255,), 5, (12, 12, 12))
     if im.width > 1000:  # titre trop long : on réduit pour tenir dans le cadre
@@ -114,11 +158,15 @@ def construire(produit):
     R.decouvre = texte(C["cta"], font(MED, 40), (236, 226, 210, 255))
     R.bouton = M._bouton(C["bouton"])
     R.lien = texte(M.LIEN or "Lien en bio", font(MED, 34), OR + (255,))
+    if C.get("avant_apres"):
+        R.aa = carte_avant_apres(os.path.join(ICI, produit, C["avant_apres"]["image"]))
     R.vignette = (1 - 0.32 * (((xx - W / 2) / (W * 0.75)) ** 2 + ((yy - H / 2) / (H * 0.7)) ** 2)).clip(0.55, 1)[..., None].astype(np.float32)
     R.grain = [rng.integers(-7, 8, (H, W, 1), dtype=np.int16) for _ in range(6)]
 
 
 def vue(lt, vitesse=1.0):
+    if C.get("fixe"):  # produit présenté de face, sans rotation
+        return R.tour[0]
     if C.get("oscillation"):  # produit plat : balancement de ±40° pour toujours le montrer de face
         angle = 40 * math.sin(lt * vitesse * 1.1)
         return R.tour[int(round(angle / 5)) % len(R.tour)]
@@ -209,6 +257,8 @@ def scene3(T, t):
     pn = prog(t, tb - 0.05, tb + 0.35)
     if pn > 0:
         poser(plate, R.titre_sol, W / 2, 400 + 50 * (1 - e_out(pn)), 0.9 + 0.1 * e_back(pn), 0, cl(pn * 2))
+    if C.get("avant_apres"):
+        dessiner_avant_apres(plate, t, quand(T, 2, C["avant_apres"]["mot"], 0.7))
     for k, (img, (_, mot)) in enumerate(zip(R.puces_sol, C["solution"]["puces"])):
         anim_puce(plate, img, W / 2 - img.width / 2, 1300 + k * 100, t, quand(T, 2, mot, 0.45 + 0.18 * k) - 0.05, (-1, 1, -1)[k % 3])
     return plate

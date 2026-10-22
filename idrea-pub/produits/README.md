@@ -20,6 +20,10 @@ Chaque dossier `livrables/` contient aussi les sous-titres `.srt`, la voix off (
 4. **La routine** : le produit posé sur le comptoir en marbre (3 cadrages), avec une checklist qui reprend le mode d'emploi de la fiche produit.
 5. **IDREA** : logo, slogan, le produit, le bouton et « Lien en bio ».
 
+## Avant / après (patchs)
+
+La pub des patchs montre une carte AVANT / APRÈS (`patchs/assets/avant_apres.jpg`, fournie par IDREA) au moment où la voix dit « il retire une partie des impuretés », avec la mention « Photo d'illustration – résultats variables selon les peaux ». Avant diffusion, vérifiez les droits d'utilisation de la photo et les règles publicitaires de TikTok sur les avant / après cosmétiques. Pour la retirer, supprimez la clé `avant_apres` dans `patchs/config.json`.
+
 ## Textes
 
 Les scripts (`*/config.json`) reprennent les fiches produits de la boutique, sans aller plus loin : pas de promesse anti-rides ou liftante pour le gua sha, « retire une partie des impuretés » pour les patchs, fréquences et précautions de la fiche (1 à 2 fois par semaine, 1 à 2 min par zone, « sans forcer »…).

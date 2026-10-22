@@ -83,5 +83,9 @@
    206
   ]
  ],
- "oscillation": true
+ "fixe": true,
+ "avant_apres": {
+  "image": "assets/avant_apres.jpg",
+  "mot": "retire"
+ }
 }
