@@ -53,7 +53,6 @@ def bonnet_3d(largeur=620):
 
 def construire():
     R.bonnets = bonnet_3d()
-    R.macro = plan_3d("macro")          # cheveux en pagaille (gros plan)
     R.lit_jour = plan_3d("lit_jour")    # oreiller en coton + cheveux tombés
     R.lits = [plan_3d("lit_soir"), plan_3d("lit_nuit"), plan_3d("lit_matin")]  # bonnet posé sur l'oreiller
     rng = np.random.default_rng(9)
@@ -138,7 +137,7 @@ def scene1(T, t):
     lt = t - T["starts"][0]
     plate = M.clip("s1", lt)
     if plate is None:
-        plate = R.macro.copy()
+        plate = R.lit_jour.copy()
     tp = mot_t(T, 0, "problème")
     # zoom d'entrée brutal + second « cut » de zoom à ~1 s pour relancer l'attention
     z = 1.18 - 0.08 * e_out(prog(lt, 0, 0.5)) + 0.08 * e_io(prog(lt, 0.5, 4.8))
