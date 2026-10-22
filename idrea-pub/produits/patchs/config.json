@@ -1,0 +1,87 @@
+{
+ "nom": "Patchs nez points noirs",
+ "nom_court": "PATCHS NEZ",
+ "lignes": [
+  "T'as des points noirs sur le nez qui te saoulent ? Regarde ce petit patch.",
+  "Le sébum s'accumule dans les pores du nez, et à force, on voit ces petits points noirs.",
+  "La solution : les patchs nez. Tu le poses sur le nez humide, il sèche, puis il retire une partie des impuretés en surface.",
+  "Nez propre et humide, dix à quinze minutes de pose, et tu le décolles doucement. Une à deux fois par semaine, pas plus.",
+  "Les patchs nez, c'est chez Idréa. Découvre-les maintenant."
+ ],
+ "accroche": [
+  "T'AS DES",
+  "POINTS NOIRS",
+  "SUR LE NEZ ?"
+ ],
+ "accroche_puce": [
+  "ET SI C'ÉTAIT SIMPLE ?",
+  "Regarde"
+ ],
+ "probleme": {
+  "titre": "LES PORES S'ENCRASSENT",
+  "puces": [
+   [
+    "SÉBUM",
+    "sébum"
+   ],
+   [
+    "PORES OBSTRUÉS",
+    "pores"
+   ],
+   [
+    "POINTS NOIRS",
+    "points"
+   ]
+  ]
+ },
+ "solution": {
+  "titre": "PATCHS NEZ",
+  "mot": "patchs",
+  "puces": [
+   [
+    "SE POSE SUR NEZ HUMIDE",
+    "humide"
+   ],
+   [
+    "SÈCHE EN 10-15 MIN",
+    "sèche"
+   ],
+   [
+    "RETIRE DES IMPURETÉS",
+    "retire"
+   ]
+  ]
+ },
+ "routine": {
+  "titre": "TA ROUTINE",
+  "items": [
+   [
+    "Nez propre et humide",
+    "Nez"
+   ],
+   [
+    "10 à 15 min de pose",
+    "dix"
+   ],
+   [
+    "1 à 2 fois par semaine max",
+    "Une"
+   ]
+  ]
+ },
+ "cta": "Découvre les patchs nez sur Idrea.",
+ "bouton": "DÉCOUVRIR LES PATCHS",
+ "fond": [
+  [
+   240,
+   236,
+   232
+  ],
+  [
+   222,
+   214,
+   206
+  ]
+ ],
+ "oscillation": true
+}

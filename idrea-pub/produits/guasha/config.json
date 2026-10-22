@@ -1,0 +1,87 @@
+{
+ "nom": "Rouleau & gua sha",
+ "nom_court": "ROULEAU & GUA SHA",
+ "lignes": [
+  "Tu te lèves avec une tête fatiguée ? Offre-toi cinq minutes de massage.",
+  "Entre les écrans et les nuits courtes, ton visage n'a jamais de pause. Et ta crème, tu l'étales en deux secondes.",
+  "La solution : le rouleau et le gua sha. Ils aident à bien répartir ton soin, avec une sensation de fraîcheur, encore plus sortis du frigo.",
+  "Applique ton soin, fais glisser la pierre du centre vers l'extérieur, puis termine par le cou. Trois à cinq minutes suffisent.",
+  "Le coffret rouleau et gua sha, c'est chez Idréa. Découvre-le maintenant."
+ ],
+ "accroche": [
+  "UNE TÊTE",
+  "FATIGUÉE",
+  "AU RÉVEIL ?"
+ ],
+ "accroche_puce": [
+  "5 MINUTES RIEN QUE POUR TOI",
+  "Offre-toi"
+ ],
+ "probleme": {
+  "titre": "ZÉRO PAUSE",
+  "puces": [
+   [
+    "ÉCRANS",
+    "écrans"
+   ],
+   [
+    "NUITS COURTES",
+    "nuits"
+   ],
+   [
+    "CRÈME EN 2 SECONDES",
+    "crème"
+   ]
+  ]
+ },
+ "solution": {
+  "titre": "ROULEAU & GUA SHA",
+  "mot": "rouleau",
+  "puces": [
+   [
+    "RÉPARTIT TON SOIN",
+    "répartir"
+   ],
+   [
+    "SENSATION DE FRAÎCHEUR",
+    "fraîcheur"
+   ],
+   [
+    "ENCORE MIEUX SORTI DU FRIGO",
+    "frigo"
+   ]
+  ]
+ },
+ "routine": {
+  "titre": "TON RITUEL",
+  "items": [
+   [
+    "Applique ton soin",
+    "Applique"
+   ],
+   [
+    "Du centre vers l'extérieur",
+    "centre"
+   ],
+   [
+    "Termine par le cou",
+    "termine"
+   ]
+  ]
+ },
+ "cta": "Découvre le coffret sur Idrea.",
+ "bouton": "DÉCOUVRIR LE COFFRET",
+ "fond": [
+  [
+   236,
+   240,
+   232
+  ],
+  [
+   210,
+   220,
+   204
+  ]
+ ],
+ "oscillation": true
+}

@@ -2,6 +2,7 @@
 // Piloté par rendre.mjs : window.preparer(mode, options) -> nombre d'images ; window.rendre(i) -> dataURL PNG.
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { fabrique } from './produits3d.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -347,6 +348,40 @@ window.preparer = (mode, o) => {
     const w = o.w || 2160, h = Math.round(w * 16 / 9);
     plan = { n: 1, rendre: () => { renderer.setSize(w, h); renderer.setClearColor(0, 1); renderer.render(scene, cam); },
              nom: () => `${o.nom || 'macro'}.png` };
+    return 1;
+  }
+  if (mode === 'produit' || mode === 'sdb') {
+    const F = fabrique({ env: envStudio, normalesDepuis, textureCanvas, fbm, bruit });
+    if (mode === 'produit') {
+      // tour complet d'un produit sur son axe (fond transparent), éclairage studio
+      const prod = F[o.produit](); const tour = new THREE.Group(); tour.add(prod);
+      const pivot = new THREE.Group(); pivot.add(tour); pivot.rotation.x = o.inclinaison ?? 0.25; scene.add(pivot);
+      lumieres(scene, 'studio');
+      const box = new THREE.Box3().setFromObject(prod); const c = box.getCenter(new THREE.Vector3()); prod.position.sub(c);
+      const taille = box.getSize(new THREE.Vector3()).length();
+      const cam = new THREE.PerspectiveCamera(26, 1, 0.1, 100); cam.position.set(0, taille * 0.5, taille * 2.3); cam.lookAt(0, 0, 0);
+      const n = o.n || 72, px = o.taille || 1100;
+      plan = { n, rendre: i => { tour.rotation.y = i / n * Math.PI * 2; renderer.setSize(px, px); renderer.setClearColor(0, 0); renderer.render(scene, cam); },
+               nom: i => `${o.produit}_${String(i).padStart(3, '0')}.png` };
+      return n;
+    }
+    // salle de bain : comptoir en marbre, carrelage ; produit posé dessus (option)
+    scene.add(F.salleDeBain());
+    lumieres(scene, o.lumiere || 'matin');
+    if (o.produit) {
+      // taille normalisée : le produit occupe environ le tiers de la largeur du cadre
+      const prod = F[o.produit](); const g = new THREE.Group(); g.add(prod);
+      let box = new THREE.Box3().setFromObject(g); const sz = box.getSize(new THREE.Vector3());
+      g.scale.setScalar((o.echelle || 1.5) / Math.max(sz.x, sz.y));
+      box = new THREE.Box3().setFromObject(g);
+      g.position.set(-(box.min.x + box.max.x) / 2, -box.min.y, 0.6 - (box.min.z + box.max.z) / 2);
+      g.rotation.y = o.rotation || 0; scene.add(g);
+    }
+    const cam = new THREE.PerspectiveCamera(32, 9 / 16, 0.1, 100);
+    cam.position.set(0.3, 2.3, 5.2); cam.lookAt(0, 0.9, 0);
+    const w = o.w || 2160, h = Math.round(w * 16 / 9);
+    plan = { n: 1, rendre: () => { renderer.setSize(w, h); renderer.setClearColor(0, 1); renderer.render(scene, cam); },
+             nom: () => `${o.nom || 'sdb'}.png` };
     return 1;
   }
   throw new Error('mode inconnu ' + mode);

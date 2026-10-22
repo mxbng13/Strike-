@@ -1,0 +1,83 @@
+{
+ "nom": "Gratte-langue avec étui",
+ "nom_court": "GRATTE-LANGUE",
+ "lignes": [
+  "Tu te brosses les dents, mais ta langue, tu y penses ? Regarde ça.",
+  "Un dépôt blanchâtre se forme à la surface de la langue, et la brosse à dents ne suffit pas toujours.",
+  "La solution : le gratte-langue. Sa forme en U épouse la langue, et en deux ou trois passages, il nettoie la surface.",
+  "Après le brossage, pose-le au fond de la langue, tire doucement vers l'avant, rince, et range-le dans son étui.",
+  "Le gratte-langue avec étui, c'est chez Idréa. Découvre-le maintenant."
+ ],
+ "accroche": [
+  "ET TA",
+  "LANGUE",
+  "TU Y PENSES ?"
+ ],
+ "accroche_puce": [
+  "LE GESTE QU'ON OUBLIE",
+  "Regarde"
+ ],
+ "probleme": {
+  "titre": "LA LANGUE OUBLIÉE",
+  "puces": [
+   [
+    "DÉPÔT BLANCHÂTRE",
+    "dépôt"
+   ],
+   [
+    "LA BROSSE NE SUFFIT PAS",
+    "brosse"
+   ]
+  ]
+ },
+ "solution": {
+  "titre": "GRATTE-LANGUE",
+  "mot": "gratte-langue",
+  "puces": [
+   [
+    "FORME EN U",
+    "forme"
+   ],
+   [
+    "2 À 3 PASSAGES",
+    "deux"
+   ],
+   [
+    "ÉTUI INCLUS",
+    "surface"
+   ]
+  ]
+ },
+ "routine": {
+  "titre": "APRÈS LE BROSSAGE",
+  "items": [
+   [
+    "Pose-le au fond de la langue",
+    "pose-le"
+   ],
+   [
+    "Tire doucement vers l'avant",
+    "tire"
+   ],
+   [
+    "Rince et range dans l'étui",
+    "rince"
+   ]
+  ]
+ },
+ "cta": "Découvre le gratte-langue sur Idrea.",
+ "bouton": "DÉCOUVRIR LE GRATTE-LANGUE",
+ "fond": [
+  [
+   236,
+   242,
+   236
+  ],
+  [
+   206,
+   222,
+   208
+  ]
+ ],
+ "oscillation": true
+}

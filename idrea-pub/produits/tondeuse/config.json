@@ -1,0 +1,82 @@
+{
+ "nom": "Coupe-poils nez & oreilles",
+ "nom_court": "COUPE-POILS NEZ",
+ "lignes": [
+  "Un poil qui dépasse du nez, et tout le monde ne voit plus que ça. On règle ça en dix secondes.",
+  "La pince, ça fait mal, et les ciseaux près du nez, c'est risqué.",
+  "La solution : le coupe-poils nez et oreilles. Sa tête rotative est protégée, les lames ne touchent pas directement la peau.",
+  "Tu l'allumes, tu l'approches doucement de l'entrée de la narine, petits mouvements circulaires, et tu rinces la tête. Il est rechargeable.",
+  "Le coupe-poils nez et oreilles, c'est chez Idréa. Découvre-le maintenant."
+ ],
+ "accroche": [
+  "UN POIL",
+  "QUI DÉPASSE",
+  "DU NEZ ?"
+ ],
+ "accroche_puce": [
+  "RÉGLÉ EN 10 SECONDES",
+  "règle"
+ ],
+ "probleme": {
+  "titre": "LES MAUVAISES IDÉES",
+  "puces": [
+   [
+    "LA PINCE : ÇA FAIT MAL",
+    "pince"
+   ],
+   [
+    "LES CISEAUX : RISQUÉ",
+    "ciseaux"
+   ]
+  ]
+ },
+ "solution": {
+  "titre": "COUPE-POILS NEZ",
+  "mot": "coupe-poils",
+  "puces": [
+   [
+    "TÊTE ROTATIVE",
+    "rotative"
+   ],
+   [
+    "LAMES PROTÉGÉES",
+    "lames"
+   ],
+   [
+    "RECHARGEABLE",
+    "peau"
+   ]
+  ]
+ },
+ "routine": {
+  "titre": "EN 10 SECONDES",
+  "items": [
+   [
+    "Allume-le",
+    "l'allumes"
+   ],
+   [
+    "Entrée de la narine, sans forcer",
+    "narine"
+   ],
+   [
+    "Rince la tête",
+    "rinces"
+   ]
+  ]
+ },
+ "cta": "Découvre le coupe-poils sur Idrea.",
+ "bouton": "DÉCOUVRIR LE COUPE-POILS",
+ "fond": [
+  [
+   234,
+   236,
+   240
+  ],
+  [
+   206,
+   210,
+   218
+  ]
+ ]
+}

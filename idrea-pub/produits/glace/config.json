@@ -1,0 +1,86 @@
+{
+ "nom": "Rouleau de massage en glace",
+ "nom_court": "ROULEAU DE GLACE",
+ "lignes": [
+  "Tu veux un vrai coup de fraîcheur le matin ? Mets un glaçon dans ta routine.",
+  "Après une nuit courte ou une journée d'écrans, ton visage a besoin de se réveiller.",
+  "La solution : le rouleau de glace. Tu remplis le moule d'eau, tu le mets au congélateur, et tu as un soin fraîcheur réutilisable.",
+  "Laisse-le une minute à l'air libre, fais-le glisser sans t'arrêter, une à deux minutes par zone maximum.",
+  "Le rouleau de glace, c'est chez Idréa. Découvre-le maintenant."
+ ],
+ "accroche": [
+  "UN VRAI",
+  "COUP DE FRAIS",
+  "LE MATIN ?"
+ ],
+ "accroche_puce": [
+  "UN GLAÇON DANS TA ROUTINE",
+  "Mets"
+ ],
+ "probleme": {
+  "titre": "VISAGE AU RALENTI",
+  "puces": [
+   [
+    "NUIT COURTE",
+    "nuit"
+   ],
+   [
+    "JOURNÉE D'ÉCRANS",
+    "d'écrans"
+   ],
+   [
+    "BESOIN DE SE RÉVEILLER",
+    "réveiller"
+   ]
+  ]
+ },
+ "solution": {
+  "titre": "ROULEAU DE GLACE",
+  "mot": "rouleau",
+  "puces": [
+   [
+    "REMPLIS D'EAU",
+    "remplis"
+   ],
+   [
+    "AU CONGÉLATEUR",
+    "congélateur"
+   ],
+   [
+    "RÉUTILISABLE",
+    "réutilisable"
+   ]
+  ]
+ },
+ "routine": {
+  "titre": "LE BON GESTE",
+  "items": [
+   [
+    "1 minute à l'air libre",
+    "Laisse-le"
+   ],
+   [
+    "Glisse sans t'arrêter",
+    "glisser"
+   ],
+   [
+    "1 à 2 min par zone max",
+    "zone"
+   ]
+  ]
+ },
+ "cta": "Découvre le rouleau de glace sur Idrea.",
+ "bouton": "DÉCOUVRIR LE ROULEAU",
+ "fond": [
+  [
+   234,
+   240,
+   244
+  ],
+  [
+   204,
+   218,
+   226
+  ]
+ ]
+}
