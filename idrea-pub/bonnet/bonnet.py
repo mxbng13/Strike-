@@ -31,130 +31,37 @@ R = Ressources()
 # --------------------------------------------------------------------------- sprites
 
 
-def bonnet_photo(n=24, largeur=600):
-    """Vrai bonnet IDREA (photo détourée, assets/) + reflet de lumière qui balaie le satin."""
-    src = os.path.join(ICI, "assets", "bonnet_detoure.png")
-    if not os.path.exists(src):
-        detourer()
-    im = Image.open(src).convert("RGBA")
-    im = im.resize((largeur, int(im.height * largeur / im.width)), Image.LANCZOS)
-    arr = np.asarray(im).astype(np.float32)
-    hh, ww = arr.shape[:2]
-    yy, xx = np.mgrid[0:hh, 0:ww]
-    u = (xx * 0.8 + yy * 0.6) / (ww * 0.8 + hh * 0.6)
-    lum = arr[..., :3].mean(-1, keepdims=True) / 255
-    out = []
-    for i in range(n):
-        pos = -0.3 + 1.6 * i / n
-        band = np.exp(-((u - pos) / 0.07) ** 2)[..., None] * (0.25 + 0.9 * lum)
-        a = arr.copy()
-        a[..., :3] += (255 - a[..., :3]) * band * 0.35
-        out.append(Image.fromarray(np.clip(a, 0, 255).astype(np.uint8), "RGBA"))
-    return out
+RENDUS_3D = os.path.join(os.path.dirname(ICI), "3d", "rendus")
 
 
-def detourer():
-    """Détoure assets/bonnet_photo.jpg (produit sombre sur fond blanc) -> assets/bonnet_detoure.png."""
-    im = Image.open(os.path.join(ICI, "assets", "bonnet_photo.jpg")).convert("RGB")
-    lum = np.asarray(im).astype(np.float32).mean(-1)
-    mm = Image.fromarray(((lum > 150) * 255).astype(np.uint8), "L").copy()  # copie : image modifiable
-    for xy in [(0, 0), (mm.width - 1, 0), (0, mm.height - 1), (mm.width - 1, mm.height - 1)]:
-        if mm.getpixel(xy) == 255:
-            ImageDraw.floodfill(mm, xy, 128)
-    al = Image.fromarray(np.where(np.asarray(mm) == 128, 0, 255).astype(np.uint8), "L")
-    al = al.filter(ImageFilter.MinFilter(5)).filter(ImageFilter.GaussianBlur(1.6))
-    out = im.convert("RGBA")
-    out.putalpha(al)
-    out.crop(al.getbbox()).save(os.path.join(ICI, "assets", "bonnet_detoure.png"))
+def plan_3d(nom):
+    """Plan plein cadre rendu en 3D (../3d/rendus, 2160x3840) ramené en 1080x1920."""
+    return Image.open(os.path.join(RENDUS_3D, nom + ".png")).convert("RGBA").resize((W, H), Image.LANCZOS)
 
 
-def oreiller_sprite():
-    w, h = 940, 600
-    m = Image.new("L", (w, h), 0)
-    ImageDraw.Draw(m).rounded_rectangle((20, 20, w - 20, h - 20), radius=150, fill=255)
-    gonfle = np.asarray(m.filter(ImageFilter.GaussianBlur(70)), np.float32) / 255
-    rng = np.random.default_rng(5)
-    grain = rng.normal(0, 1, (h, w)).astype(np.float32)
-    trame = (np.sin(np.arange(w) * 1.9)[None, :] * np.sin(np.arange(h) * 1.9)[:, None]) * 2.5
-    v = 186 + 66 * gonfle ** 0.6 + grain * 3 + trame
-    pli = np.exp(-((np.arange(h)[:, None] - h * 0.5) / 40) ** 2) * np.exp(-((np.arange(w)[None, :] - w * 0.55) / 260) ** 2) * 18
-    v -= pli
-    rgb = np.stack([v, v + 1, v + 4], -1)
-    im = Image.fromarray(np.clip(rgb, 0, 255).astype(np.uint8), "RGB").convert("RGBA")
-    im.putalpha(m)
-    return im
-
-
-def meches(n=260, seed=2):
-    """Mèches en vrac : longues ondulations qui partent du haut de l'oreiller, plus quelques frisottis."""
-    rng = np.random.default_rng(seed)
-    out = []
-    for i in range(n):
-        frisottis = i % 5 == 0
-        x, y = rng.normal(470, 110), rng.uniform(150, 230)
-        ang = math.pi / 2 + rng.normal(0, 0.6)
-        courbe = rng.uniform(0.02, 0.09) * rng.choice([-1, 1])
-        pas = 6 if frisottis else 10
-        pts = []
-        for k in range(int(rng.integers(20, 34) if frisottis else rng.integers(30, 50))):
-            pts.append((x, y))
-            ang += (rng.normal(0, 0.55) if frisottis else courbe + rng.normal(0, 0.08) + 0.12 * math.sin(k * 0.45))
-            x += math.cos(ang) * pas
-            y += math.sin(ang) * pas
-        teinte = int(rng.integers(0, 3))
-        out.append((pts, teinte, rng.uniform(0, 6.28)))
-    return out
-
-
-def dessiner_meches(base, ox, oy, s, t, agite=1.0, lisse=False):
-    lay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    d = ImageDraw.Draw(lay)
-    cols = [(58, 38, 28, 230), (84, 56, 38, 220), (122, 86, 58, 200)]
-    for pts, k, ph in R.meches:
-        if lisse:  # mèches rangées : courbes douces parallèles
-            continue
-        pl = []
-        for j, (x, y) in enumerate(pts):
-            jx = agite * 2.0 * math.sin(t * 1.5 + ph + j * 0.3)
-            jy = agite * 2.0 * math.cos(t * 1.3 + ph + j * 0.2)
-            pl.append((ox + (x + jx) * s, oy + (y + jy) * s))
-        d.line(pl, fill=cols[k], width=max(2, int(4 * s)), joint="curve")
-    base.alpha_composite(lay)
+def bonnet_3d(largeur=620):
+    """Tour complet du bonnet modélisé en 3D (72 vues, fond transparent), recadré sur une boîte commune."""
+    vues = [Image.open(os.path.join(RENDUS_3D, f"bonnet_{i:03d}.png")).convert("RGBA") for i in range(72)]
+    boites = [v.getchannel("A").getbbox() for v in vues]
+    boite = (min(b[0] for b in boites), min(b[1] for b in boites), max(b[2] for b in boites), max(b[3] for b in boites))
+    k = largeur / (boite[2] - boite[0])
+    return [v.crop(boite).resize((largeur, int((boite[3] - boite[1]) * k)), Image.LANCZOS) for v in vues]
 
 
 # --------------------------------------------------------------------------- ressources
 
 
 def construire():
-    R.bonnets = bonnet_photo()
-    R.oreiller = oreiller_sprite()
-    R.meches = meches()
+    R.bonnets = bonnet_3d()
+    R.macro = plan_3d("macro")          # cheveux en pagaille (gros plan)
+    R.lit_jour = plan_3d("lit_jour")    # oreiller en coton + cheveux tombés
+    R.lits = [plan_3d("lit_soir"), plan_3d("lit_nuit"), plan_3d("lit_matin")]  # bonnet posé sur l'oreiller
     rng = np.random.default_rng(9)
-    # draps (lin gris clair, plis doux)
     yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
-    pl = np.sin((xx * 0.6 + yy) / 130) * 9 + np.sin((xx - yy * 0.4) / 90) * 6
-    v = 214 + pl
-    R.draps = Image.fromarray(np.clip(np.stack([v - 4, v, v + 6], -1), 0, 255).astype(np.uint8), "RGB").convert("RGBA")
     R.satin = studio((246, 236, 228), (230, 208, 194), 1300, (216, 190, 172), (186, 156, 138), lum=(255, 236, 222), lum_a=140)
-    R.soir = degrade_v(W, H, [(0, (60, 40, 30)), (0.55, (110, 72, 44)), (1, (40, 28, 22))])
-    R.soir.alpha_composite(halo(W, H, 860, 300, 420, 420, (255, 196, 120), 150))
-    R.nuit = degrade_v(W, H, [(0, (14, 20, 40)), (0.6, (26, 34, 64)), (1, (10, 12, 24))])
-    R.nuit.alpha_composite(halo(W, H, 820, 300, 200, 200, (220, 230, 255), 110))
-    d = ImageDraw.Draw(R.nuit)
-    for _ in range(80):
-        x, y, r = rng.uniform(0, W), rng.uniform(0, 900), rng.uniform(1, 3)
-        d.ellipse((x - r, y - r, x + r, y + r), fill=(255, 255, 255, int(rng.uniform(80, 220))))
-    d.ellipse((770, 250, 870, 350), fill=(240, 240, 228, 255))
-    d.ellipse((800, 240, 900, 340), fill=(26, 34, 64, 255))
-    R.matin = studio((255, 248, 236), (240, 226, 206), 1300, (226, 210, 190), (200, 182, 160), lum=(255, 240, 210), lum_a=170)
-    rays = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    rd = ImageDraw.Draw(rays)
-    for x0, w in ((-200, 160), (120, 90), (380, 200), (760, 120)):
-        rd.polygon([(x0, -100), (x0 + w, -100), (x0 + w + 700, H), (x0 + 700, H)], fill=(255, 232, 190, 40))
-    R.matin.alpha_composite(rays.filter(ImageFilter.GaussianBlur(40)))
     R.bokeh = [bokeh_sprite(r, (255, 248, 236), a) for r, a in ((26, 60), (40, 45), (60, 35), (18, 80))]
     R.bokeh_pos = [(rng.uniform(0, W), rng.uniform(80, 1250), int(rng.integers(0, 4)), rng.uniform(0.3, 1.0)) for _ in range(14)]
-    R.ombre = ombre(420, 70, 22, 0.4)
+    R.ombre = ombre(460, 80, 24, 0.38)
     fb = font(BLACK, 132)
     R.hook = [avec_ombre(texte(s, f, c + (255,), 5, (10, 10, 10)), 14, 10, 0.65) for s, c, f in
               (("CHEVEUX EN", BLANC, fb), ("PAGAILLE", OR_VIF, font(BLACK, 168)), ("AU RÉVEIL ?", BLANC, fb))]
@@ -201,9 +108,8 @@ def puce_x(txt, taille, icone="cross"):
     return avec_ombre(im, 10, 6, 0.28)
 
 
-def bonnet(lt, vitesse=0.5):
-    k = int((lt * vitesse * 24) % 36)
-    return R.bonnets[min(k, len(R.bonnets) - 1)]
+def bonnet(lt, vitesse=1.0):
+    return R.bonnets[int(lt * vitesse * 12) % len(R.bonnets)]
 
 
 def bokeh(base, lt, vx=14, a=1.0):
@@ -224,19 +130,6 @@ def titre(base, t, t0, tag, nom, y=250):
         poser(base, R.titres[nom], W / 2, y + 150 + 50 * (1 - e_out(p2)), 0.9 + 0.1 * e_back(p2), 0, cl(p2 * 2))
 
 
-def lit(lt, meches_ok=True, agite=1.0, bg=None, avec_bonnet=False, s=1.0):
-    """Plan « vue de dessus » : draps + oreiller (+ mèches emmêlées ou bonnet posé)."""
-    plate = (bg or R.draps).copy()
-    ox, oy = W / 2 - R.oreiller.width * s / 2, 620
-    poser(plate, R.ombre, W / 2, oy + R.oreiller.height * s - 30, 2.0 * s, 0, 0.5)
-    poser(plate, R.oreiller, W / 2, oy + R.oreiller.height * s / 2, s)
-    if meches_ok:
-        dessiner_meches(plate, ox, oy, s, lt, agite)
-    if avec_bonnet:
-        poser(plate, bonnet(lt, 0.3), W / 2 + 30, oy + 290 * s, 0.85 * s, -8)
-    return plate
-
-
 # --------------------------------------------------------------------------- scènes
 
 
@@ -245,7 +138,7 @@ def scene1(T, t):
     lt = t - T["starts"][0]
     plate = M.clip("s1", lt)
     if plate is None:
-        plate = lit(lt, agite=0.0)
+        plate = R.macro.copy()
     tp = mot_t(T, 0, "problème")
     # zoom d'entrée brutal + second « cut » de zoom à ~1 s pour relancer l'attention
     z = 1.18 - 0.08 * e_out(prog(lt, 0, 0.5)) + 0.08 * e_io(prog(lt, 0.5, 4.8))
@@ -276,8 +169,7 @@ def scene2(T, t):
     lt = t - s0
     plate = M.clip("s2", lt)
     if plate is None:
-        plate = lit(lt + 5, agite=0.0)
-        plate = camera(plate, 1.7 + 0.08 * lt / 6, W / 2 - 40, 1020)
+        plate = camera(R.lit_jour.copy(), 1.5 + 0.08 * lt / 6, W / 2, 1000)
         # flèches de frottement qui vont et viennent
         o = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         d = ImageDraw.Draw(o)
@@ -311,8 +203,8 @@ def scene3(T, t):
                 plate.alpha_composite(halo(W, H, W / 2, 900, 520 * (1.2 - fl * 0.4), 520 * (1.2 - fl * 0.4), (255, 244, 230), int(230 * fl)))
             bob = 10 * math.sin(lt * 1.5)
             poser(plate, R.ombre, W / 2, 1230, 1.1 + 0.05 * math.sin(lt * 1.5), 0, 0.8 * pb)
-            poser(plate, bonnet(lt, 0.45), W / 2, 900 + bob + 120 * (1 - e_out(pb)), 1.15 * (0.7 + 0.3 * e_back(pb)),
-                  2 * math.sin(lt * 0.8), cl(pb * 2))
+            poser(plate, bonnet(lt - 2.0, 1.0), W / 2, 900 + bob + 120 * (1 - e_out(pb)), 1.25 * (0.7 + 0.3 * e_back(pb)),
+                  0, cl(pb * 2))
         plate = camera(plate, 1.0 + 0.05 * e_io(prog(lt, 0, 6)), W / 2, 950)
     titre(plate, t, s0 + 0.05, "LA SOLUTION", None)
     pn = prog(t, tb - 0.05, tb + 0.35)
@@ -332,18 +224,8 @@ def scene4(T, t):
     ct = t - cuts[k]
     plate = M.clip("s4" + "abc"[k], ct)
     if plate is None:
-        if k == 0:
-            plate = lit(ct, meches_ok=False, bg=R.soir, avec_bonnet=True, s=0.9)
-            plate = camera(plate, 1.12 + 0.04 * ct, W / 2, 950)
-        elif k == 1:
-            plate = lit(ct, meches_ok=False, bg=R.nuit, avec_bonnet=True, s=0.9)
-            nuit = Image.new("RGBA", (W, H), (10, 16, 40, 120))
-            plate.alpha_composite(nuit)
-            plate = camera(plate, 1.05 + 0.03 * ct, W / 2, 900)
-        else:
-            plate = lit(ct, meches_ok=False, bg=R.matin, avec_bonnet=True, s=0.9)
-            plate.alpha_composite(halo(W, H, 200, 200, 700, 700, (255, 236, 200), 70))
-            plate = camera(plate, 1.1 - 0.04 * ct, W / 2, 950)
+        z = (1.12 + 0.04 * ct, 1.05 + 0.03 * ct, 1.1 - 0.03 * ct)[k]
+        plate = camera(R.lits[k].copy(), z, W / 2, 1000)
     pc = e_out(prog(t, s0 + 0.05, s0 + 0.4))
     if pc > 0:
         cw, chh = 860, 420
@@ -419,7 +301,7 @@ def scene5(T, t):
     pb = e_out(prog(lt, 1.2, 1.9))
     if pb > 0:
         plate.alpha_composite(fondu(halo(W, H, W / 2, 1100, 360, 230, (255, 214, 170), 140), pb))
-        poser(plate, bonnet(lt, 0.4), W / 2, 1110 + 60 * (1 - pb) + 6 * math.sin(lt * 1.6), 0.5 * zoom, 0, pb)
+        poser(plate, bonnet(lt, 0.7), W / 2, 1110 + 60 * (1 - pb) + 6 * math.sin(lt * 1.6), 0.55 * zoom, 0, pb)
     tc = max(2.6, fin + 0.05)
     p = prog(lt, tc, tc + 0.35)
     if p > 0:
