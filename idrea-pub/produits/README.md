@@ -1,5 +1,27 @@
 # IDREA — 5 publicités TikTok produits
 
+## Format court (≈ 14 s) — à privilégier
+
+Les premières pubs (≈ 30 s) avaient un temps de visionnage moyen de 2,9 s : le produit n'arrivait qu'après ~8 s et la marque à la fin. Le format court corrige ça :
+
+| Moment | À l'écran |
+|---|---|
+| **0 s** (image 0) | La vraie photo du produit en grand sur un fond de couleur vive, la question en 2 lignes et le logo **IDREA** dans le coin (visible jusqu'à la fin). Pour les patchs : l'avant / après tout de suite |
+| ~2 s | Le produit sur le comptoir et 2 atouts |
+| ~6 s | Le gros plan qui recule et une pastille avec le **prix réel** de la boutique |
+| fin | Le logo IDREA, le produit, **idrea.fr** et « Lien en bio » |
+
+Vidéos : `*/livrables_court/idrea_<produit>_court.mp4`. Scripts : `*/court.json`. Moteur : `pub_court.py`.
+
+```bash
+python3 ../voix_off.py glace/court.json glace/build_court
+./tout_rendre_court.sh            # les 5 (ou : ./tout_rendre_court.sh glace)
+```
+
+Les prix affichés (5,99 €, 14,49 €, 13,49 €, 7,99 €, 13,99 €) viennent de la boutique au 22/10/2026 : pensez à les mettre à jour dans `court.json` si vous les changez.
+
+## Format long (≈ 30 s)
+
 Même style que la pub bonnet en satin : 1080 × 1920, 30 i/s, environ 30 s, voix Rémy, sous-titres en bas, accroche visible dès la première image, vraies photos des produits du site, fin avec le logo IDREA.
 
 | Dossier | Produit (boutique idrea.fr) | Durée | Vidéo |

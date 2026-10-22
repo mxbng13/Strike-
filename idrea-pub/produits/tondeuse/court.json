@@ -1,0 +1,41 @@
+{
+ "lignes": [
+  "Un poil qui dépasse du nez ? Réglé en dix secondes.",
+  "Sa tête rotative est protégée : les lames ne touchent pas directement la peau.",
+  "Rechargeable, tête lavable, et il tient dans la poche.",
+  "Le coupe-poils est chez Idréa, le lien est en bio."
+ ],
+ "accroche": [
+  "UN POIL",
+  "QUI DÉPASSE ?"
+ ],
+ "couleur": [
+  58,
+  68,
+  88
+ ],
+ "puces2": [
+  [
+   "TÊTE ROTATIVE",
+   "rotative"
+  ],
+  [
+   "LAMES PROTÉGÉES",
+   "lames"
+  ]
+ ],
+ "puces3": [
+  [
+   "RECHARGEABLE",
+   "Rechargeable"
+  ],
+  [
+   "FORMAT POCHE",
+   "poche"
+  ]
+ ],
+ "prix": [
+  "DÈS",
+  "13,49 €"
+ ]
+}

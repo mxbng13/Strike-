@@ -1,0 +1,41 @@
+{
+ "lignes": [
+  "Tu te brosses les dents, mais ta langue ?",
+  "Le gratte-langue retire le dépôt blanchâtre en deux ou trois passages.",
+  "Forme en U, inox, et il est livré avec son étui.",
+  "Le gratte-langue est chez Idréa, le lien est en bio."
+ ],
+ "accroche": [
+  "ET TA LANGUE,",
+  "TU LA BROSSES ?"
+ ],
+ "couleur": [
+  70,
+  160,
+  104
+ ],
+ "puces2": [
+  [
+   "RETIRE LE DÉPÔT",
+   "dépôt"
+  ],
+  [
+   "2 À 3 PASSAGES",
+   "deux"
+  ]
+ ],
+ "puces3": [
+  [
+   "FORME EN U",
+   "Forme"
+  ],
+  [
+   "ÉTUI INCLUS",
+   "étui"
+  ]
+ ],
+ "prix": [
+  "SEULEMENT",
+  "13,99 €"
+ ]
+}

@@ -1,0 +1,41 @@
+{
+ "lignes": [
+  "Le secret pour un vrai coup de frais le matin ? Un glaçon.",
+  "Tu remplis le moule d'eau, et direction le congélateur.",
+  "Tu le fais glisser sur le visage sans t'arrêter, une à deux minutes par zone.",
+  "Le rouleau de glace est chez Idréa, le lien est en bio."
+ ],
+ "accroche": [
+  "UN COUP DE FRAIS",
+  "EN 1 GLAÇON"
+ ],
+ "couleur": [
+  84,
+  148,
+  196
+ ],
+ "puces2": [
+  [
+   "REMPLIS D'EAU",
+   "remplis"
+  ],
+  [
+   "AU CONGÉLATEUR",
+   "congélateur"
+  ]
+ ],
+ "puces3": [
+  [
+   "GLISSE SANS T'ARRÊTER",
+   "glisser"
+  ],
+  [
+   "RÉUTILISABLE",
+   "zone"
+  ]
+ ],
+ "prix": [
+  "SEULEMENT",
+  "7,99 €"
+ ]
+}

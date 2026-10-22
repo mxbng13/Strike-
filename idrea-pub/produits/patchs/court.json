@@ -1,0 +1,41 @@
+{
+ "lignes": [
+  "T'as des points noirs sur le nez ? Regarde ça.",
+  "Tu poses le patch sur le nez humide, et tu laisses sécher dix à quinze minutes.",
+  "Tu le décolles doucement : il retire une partie des impuretés en surface.",
+  "Les patchs nez sont chez Idréa, le lien est en bio."
+ ],
+ "accroche": [
+  "DES POINTS NOIRS",
+  "SUR LE NEZ ?"
+ ],
+ "couleur": [
+  214,
+  92,
+  70
+ ],
+ "puces2": [
+  [
+   "NEZ HUMIDE",
+   "humide"
+  ],
+  [
+   "10 À 15 MIN",
+   "dix"
+  ]
+ ],
+ "puces3": [
+  [
+   "SE DÉCOLLE DOUCEMENT",
+   "décolles"
+  ],
+  [
+   "RETIRE DES IMPURETÉS",
+   "retire"
+  ]
+ ],
+ "prix": [
+  "DÈS",
+  "5,99 €"
+ ]
+}
