@@ -667,7 +667,9 @@ def img_chunk(T, ci, actif=None):
     f = font(BOLD, 58)
     mots = [("Idrea" if T["mots"][j]["w"].startswith("Idréa") else T["mots"][j]["w"])
             + (T["mots"][j]["p"] if T["mots"][j]["p"] in "?!," else "") for j in idx]
-    mots[0] = mots[0][0].upper() + mots[0][1:]
+    prec = T["mots"][idx[0] - 1] if idx[0] > 0 else None
+    if prec is None or prec["scene"] != T["mots"][idx[0]]["scene"] or prec["p"] in (".", "?", "!"):
+        mots[0] = mots[0][0].upper() + mots[0][1:]  # majuscule seulement en début de phrase
     esp = f.getlength(" ")
     lignes, cur = [], ""
     for m in mots:
@@ -677,7 +679,7 @@ def img_chunk(T, ci, actif=None):
         else:
             cur = essai
     lignes.append(cur)
-    if len(lignes) == 1 and f.getlength(lignes[0]) > CAP_MAXW * 0.75 and len(mots) > 3:
+    if len(lignes) > 1 or (f.getlength(lignes[0]) > CAP_MAXW * 0.75 and len(mots) > 3):
         # équilibre sur deux lignes, plus lisible
         best = min(range(1, len(mots)), key=lambda k: abs(f.getlength(" ".join(mots[:k])) - f.getlength(" ".join(mots[k:]))))
         lignes = [" ".join(mots[:best]), " ".join(mots[best:])]
