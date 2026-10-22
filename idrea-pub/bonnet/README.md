@@ -11,10 +11,13 @@ Même style que la pub derma roller / huile de ricin (voir `../README.md`), en v
 
 ## L'accroche (0 à 2 s)
 
-- **Image 0** : le titre « CHEVEUX EN PAGAILLE AU RÉVEIL ? » est déjà à l'écran, sans fondu, sur un oreiller couvert de mèches en vrac.
-- **0 à 0,35 s** : zoom « coup de poing » avec tremblement de caméra et impact sonore. La musique démarre directement avec la batterie, sans intro.
-- **≈ 1 s** : second zoom pour relancer l'attention, « PAGAILLE » vibre.
+- **Image 0** : le titre « CHEVEUX EN PAGAILLE AU RÉVEIL ? » est déjà à l'écran, sans fondu, sur un oreiller couvert de mèches en vrac. Un impact sonore marque le départ, et la musique démarre directement avec la batterie.
+- **0 à 0,5 s** : zoom d'entrée doux, puis lente poussée continue. Il n'y a plus de tremblement de caméra ni de saut de zoom, qui donnaient l'impression d'un bug.
 - **≈ 2 s** : la question bascule sur la cause, avec la puce « LA FAUTE À TON OREILLER ? » et une flèche.
+
+## Le produit
+
+Le bonnet affiché est la vraie photo du produit (`assets/bonnet_photo.jpg`), détourée automatiquement (`assets/bonnet_detoure.png`), avec un reflet de lumière qui balaie le satin. Pour changer de photo, remplacez `bonnet_photo.jpg` (produit sur fond blanc), supprimez `bonnet_detoure.png` et relancez le rendu.
 
 ## Script
 
@@ -37,5 +40,3 @@ python3 bonnet.py                          # vidéo -> build/idrea_bonnet_satin.
 ```
 
 Pour de vrais plans (ce qui rend le résultat le plus « réel ») : déposez `s1.mp4` (réveil, cheveux en bataille sur l'oreiller), `s2.mp4` (gros plan sur une taie en coton), `s3.mp4` (le vrai bonnet IDREA, packshot), `s4a/s4b/s4c.mp4` (le soir / la nuit / le matin) et `s5.mp4` dans `clips/`. Les textes et les sous-titres restent par-dessus.
-
-L'étiquette « IDREA » sur le bonnet est une maquette. Si le vrai produit est différent, utilisez un plan réel `s3.mp4`.

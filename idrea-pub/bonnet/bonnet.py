@@ -31,59 +31,41 @@ R = Ressources()
 # --------------------------------------------------------------------------- sprites
 
 
-def bonnet_sprite(lum):
-    """Bonnet en satin champagne, éclairage animé par `lum` (angle de la lumière, radians)."""
-    S = 2
-    w, h = 540 * S, 470 * S
-    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
-    cx, cy = w / 2, 330 * S
-    a, b = 238 * S, 300 * S
-    # dôme (demi-ellipsoïde) avec plis qui rayonnent depuis le sommet
-    nx = (xx - cx) / a
-    ny = (yy - cy) / b
-    r2 = nx ** 2 + ny ** 2
-    dome = (r2 < 1) & (yy < cy + 4 * S)
-    phi = np.arctan2(xx - cx, cy - yy + 1)
-    pli = np.sin(phi * 7 + np.sin(phi * 3) * 1.5) * 0.08 * np.clip(1 - (cy - yy) / b, 0, 1) ** 0.5
-    nz = np.sqrt(np.clip(1 - r2, 0, 1))
-    nxx = nx + pli
-    L = np.array([math.cos(lum) * 0.65, -0.55, 0.55])
-    L /= np.linalg.norm(L)
-    Hv = L + np.array([0, 0, 1.0])
-    Hv /= np.linalg.norm(Hv)
-    norm = np.sqrt(nxx ** 2 + ny ** 2 + nz ** 2) + 1e-6
-    ndl = np.clip((nxx * L[0] + ny * L[1] + nz * L[2]) / norm, 0, 1)
-    ndh = np.clip((nxx * Hv[0] + ny * Hv[1] + nz * Hv[2]) / norm, 0, 1)
-    base = np.array([214, 168, 142], np.float32)
-    sombre = np.array([110, 72, 58], np.float32)
-    col = sombre + (base - sombre) * ndl[..., None] ** 0.8
-    col += (ndh ** 60)[..., None] * 255 * 0.45 + (ndh ** 10)[..., None] * 45
-    # bandeau froncé
-    bx0, bx1, by0, by1 = cx - 252 * S, cx + 252 * S, cy - 8 * S, cy + 120 * S
-    bande = (xx > bx0) & (xx < bx1) & (yy > by0) & (yy < by1 + 2.5 * S * np.sin(xx * 0.05))
-    u = (xx - cx) / (252 * S)
-    fronce = 0.72 + 0.28 * np.sin(xx * 0.11 / S * 2.2) ** 2
-    vb = (yy - by0) / (by1 - by0)
-    cyl = np.clip(np.cos(u * 1.3), 0, 1) ** 0.7
-    reflet = np.exp(-((vb - (0.35 + 0.15 * math.sin(lum))) / 0.12) ** 2) * np.exp(-((u - math.cos(lum) * 0.5) / 0.5) ** 2)
-    colb = sombre + (base - sombre) * (cyl * fronce)[..., None]
-    colb += reflet[..., None] * 200
-    colb *= (0.8 + 0.2 * np.sin(np.clip(vb, 0, 1) * math.pi))[..., None]
-    out = np.zeros((h, w, 4), np.float32)
-    out[dome, :3] = col[dome]
-    out[dome, 3] = 255
-    out[bande, :3] = colb[bande]
-    out[bande, 3] = 255
-    im = Image.fromarray(np.clip(out, 0, 255).astype(np.uint8), "RGBA")
-    # couture + étiquette
-    d = ImageDraw.Draw(im)
-    d.line([(bx0 + 10 * S, by0 + 4 * S), (bx1 - 10 * S, by0 + 4 * S)], fill=(120, 80, 64, 140), width=2 * S)
-    tag = Image.new("RGBA", (96 * S, 34 * S), (24, 22, 20, 255))
-    t = texte("IDREA", font(SERIF, 22 * S, 600), OR + (255,), track=3 * S)
-    tag.alpha_composite(t, ((tag.width - t.width) // 2, (tag.height - t.height) // 2))
-    im.alpha_composite(tag, (int(cx + 120 * S), int(by0 + 40 * S)))
-    im = im.filter(ImageFilter.GaussianBlur(0.8))
-    return im.resize((w // S, h // S), Image.LANCZOS)
+def bonnet_photo(n=24, largeur=600):
+    """Vrai bonnet IDREA (photo détourée, assets/) + reflet de lumière qui balaie le satin."""
+    src = os.path.join(ICI, "assets", "bonnet_detoure.png")
+    if not os.path.exists(src):
+        detourer()
+    im = Image.open(src).convert("RGBA")
+    im = im.resize((largeur, int(im.height * largeur / im.width)), Image.LANCZOS)
+    arr = np.asarray(im).astype(np.float32)
+    hh, ww = arr.shape[:2]
+    yy, xx = np.mgrid[0:hh, 0:ww]
+    u = (xx * 0.8 + yy * 0.6) / (ww * 0.8 + hh * 0.6)
+    lum = arr[..., :3].mean(-1, keepdims=True) / 255
+    out = []
+    for i in range(n):
+        pos = -0.3 + 1.6 * i / n
+        band = np.exp(-((u - pos) / 0.07) ** 2)[..., None] * (0.25 + 0.9 * lum)
+        a = arr.copy()
+        a[..., :3] += (255 - a[..., :3]) * band * 0.35
+        out.append(Image.fromarray(np.clip(a, 0, 255).astype(np.uint8), "RGBA"))
+    return out
+
+
+def detourer():
+    """Détoure assets/bonnet_photo.jpg (produit sombre sur fond blanc) -> assets/bonnet_detoure.png."""
+    im = Image.open(os.path.join(ICI, "assets", "bonnet_photo.jpg")).convert("RGB")
+    lum = np.asarray(im).astype(np.float32).mean(-1)
+    mm = Image.fromarray(((lum > 150) * 255).astype(np.uint8), "L").copy()  # copie : image modifiable
+    for xy in [(0, 0), (mm.width - 1, 0), (0, mm.height - 1), (mm.width - 1, mm.height - 1)]:
+        if mm.getpixel(xy) == 255:
+            ImageDraw.floodfill(mm, xy, 128)
+    al = Image.fromarray(np.where(np.asarray(mm) == 128, 0, 255).astype(np.uint8), "L")
+    al = al.filter(ImageFilter.MinFilter(5)).filter(ImageFilter.GaussianBlur(1.6))
+    out = im.convert("RGBA")
+    out.putalpha(al)
+    out.crop(al.getbbox()).save(os.path.join(ICI, "assets", "bonnet_detoure.png"))
 
 
 def oreiller_sprite():
@@ -133,8 +115,8 @@ def dessiner_meches(base, ox, oy, s, t, agite=1.0, lisse=False):
             continue
         pl = []
         for j, (x, y) in enumerate(pts):
-            jx = agite * 3.0 * math.sin(t * 9 + ph + j * 0.7)
-            jy = agite * 3.0 * math.cos(t * 8 + ph + j * 0.5)
+            jx = agite * 2.0 * math.sin(t * 1.5 + ph + j * 0.3)
+            jy = agite * 2.0 * math.cos(t * 1.3 + ph + j * 0.2)
             pl.append((ox + (x + jx) * s, oy + (y + jy) * s))
         d.line(pl, fill=cols[k], width=max(2, int(4 * s)), joint="curve")
     base.alpha_composite(lay)
@@ -144,7 +126,7 @@ def dessiner_meches(base, ox, oy, s, t, agite=1.0, lisse=False):
 
 
 def construire():
-    R.bonnets = [bonnet_sprite(-0.9 + 1.8 * (0.5 - 0.5 * math.cos(i / 24 * 2 * math.pi))) for i in range(24)]
+    R.bonnets = bonnet_photo()
     R.oreiller = oreiller_sprite()
     R.meches = meches()
     rng = np.random.default_rng(9)
@@ -220,8 +202,8 @@ def puce_x(txt, taille, icone="cross"):
 
 
 def bonnet(lt, vitesse=0.5):
-    k = int((lt * vitesse * 24) % 24)
-    return R.bonnets[k]
+    k = int((lt * vitesse * 24) % 36)
+    return R.bonnets[min(k, len(R.bonnets) - 1)]
 
 
 def bokeh(base, lt, vx=14, a=1.0):
@@ -251,7 +233,7 @@ def lit(lt, meches_ok=True, agite=1.0, bg=None, avec_bonnet=False, s=1.0):
     if meches_ok:
         dessiner_meches(plate, ox, oy, s, lt, agite)
     if avec_bonnet:
-        poser(plate, bonnet(lt, 0.3), W / 2 + 40, oy + 290 * s, 0.82 * s, -14)
+        poser(plate, bonnet(lt, 0.3), W / 2 + 30, oy + 290 * s, 0.85 * s, -8)
     return plate
 
 
@@ -263,15 +245,11 @@ def scene1(T, t):
     lt = t - T["starts"][0]
     plate = M.clip("s1", lt)
     if plate is None:
-        plate = lit(lt, agite=1.0 + 1.5 * (1 - prog(lt, 0, 0.6)))
+        plate = lit(lt, agite=0.0)
     tp = mot_t(T, 0, "problème")
     # zoom d'entrée brutal + second « cut » de zoom à ~1 s pour relancer l'attention
-    z = 1.32 - 0.22 * e_out(prog(lt, 0, 0.35))
-    if lt > 1.0:
-        z = 1.22 - 0.1 * e_out(prog(lt, 1.0, 1.3))
-    z += 0.05 * prog(lt, 1.3, 5)
-    sx = 14 * math.sin(lt * 60) * (1 - prog(lt, 0, 0.3))
-    plate = camera(plate, z, W / 2 + sx, 900)
+    z = 1.18 - 0.08 * e_out(prog(lt, 0, 0.5)) + 0.08 * e_io(prog(lt, 0.5, 4.8))
+    plate = camera(plate, z, W / 2, 900)
     up = e_io(prog(t, tp - 0.1, tp + 0.3))
     sc = 1 - 0.32 * up
     cy0 = 560 - 290 * up
@@ -281,8 +259,7 @@ def scene1(T, t):
         s = sc * punch
         dx = 0
         if i == 1:
-            s *= 1 + 0.06 * math.sin(lt * 18) * (1 - prog(lt, 0.4, 1.6))  # « PAGAILLE » qui vibre
-            dx = 6 * math.sin(lt * 47) * (1 - prog(lt, 0.3, 1.2))
+            s *= 1 + 0.05 * math.sin(lt * 5) * (1 - prog(lt, 1.0, 2.2))  # « PAGAILLE » qui respire
         poser(plate, im, W / 2 + dx, ys[i], s)
     to = mot_t(T, 0, "ton")
     po = prog(t, tp + 0.1, tp + 0.45)
@@ -299,7 +276,7 @@ def scene2(T, t):
     lt = t - s0
     plate = M.clip("s2", lt)
     if plate is None:
-        plate = lit(lt + 5, agite=0.6)
+        plate = lit(lt + 5, agite=0.0)
         plate = camera(plate, 1.7 + 0.08 * lt / 6, W / 2 - 40, 1020)
         # flèches de frottement qui vont et viennent
         o = Image.new("RGBA", (W, H), (0, 0, 0, 0))
@@ -334,8 +311,8 @@ def scene3(T, t):
                 plate.alpha_composite(halo(W, H, W / 2, 900, 520 * (1.2 - fl * 0.4), 520 * (1.2 - fl * 0.4), (255, 244, 230), int(230 * fl)))
             bob = 10 * math.sin(lt * 1.5)
             poser(plate, R.ombre, W / 2, 1230, 1.1 + 0.05 * math.sin(lt * 1.5), 0, 0.8 * pb)
-            poser(plate, bonnet(lt, 0.45), W / 2, 930 + bob + 120 * (1 - e_out(pb)), 1.05 * (0.7 + 0.3 * e_back(pb)),
-                  -4 + 3 * math.sin(lt * 0.8), cl(pb * 2))
+            poser(plate, bonnet(lt, 0.45), W / 2, 900 + bob + 120 * (1 - e_out(pb)), 1.15 * (0.7 + 0.3 * e_back(pb)),
+                  2 * math.sin(lt * 0.8), cl(pb * 2))
         plate = camera(plate, 1.0 + 0.05 * e_io(prog(lt, 0, 6)), W / 2, 950)
     titre(plate, t, s0 + 0.05, "LA SOLUTION", None)
     pn = prog(t, tb - 0.05, tb + 0.35)
@@ -441,8 +418,8 @@ def scene5(T, t):
             poser(plate, im, [W / 2 - 300, W / 2, W / 2 + 300][i], LY + 210 + 20 * (1 - e_out(p)), 1, 0, e_out(p))
     pb = e_out(prog(lt, 1.2, 1.9))
     if pb > 0:
-        plate.alpha_composite(fondu(halo(W, H, W / 2, 1110, 330, 200, (255, 210, 160), 60), pb))
-        poser(plate, bonnet(lt, 0.4), W / 2, 1110 + 60 * (1 - pb) + 6 * math.sin(lt * 1.6), 0.56 * zoom, -3, pb)
+        plate.alpha_composite(fondu(halo(W, H, W / 2, 1100, 360, 230, (255, 214, 170), 140), pb))
+        poser(plate, bonnet(lt, 0.4), W / 2, 1110 + 60 * (1 - pb) + 6 * math.sin(lt * 1.6), 0.5 * zoom, 0, pb)
     tc = max(2.6, fin + 0.05)
     p = prog(lt, tc, tc + 0.35)
     if p > 0:
