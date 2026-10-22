@@ -87,5 +87,6 @@
  "avant_apres": {
   "image": "assets/avant_apres.jpg",
   "mot": "retire"
- }
+ },
+ "photo": "assets/produit.png"
 }

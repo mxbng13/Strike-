@@ -1,6 +1,6 @@
 # IDREA — 5 publicités TikTok produits
 
-Même style que la pub bonnet en satin : 1080 × 1920, 30 i/s, environ 30 s, voix Rémy, sous-titres en bas, accroche visible dès la première image, produits modélisés en 3D, fin avec le logo IDREA.
+Même style que la pub bonnet en satin : 1080 × 1920, 30 i/s, environ 30 s, voix Rémy, sous-titres en bas, accroche visible dès la première image, vraies photos des produits du site, fin avec le logo IDREA.
 
 | Dossier | Produit (boutique idrea.fr) | Durée | Vidéo |
 |---|---|---|---|
@@ -16,7 +16,7 @@ Chaque dossier `livrables/` contient aussi les sous-titres `.srt`, la voix off (
 
 1. **Accroche** (dès l'image 0) : la question sur le problème, en gros, sur une salle de bain en 3D, avec un impact sonore et la musique qui démarre directement.
 2. **Le problème** : le titre et des puces rouges qui apparaissent sur les mots de la voix off.
-3. **La solution** : le produit en 3D qui tourne (ou se balance s'il est plat), sur un fond studio coloré avec un reflet au sol, et ses points forts.
+3. **La solution** : la vraie photo du produit, sur un fond studio coloré avec un reflet au sol, et ses points forts.
 4. **La routine** : le produit posé sur le comptoir en marbre (3 cadrages), avec une checklist qui reprend le mode d'emploi de la fiche produit.
 5. **IDREA** : logo, slogan, le produit, le bouton et « Lien en bio ».
 
@@ -28,9 +28,23 @@ La pub des patchs montre une carte AVANT / APRÈS (`patchs/assets/avant_apres.jp
 
 Les scripts (`*/config.json`) reprennent les fiches produits de la boutique, sans aller plus loin : pas de promesse anti-rides ou liftante pour le gua sha, « retire une partie des impuretés » pour les patchs, fréquences et précautions de la fiche (1 à 2 fois par semaine, 1 à 2 min par zone, « sans forcer »…).
 
-## Les produits en 3D
+## Les produits : les vraies photos du site
 
-Ils sont modélisés dans `../3d/produits3d.js` d'après les photos de la boutique (`refs/`) : moule à glace cannelé et dôme de glace, rouleau et gua sha en jade avec monture dorée, coupe-poils gris métal avec écran « 99 % », gratte-langue inox et étui vert, patchs en feutre noir. Les coloris choisis sont ceux des photos (vert, noir). Pour un autre coloris, changez la couleur dans `produits3d.js`.
+Chaque pub montre la vraie photo du produit telle qu'elle est sur idrea.fr (`*/assets/photo_site.jpg`), détourée sans contour ni halo blanc (`*/assets/produit.png`, script `detourage.py`) :
+
+- le fond et l'ombre portée sont retirés par remplissage depuis les bords, puis les bords sont « décontaminés » du blanc du fond ;
+- coupe-poils : seul l'appareil est gardé, sans la brosse ni le câble ;
+- gua sha : détourage par couleur (pierre noire + monture dorée), pour retirer aussi les reflets gris de la photo.
+
+Dans la pub, un reflet de lumière balaie le produit. Il flotte au-dessus du sol du studio dans la scène « La solution », puis il est posé sur le comptoir en marbre avec une ombre de contact dans la routine.
+
+```bash
+python3 detourage.py glace/assets/photo_site.jpg glace/assets/produit.png               # cas général
+python3 detourage.py tondeuse/assets/photo_site.jpg tondeuse/assets/produit.png 34 0.15,0.05,0.5,0.97
+python3 detourage.py guasha/assets/photo_site.jpg guasha/assets/produit.png 40 - 5 --sombre
+```
+
+Les modèles 3D (`../3d/produits3d.js`) restent disponibles : retirez la clé `photo` d'un `config.json` pour revenir à la version 3D.
 
 ## Régénérer
 

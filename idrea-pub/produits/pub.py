@@ -127,10 +127,48 @@ def titre_img(s, taille=100):
     return avec_ombre(im, 14, 10, 0.55)
 
 
+def photo_produit(chemin, n=24, cote=640):
+    """Vraie photo du produit (détourée) + reflet de lumière qui la balaie : n vues pour l'animation."""
+    im = Image.open(chemin).convert("RGBA")
+    k = cote / max(im.width, im.height)
+    im = im.resize((int(im.width * k), int(im.height * k)), Image.LANCZOS)
+    arr = np.asarray(im).astype(np.float32)
+    hh, ww = arr.shape[:2]
+    yy, xx = np.mgrid[0:hh, 0:ww]
+    u = (xx * 0.8 + yy * 0.6) / (ww * 0.8 + hh * 0.6)
+    vues = []
+    for i in range(n):
+        pos = -0.4 + 2.2 * i / n  # le reflet passe, puis une pause hors champ
+        band = np.exp(-((u - pos) / 0.06) ** 2)[..., None] * 0.28
+        a = arr.copy()
+        a[..., :3] += (255 - a[..., :3]) * band
+        vues.append(Image.fromarray(np.clip(a, 0, 255).astype(np.uint8), "RGBA"))
+    return vues
+
+
+def sur_comptoir(fond, prod, base_y=1270, h_max=720, w_max=820):
+    """Pose la photo du produit sur le comptoir en marbre, avec une ombre de contact."""
+    plate = fond.copy()
+    k = min(h_max / prod.height, w_max / prod.width)
+    p = prod.resize((int(prod.width * k), int(prod.height * k)), Image.LANCZOS)
+    sh = Image.new("L", (p.width + 200, 140), 0)
+    ImageDraw.Draw(sh).ellipse((100, 40, p.width + 100, 100), fill=150)
+    sh = sh.filter(ImageFilter.GaussianBlur(24))
+    ombre_img = Image.new("RGBA", sh.size, (40, 30, 24, 0))
+    ombre_img.putalpha(sh)
+    coller(plate, ombre_img, W / 2 - sh.width / 2, base_y - 80)
+    coller(plate, p, W / 2 - p.width / 2, base_y - p.height)
+    return plate
+
+
 def construire(produit):
-    R.tour = tour_3d(produit)
     R.sdb = plan_3d("sdb")
-    R.comptoir = plan_3d(f"sdb_{produit}")
+    if C.get("photo"):  # vraie photo du site
+        R.tour = photo_produit(os.path.join(ICI, produit, C["photo"]))
+        R.comptoir = sur_comptoir(R.sdb, R.tour[-1])
+    else:  # modèle 3D
+        R.tour = tour_3d(produit)
+        R.comptoir = plan_3d(f"sdb_{produit}")
     rng = np.random.default_rng(9)
     yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
     f0, f1 = [tuple(c) for c in C["fond"]]
@@ -165,6 +203,8 @@ def construire(produit):
 
 
 def vue(lt, vitesse=1.0):
+    if C.get("photo"):  # photo : le reflet balaie le produit toutes les 2 s
+        return R.tour[int(lt * 12) % len(R.tour)]
     if C.get("fixe"):  # produit présenté de face, sans rotation
         return R.tour[0]
     if C.get("oscillation"):  # produit plat : balancement de ±40° pour toujours le montrer de face
