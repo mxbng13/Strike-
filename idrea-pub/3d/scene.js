@@ -290,9 +290,9 @@ window.preparer = (mode, o) => {
   scene.environment = envMap;
   if (mode === 'bonnet') {
     // tour complet du bonnet (fond transparent)
-    const b = bonnet(); const pivot = new THREE.Group();
-    b.position.y = -0.75; pivot.add(b); pivot.rotation.x = -0.72; pivot.rotation.z = 0.2;
-    const tour = new THREE.Group(); tour.add(pivot); scene.add(tour);
+    // le bonnet tourne sur son propre axe : l'angle de vue (ouverture visible) reste celui de la photo produit
+    const b = bonnet(); const tour = new THREE.Group(); b.position.y = -0.75; tour.add(b);
+    const pivot = new THREE.Group(); pivot.add(tour); pivot.rotation.x = -0.72; pivot.rotation.z = 0.2; scene.add(pivot);
     lumieres(scene, 'studio');
     const cam = new THREE.PerspectiveCamera(26, 1, 0.1, 100); cam.position.set(0, 0.9, 7.4); cam.lookAt(0, 0.05, 0);
     const n = o.n || 72, taille = o.taille || 1200;
@@ -306,8 +306,9 @@ window.preparer = (mode, o) => {
     lumieres(scene, o.lumiere || 'jour');
     if (o.cheveux) scene.add(cheveux('epars'));
     if (o.bonnet) {
-      const b = bonnet(); b.scale.setScalar(0.62); b.rotation.set(0.25, 0.6, -0.15);
-      b.position.set(0.15, hauteurOreiller(0.15, 0) - 0.02, -0.05); scene.add(b);
+      // posé sur l'oreiller, légèrement incliné vers la caméra
+      const b = bonnet(); b.scale.setScalar(0.52); b.rotation.set(-0.22, 0.5, 0.05);
+      b.position.set(0.1, hauteurOreiller(0.1, 0.15) - 0.04, 0.15); scene.add(b);
     }
     const cam = new THREE.PerspectiveCamera(30, 9 / 16, 0.1, 100);
     cam.position.set(0, 9.2, 4.2); cam.lookAt(0, 0, 0.35);
