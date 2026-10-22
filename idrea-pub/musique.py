@@ -1,6 +1,6 @@
 """Musique de fond originale (synthèse numpy, donc libre de droits) + effets sonores.
 
-Usage : python3 musique.py DUREE_S  ->  build/musique.wav, build/sfx.wav
+Usage : python3 musique.py DUREE_S [DOSSIER] [--direct]  ->  DOSSIER/musique.wav, DOSSIER/sfx.wav
 Les instants des effets (whoosh, pop, impact) sont lus dans build/timeline.json
 (écrit par rendu.py) pour rester synchronisés avec l'image.
 """
@@ -9,6 +9,7 @@ import numpy as np
 import wave
 
 SR = 44100
+DIRECT = False
 BPM = 96
 HERE = os.path.dirname(os.path.abspath(__file__))
 BUILD = os.path.join(HERE, "build")
@@ -96,7 +97,7 @@ def musique(duree):
         for k, off in enumerate((0, 1.5, 2.5)):
             ajouter(buf, note(mtof(ch[(k + b) % 4] + 12), 1.2, "keys"), t0 + off * beat)
         ajouter(buf, note(mtof(basses[b % 4] - 12), bar, "bass"), t0)
-        intro = b == 0  # première mesure sans batterie : l'accroche respire
+        intro = b == 0 and not DIRECT  # première mesure sans batterie : l'accroche respire
         for q in range(4):
             if not intro:
                 ajouter(buf, pk, t0 + q * beat)
@@ -153,6 +154,9 @@ def sfx(duree, tl):
 
 if __name__ == "__main__":
     duree = float(sys.argv[1])
+    if len(sys.argv) > 2:
+        BUILD = sys.argv[2]
+    DIRECT = "--direct" in sys.argv  # batterie dès la première seconde (accroche plus nerveuse)
     os.makedirs(BUILD, exist_ok=True)
     tl = {}
     p = os.path.join(BUILD, "timeline.json")

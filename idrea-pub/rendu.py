@@ -103,6 +103,7 @@ def poser(base, spr, cx, cy, s=1.0, ang=0.0, a=1.0):
 
 
 def camera(img, z=1.0, cx=W / 2, cy=H / 2):
+    z = max(1.0, z)
     if abs(z - 1) < 1e-3:
         return img
     w, h = W / z, H / z
@@ -577,8 +578,8 @@ def clip(nom, lt):
 # --------------------------------------------------------------------------- timeline
 
 
-def charger_timeline():
-    vo = json.load(open(os.path.join(BUILD, "vo.json")))
+def charger_timeline(build=BUILD, fin_hold=2.4):
+    vo = json.load(open(os.path.join(build, "vo.json")))
     GAP = 0.3
     T = {"starts": [], "mots": [], "vo": []}
     t = 0.0
@@ -600,7 +601,7 @@ def charger_timeline():
         T.setdefault("fin_parole", []).append(t + fin)
         t += fin + (GAP if i < len(vo) - 1 else 0)
     T["S5_fin_parole"] = t
-    T["duree"] = t + 2.4
+    T["duree"] = t + fin_hold
     # découpage des sous-titres : par proposition, puis pièces équilibrées de 42 caractères max
     MAXC = 42
     segs, cur = [], []
@@ -1115,7 +1116,7 @@ def evenements_son(T):
             "pop": pops, "riser": [s5 + 1.75], "impact": [s5 + 2.2]}
 
 
-def ecrire_srt(T):
+def ecrire_srt(T, build=BUILD, nom="idrea_sous-titres.srt"):
     def ts(x):
         ms = int(round(x * 1000))
         return f"{ms // 3600000:02}:{ms // 60000 % 60:02}:{ms // 1000 % 60:02},{ms % 1000:03}"
@@ -1127,44 +1128,39 @@ def ecrire_srt(T):
             t1 = min(t1, T["mots"][T["chunks"][n + 1][0]]["t"])
         txt = " ".join(("Idrea" if T["mots"][j]["w"].startswith("Idréa") else T["mots"][j]["w"]) + T["mots"][j]["p"] for j in idx)
         out.append(f"{n + 1}\n{ts(t0)} --> {ts(t1)}\n{txt}\n")
-    open(os.path.join(BUILD, "idrea_sous-titres.srt"), "w").write("\n".join(out))
+    open(os.path.join(build, nom), "w").write("\n".join(out))
 
 
 def travail(args):
-    T, k0, k1, path = args
+    T, k0, k1, path, image_fn = args
     enc = subprocess.Popen(["ffmpeg", "-y", "-v", "error", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}",
                             "-r", str(FPS), "-i", "-", "-c:v", "libx264", "-preset", "medium", "-crf", "17",
                             "-pix_fmt", "yuv420p", path], stdin=subprocess.PIPE)
     for k in range(k0, k1):
-        enc.stdin.write(image(T, k / FPS).tobytes())
+        enc.stdin.write(image_fn(T, k / FPS).tobytes())
     enc.stdin.close()
     enc.wait()
     return path
 
 
-def main():
-    T = charger_timeline()
-    construire()
-    if "--apercu" in sys.argv:
-        for a in sys.argv[sys.argv.index("--apercu") + 1:]:
-            Image.fromarray(image(T, float(a))).save(os.path.join(BUILD, f"apercu_{a}.png"))
-        return
-    ecrire_srt(T)
-    json.dump({"duree": T["duree"], "starts": T["starts"], "sfx": evenements_son(T)},
-              open(os.path.join(BUILD, "timeline.json"), "w"), indent=1)
-    subprocess.check_call([sys.executable, os.path.join(HERE, "musique.py"), f"{T['duree']:.3f}"])
+def produire(T, image_fn, build, sfx, nom="idrea_pub_tiktok.mp4", srt="idrea_sous-titres.srt", musique_args=()):
+    """Sous-titres SRT, musique + effets, rendu parallèle des images, mixage final."""
+    ecrire_srt(T, build, srt)
+    json.dump({"duree": T["duree"], "starts": T["starts"], "sfx": sfx},
+              open(os.path.join(build, "timeline.json"), "w"), indent=1)
+    subprocess.check_call([sys.executable, os.path.join(HERE, "musique.py"), f"{T['duree']:.3f}", build, *musique_args])
     n = int(math.ceil(T["duree"] * FPS))
     nw = max(1, min(8, os.cpu_count() or 2))
     bornes = [n * i // nw for i in range(nw + 1)]
-    jobs = [(T, bornes[i], bornes[i + 1], os.path.join(BUILD, f"part_{i}.mp4")) for i in range(nw)]
+    jobs = [(T, bornes[i], bornes[i + 1], os.path.join(build, f"part_{i}.mp4"), image_fn) for i in range(nw)]
     with mp.get_context("fork").Pool(nw) as pool:
         parts = pool.map(travail, jobs)
-    lst = os.path.join(BUILD, "parts.txt")
+    lst = os.path.join(build, "parts.txt")
     open(lst, "w").write("".join(f"file '{p}'\n" for p in parts))
-    video = os.path.join(BUILD, "video_muette.mp4")
+    video = os.path.join(build, "video_muette.mp4")
     subprocess.check_call(["ffmpeg", "-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", lst, "-c", "copy", video])
     # mixage : voix + musique (ducking) + effets, normalisé à -14 LUFS (recommandation TikTok)
-    cmd = ["ffmpeg", "-y", "-v", "error", "-i", video, "-i", os.path.join(BUILD, "musique.wav"), "-i", os.path.join(BUILD, "sfx.wav")]
+    cmd = ["ffmpeg", "-y", "-v", "error", "-i", video, "-i", os.path.join(build, "musique.wav"), "-i", os.path.join(build, "sfx.wav")]
     filt = []
     for i, (f, t0) in enumerate(T["vo"]):
         cmd += ["-i", f]
@@ -1182,7 +1178,7 @@ def main():
     filt.append("[mu][vosc]sidechaincompress=threshold=0.02:ratio=8:attack=15:release=350[mud]")
     filt.append("[2:a]volume=0.8[fx]")
     filt.append(f"[voa][mud][fx]amix=inputs=3:normalize=0,atrim=0:{T['duree']:.3f},loudnorm=I=-14:TP=-1.5:LRA=11[a]")
-    out = os.path.join(BUILD, "idrea_pub_tiktok.mp4")
+    out = os.path.join(build, nom)
     cmd += ["-filter_complex", ";".join(filt), "-map", "0:v", "-map", "[a]", "-c:v", "libx264", "-preset", "slow", "-crf", "20",
             "-maxrate", "12M", "-bufsize", "24M", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k",
             "-ar", "44100", "-movflags", "+faststart", "-shortest", out]
@@ -1190,6 +1186,17 @@ def main():
     for p in parts:
         os.remove(p)
     print(f"OK -> {out} ({T['duree']:.1f} s)")
+    return out
+
+
+def main():
+    T = charger_timeline()
+    construire()
+    if "--apercu" in sys.argv:
+        for a in sys.argv[sys.argv.index("--apercu") + 1:]:
+            Image.fromarray(image(T, float(a))).save(os.path.join(BUILD, f"apercu_{a}.png"))
+        return
+    produire(T, image, BUILD, evenements_son(T))
 
 
 if __name__ == "__main__":

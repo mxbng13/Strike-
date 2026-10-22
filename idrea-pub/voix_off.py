@@ -1,8 +1,9 @@
 """Génère la voix off (fr-FR-RemyMultilingualNeural) + le minutage mot à mot de chaque réplique.
 
-Usage : python3 voix_off.py   ->  build/vo_N.mp3 et build/vo.json
+Usage : python3 voix_off.py [script.json DOSSIER]  ->  DOSSIER/vo_N.mp3 et DOSSIER/vo.json
+(script.json : {"lignes": [...]} ; par défaut, le texte de la pub derma roller / huile de ricin)
 """
-import asyncio, json, os, subprocess
+import asyncio, json, os, subprocess, sys
 
 try:  # derrière un proxy TLS (environnement cloud), utiliser le bundle CA local s'il existe
     import certifi
@@ -43,6 +44,10 @@ async def une_ligne(i, texte):
 
 
 async def main():
+    global BUILD, LIGNES
+    if len(sys.argv) > 2:
+        LIGNES = json.load(open(sys.argv[1]))["lignes"]
+        BUILD = os.path.abspath(sys.argv[2])
     os.makedirs(BUILD, exist_ok=True)
     res = [await une_ligne(i, t) for i, t in enumerate(LIGNES)]
     with open(os.path.join(BUILD, "vo.json"), "w") as f:
