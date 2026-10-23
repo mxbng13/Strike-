@@ -20,28 +20,25 @@
       <span class="brand-mark">V</span><span class="brand-name">Vernissage <i>Noir</i></span>
     </button>
     <div class="stats">
-      <div class="stat"><span class="lbl">Trésor</span><b id="h-money" class="num">—</b><small id="h-income" class="num"></small></div>
+      <div class="stat"><span class="lbl">Argent</span><b id="h-money" class="num">—</b><small id="h-income" class="num"></small></div>
       <button class="stat rank" data-open="rivals"><span class="lbl">Rang</span><b id="h-rank" class="num">—</b></button>
     </div>
-    <button class="icon-btn" id="menu-btn" aria-label="Succès">★</button>
-  </header>
+      </header>
 
   <div id="maptools">
     <button class="icon-btn" data-zoom="in" aria-label="Zoomer">+</button>
     <button class="icon-btn" data-zoom="out" aria-label="Dézoomer">−</button>
     <button class="icon-btn" data-zoom="home" aria-label="Mon musée">◎</button>
   </div>
-  <div id="place-hint" hidden><b>Où bâtir votre musée ?</b><span>Touchez la terre ferme. Zoomez pour choisir votre ville.</span></div>
+  <button id="quest" hidden></button>
 
   <section id="sheet" hidden aria-live="polite"></section>
 
   <nav id="nav">
     <button data-open="museum"><svg viewBox="0 0 24 24"><path d="M3 9 12 4l9 5v1H3zM5 11h2v7H5zm4 0h2v7H9zm4 0h2v7h-2zm4 0h2v7h-2zM3 19h18v2H3z"/></svg><span>Musée</span></button>
-    <button data-open="catalog"><svg viewBox="0 0 24 24"><path d="M4 4h7v7H4zm9 0h7v7h-7zM4 13h7v7H4zm9 0h7v7h-7z" fill-opacity=".9"/></svg><span>Catalogue</span></button>
-    <button data-open="market"><svg viewBox="0 0 24 24"><path d="M4 7h16l-1.5 12a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2zm4 0a4 4 0 0 1 8 0h-2a2 2 0 0 0-4 0z"/></svg><span>Marché</span></button>
-    <button data-open="auctions"><svg viewBox="0 0 24 24"><path d="m14.5 3 6.5 6.5-2 2-1.2-1.2-3.6 3.6 1.2 1.2-2 2L7 10.6l2-2 1.2 1.2 3.6-3.6L12.6 5zM3 19h10v2H3zm3.3-4.7 2.4 2.4L5.4 20 3 17.6z"/></svg><span>Enchères</span></button>
-    <button data-open="atelier"><svg viewBox="0 0 24 24"><path d="M20 3c-2 0-6 3-9 7l3 3c4-3 7-7 7-9a1 1 0 0 0-1-1zM9 12c-2 0-4 1.5-4 4 0 1.5-1 2.5-2 3 3 1 7 0 8-3z"/></svg><span>Atelier</span></button>
-    <button data-open="rivals"><svg viewBox="0 0 24 24"><path d="M12 2 9.5 8.5 3 9l5 4.3L6.5 20 12 16.5 17.5 20 16 13.3 21 9l-6.5-.5z"/></svg><span>Rivaux</span></button>
+    <button data-open="catalog"><svg viewBox="0 0 24 24"><path d="M4 4h7v7H4zm9 0h7v7h-7zM4 13h7v7H4zm9 0h7v7h-7z"/></svg><span>Collection</span></button>
+    <button data-open="shop"><svg viewBox="0 0 24 24"><path d="M3 8 12 3l9 5v11l-9 5-9-5zm9 2.3L5.5 7 12 5.2 18.5 7zM11 12 5 9v9l6 3.3zm2 0v9.3l6-3.3V9z"/></svg><span>Caisses</span></button>
+    <button data-open="rivals"><svg viewBox="0 0 24 24"><path d="m6 3 4.5 4.5L9 9 4.5 4.5V3zm12 0h1.5v1.5L9.6 14.4l1.5 1.5-1.4 1.4-1.5-1.5L5.4 18.6 6.8 20 5.4 21.4 2.6 18.6 4 17.2l2.8-2.8-1.5-1.5 1.4-1.4 1.5 1.5zM14.4 12.7l1.4-1.4 1.5 1.5L19.5 10.6l1.4 1.4-2.8 2.8 1.5 1.5-1.4 1.4-1.5-1.5-1.4 1.4 1.4 1.4-1.4 1.4-2.8-2.8z"/></svg><span>Défis</span></button>
   </nav>
 
   <div id="toasts"></div>

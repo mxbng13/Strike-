@@ -6,11 +6,10 @@ Jeu de collection d'œuvres d'art réelles, dans le navigateur.
   The Metropolitan Museum of Art et The Cleveland Museum of Art (Open Access).
 - **Carte du monde** zoomable (molette, glisser, pincer) : aucun musée n'existe au départ, vous touchez la carte pour bâtir
   le vôtre n'importe où ; 40 collectionneurs rivaux ont fait de même, éparpillés sur tous les continents.
-- **Votre musée** : salles d'exposition (revenus par minute), réserve, protections, nouvelles ailes.
-- **Défis d'exposition** : trois manches, un thème par manche (prestige, ancienneté, rareté, type d'œuvre).
-  Le gagnant emporte une œuvre présentée par le perdant. Les rivaux vous défient aussi.
-- **Rachats**, **galerie**, **hôtel des ventes** en direct, **expéditions** (découvertes aléatoires),
-  **atelier de reproductions**, **classement** et **succès**.
+- **4 menus** : Musée (murs, protections, agrandir), Collection, Caisses (caisses à ouvrir et enchères en direct), Défis.
+- **Guide pas à pas** en haut de l'écran, avec une récompense à chaque étape.
+- **Défis** : 3 manches, un thème par manche, le gagnant garde une œuvre de l'autre. Les rivaux défient aussi.
+- **Copies** de vos œuvres, à accrocher ou à vendre.
 
 ## Lancer
 

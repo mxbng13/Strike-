@@ -4,7 +4,7 @@ import { S, load, save, collectionValue, worksOf, ownerInfo, log } from './state
 import { on, tick, catchUp, toast, setChallengeHandler } from './sim.js';
 import { incomingChallenge } from './duel.js';
 import { initMap, loadLand, mapEvents, flyTo, setPlacing, nearestCity, select, markDirty } from './map.js';
-import { openPanel, closeSheet, refreshPanel, openOwner, showToast, reveal, liveUpdate, goalsReady, setStartPlacing, currentPanel } from './ui.js';
+import { openPanel, closeSheet, refreshPanel, openOwner, showToast, reveal, liveUpdate, updateQuest, setStartPlacing, currentPanel } from './ui.js';
 import { money, dur, esc, $, $$, h } from './util.js';
 
 async function boot() {
@@ -19,7 +19,6 @@ async function boot() {
 
   $$('#nav button').forEach(b => b.onclick = () => currentPanel() === b.dataset.open ? closeSheet() : openPanel(b.dataset.open));
   $$('[data-open]', $('#hud')).forEach(b => b.onclick = () => openPanel(b.dataset.open));
-  $('#menu-btn').onclick = () => openPanel('rivals', null, 'goals');
   $$('[data-zoom]').forEach(b => b.onclick = () => {
     const z = b.dataset.zoom;
     if (z === 'home') return S.me.placed ? flyTo(S.me.lat, S.me.lon, 10) : flyTo(30, 10, 0.1);
@@ -32,20 +31,20 @@ async function boot() {
     openPanel('list', ids);
   };
   mapEvents.onPlace = (lat, lon, onLand) => {
-    if (!onLand) return toast('Il faut construire sur la terre ferme.', 'warn');
+    if (!onLand) return toast('Touche la terre, pas la mer !', 'warn');
     confirmPlace(lat, lon);
   };
 
   const away = catchUp();
   if (S.me.placed) flyTo(S.me.lat, S.me.lon, 3.5, 1400); else startPlacing();
-  if (away?.gained) toast(`Pendant votre absence (${dur(away.away)}), vos visiteurs ont rapporté ${money(away.gained)}.`, 'good');
+  if (away?.gained) toast(`Pendant ton absence (${dur(away.away)}), ton musée a rapporté ${money(away.gained)}.`, 'good');
 
   let last = performance.now();
   setInterval(() => {
     const t = performance.now();
     tick(t - last); last = t;
     hud(); liveUpdate();
-    if (currentPanel() === 'auctions' && ++auctionTick % 3 === 0) refreshPanel();
+    if (currentPanel() === 'shop' && $('.lot') && ++auctionTick % 3 === 0) refreshPanel();
   }, 1000);
   setInterval(save, 5000);
   addEventListener('visibilitychange', () => { if (document.hidden) save(); });
@@ -57,28 +56,26 @@ async function boot() {
 
 function startPlacing() {
   setPlacing(true);
-  $('#place-hint').hidden = false;
 }
 function confirmPlace(lat, lon) {
   const near = nearestCity(lat, lon);
   const m = $('#modal');
   m.hidden = false;
-  m.innerHTML = `<div class="dialog"><p class="eyebrow">Nouvel emplacement</p><h3>Bâtir ici, près de ${esc(near)} ?</h3>
-    <label class="field">Nom du musée<input type="text" id="place-name" maxlength="32" value="${esc(S.me.placed ? S.me.name : 'Musée de ' + near)}"></label>
+  m.innerHTML = `<div class="dialog"><h3>Construire ton musée ici, près de ${esc(near)} ?</h3>
+    <label class="field">Nom de ton musée<input type="text" id="place-name" maxlength="32" value="${esc(S.me.placed ? S.me.name : 'Musée de ' + near)}"></label>
     ${S.pendingMove ? `<p class="muted">Déménagement : ${money(S.pendingMove)}</p>` : ''}
-    <div class="row"><button class="btn primary" data-ok>Construire</button><button class="btn" data-no>Choisir ailleurs</button></div></div>`;
+    <div class="row"><button class="btn primary" data-ok>Construire ici</button><button class="btn" data-no>Ailleurs</button></div></div>`;
   $('[data-no]', m).onclick = () => { m.hidden = true; m.innerHTML = ''; };
   $('[data-ok]', m).onclick = () => {
     if (S.pendingMove) { if (S.money < S.pendingMove) return toast('Pas assez d’argent.', 'bad'); S.money -= S.pendingMove; S.pendingMove = 0; }
     const first = !S.me.placed;
     Object.assign(S.me, { placed: true, lat, lon, near, name: $('#place-name', m).value.trim() || 'Mon musée' });
     m.hidden = true; m.innerHTML = '';
-    setPlacing(false); $('#place-hint').hidden = true;
+    setPlacing(false);
     log(`${S.me.name} ouvre ses portes près de ${near}.`, 'good');
-    toast(first ? `${S.me.name} ouvre ses portes ! Accrochez vos œuvres et défiez vos voisins.` : 'Déménagement terminé.', 'good');
+    toast(first ? `${S.me.name} est construit ! Tes 4 premières œuvres sont déjà accrochées.` : 'Déménagement terminé.', 'good');
     flyTo(lat, lon, 8);
     save(); markDirty(); hud();
-    if (first) openPanel('museum');
   };
 }
 
@@ -93,8 +90,7 @@ function hud() {
     rankCache = { t: performance.now(), v: '#' + (1 + ids.filter(id => collectionValue(id) > mine).length) };
   }
   $('#h-rank').textContent = rankCache.v;
-  const n = goalsReady();
-  $('#menu-btn').classList.toggle('alert', n > 0);
+  updateQuest();
 }
 
 boot().catch(e => {
