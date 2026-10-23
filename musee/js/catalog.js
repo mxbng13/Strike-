@@ -38,14 +38,10 @@ export async function loadCatalog() {
 // ---- images ----
 // Si des paquets d'images (img/index.json) sont publiés à côté du jeu, ils sont utilisés ;
 // sinon l'image est chargée directement depuis le musée ou Wikimedia.
-let packs = null;            // null = inconnu, false = absent, objet = index
+let packs = null;            // promesse de l'index (false si absent)
 const packCache = new Map(); // n° paquet -> Promise<objet id->dataURI>
-async function packIndex() {
-  if (packs !== null) return packs;
-  try {
-    const r = await fetch('img/index.json');
-    packs = r.ok ? await r.json() : false;
-  } catch { packs = false; }
+function packIndex() {
+  packs ??= fetch('img/index.json').then(r => r.ok ? r.json() : false).catch(() => false);
   return packs;
 }
 export async function imageURL(a) {

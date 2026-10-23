@@ -226,7 +226,7 @@ function draw() {
   // marqueurs avec regroupement à l'écran
   markers = buildMarkers();
   drawn = [];
-  const R = 16;
+  const R = cam.z < 1.5 ? 24 : 18;
   for (const m of markers) {
     [m.sx, m.sy] = toScreen(m.wx, m.wy);
     if (m.sx < -40 || m.sx > W + 40 || m.sy < -40 || m.sy > H + 40) continue;
@@ -267,7 +267,7 @@ function draw() {
       ctx.fillText(m.count, m.sx + s * 0.9, m.sy - s * 0.7 + 3.5);
     }
     // étiquette
-    const big = m.kind === 'me' || cam.z > 2.2 || m.lvl >= 9 || (cam.z > 1.1 && m.lvl >= 6);
+    const big = m.kind === 'me' || cam.z > 2.2 || (cam.z > 0.9 && m.lvl >= 9) || (cam.z > 1.4 && m.lvl >= 6);
     if (!big) continue;
     const label = m.count > 1 ? `${m.name} +${m.count - 1}` : m.name;
     ctx.font = `${m.kind === 'me' ? 700 : 600} 12px "Instrument Sans", system-ui, sans-serif`;

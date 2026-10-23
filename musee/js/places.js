@@ -85,7 +85,7 @@ export const RIVALS = [
   { name: 'Collection Mbeki', boss: 'Thabo Mbeki-Roux', lat: -33.92, lon: 18.42, lvl: 3, aggr: 0.4, motto: 'Au bout du monde, tout se cache.' },
   { name: 'Fondation Haddad', boss: 'Nadia Haddad', lat: 33.89, lon: 35.50, lvl: 4, aggr: 0.4, motto: 'Les ruines parlent.' },
   { name: 'Galerie Nakamura', boss: 'Yui Nakamura', lat: 37.57, lon: 126.98, lvl: 2, aggr: 0.5, motto: 'Jeune, mais affamée.' },
-  { name: 'Cercle de Boston', boss: 'Inconnu', lat: 42.36, lon: -71.06, lvl: 7, aggr: 0.5, motto: 'Les cadres vides de 1990 sont notre œuvre.' },
+  { name: 'Cercle de Boston', boss: 'Inconnu', lat: 42.36, lon: -71.06, lvl: 7, aggr: 0.5, motto: 'Les vieilles familles ont de la mémoire.' },
   { name: 'Musée Kapoor', boss: 'Vikram Kapoor', lat: 19.08, lon: 72.88, lvl: 5, aggr: 0.4, motto: 'Le monde entier dans un palais.' },
   { name: 'Collection Whitmore', boss: 'Grace Whitmore', lat: -33.87, lon: 151.21, lvl: 3, aggr: 0.3, motto: 'Loin des yeux, près du coffre.' },
   { name: 'Galerie Duval', boss: 'Étienne Duval', lat: 45.50, lon: -73.57, lvl: 2, aggr: 0.3, motto: 'Le goût avant tout.' },
@@ -94,11 +94,6 @@ export const RIVALS = [
   { name: 'Galerie Sterling', boss: 'Jack Sterling', lat: 36.17, lon: -115.14, lvl: 6, aggr: 0.7, motto: 'La maison gagne toujours.' },
   { name: 'Maison Saint-Clair', boss: 'Comtesse de Saint-Clair', lat: 43.74, lon: 7.42, lvl: 7, aggr: 0.4, motto: 'Le luxe est une arme.' },
   { name: 'Collection Aydın', boss: 'Selim Aydın', lat: 41.01, lon: 28.98, lvl: 5, aggr: 0.5, motto: 'Entre deux mondes.' },
-  { name: 'Les Faussaires d’Anvers', boss: 'Sven Mertens', lat: 51.25, lon: 4.45, lvl: 1, aggr: 0.6, motto: 'Copier, c’est déjà voler.' },
+  { name: 'Atelier Mertens', boss: 'Sven Mertens', lat: 51.25, lon: 4.45, lvl: 1, aggr: 0.6, motto: 'Petit musée, grandes ambitions.' },
   { name: 'Galerie du Pacifique', boss: 'Leilani Kahale', lat: 21.31, lon: -157.86, lvl: 2, aggr: 0.2, motto: 'L’horizon pour seul mur.' },
 ];
-
-export const FIRST = ['Lucien', 'Inès', 'Malik', 'Sofia', 'Hugo', 'Yasmine', 'Arthur', 'Nina', 'Victor', 'Léa', 'Oskar', 'Zoé', 'Rémi', 'Chloé',
-  'Kenzo', 'Ana', 'Boris', 'Mila', 'Théo', 'Jade', 'Samir', 'Elsa', 'Diego', 'Iris', 'Max', 'Lina', 'Paco', 'Alba', 'Igor', 'Rose'];
-export const NICK = ['le Chat', 'Zéro', 'l’Ombre', 'la Fouine', 'Doigts-de-fée', 'le Mur', 'Turbo', 'la Plume', 'Silence', 'le Pinceau',
-  'Courant d’air', 'Bulldozer', 'la Souris', 'Néon', 'Lame', 'Velours', 'le Spectre', 'Trois-Clés', 'Satin', 'Frein-à-main'];
