@@ -250,11 +250,11 @@ const PANELS = {
   rivals(arg, tab = 'rank') {
     const body = frameSheet('Rivaux et classement', 'Défiez un musée : trois manches devant un jury, le gagnant emporte une œuvre.', [['rank', 'Classement'], ['rivals', 'Collectionneurs'], ['journal', 'Journal'], ['goals', 'Succès']], tab, 'Le monde de l’art');
     if (tab === 'rank') {
-      const all = [{ id: 'me', name: S.me.name, kind: 'me' }, ...S.rivals.map(r => ({ id: r.id, name: r.name, kind: 'rival', lvl: r.lvl })), ...Object.values(S.inst).map(i => ({ id: i.id, name: i.name, kind: 'inst', lvl: i.lvl, city: i.city }))]
+      const all = [{ id: 'me', name: S.me.name, kind: 'me' }, ...S.rivals.map(r => ({ id: r.id, name: r.name, kind: 'rival', lvl: r.lvl }))]
         .map(x => ({ ...x, v: collectionValue(x.id), n: worksOf(x.id).length })).filter(x => x.n || x.id === 'me').sort((a, b) => b.v - a.v);
       const list = h('<div class="list"></div>');
       all.slice(0, 120).forEach((x, i) => {
-        const row = h(`<div class="li ${x.id === 'me' ? 'me' : ''}" style="cursor:pointer"><span class="rk">${i + 1}</span><div class="grow"><div class="t">${esc(x.name)}</div><div class="s">${x.kind === 'me' ? 'Vous' : x.kind === 'rival' ? 'Collectionneur' : 'Musée' + (x.city ? ' · ' + esc(x.city) : '')} · ${x.n} œuvre${x.n > 1 ? 's' : ''}</div></div><b class="num">${money(x.v)}</b></div>`);
+        const row = h(`<div class="li ${x.id === 'me' ? 'me' : ''}" style="cursor:pointer"><span class="rk">${i + 1}</span><div class="grow"><div class="t">${esc(x.name)}</div><div class="s">${x.kind === 'me' ? 'Vous' : 'Collectionneur'} · ${x.n} œuvre${x.n > 1 ? 's' : ''}</div></div><b class="num">${money(x.v)}</b></div>`);
         row.onclick = () => x.id === 'me' ? openPanel('museum') : openOwner(x.id);
         list.append(row);
       });
@@ -298,7 +298,7 @@ const PANELS = {
     if (!o) return closeSheet();
     select(id);
     const works = worksOf(id);
-    const body = frameSheet(esc(o.name), `${o.kind === 'rival' ? esc(o.boss) + ' · ' : ''}${o.city ? esc(o.city) + ' · ' : ''}niveau ${o.lvl} · ${works.length} œuvres · ${money(collectionValue(id))}`, null, null, o.kind === 'rival' ? 'Collectionneur rival' : 'Musée');
+    const body = frameSheet(esc(o.name), `${o.kind === 'rival' ? esc(o.boss) + ' · ' : ''}${o.near ? 'près de ' + esc(o.near) + ' · ' : ''}niveau ${o.lvl} · ${works.length} œuvres · ${money(collectionValue(id))}`, null, null, o.kind === 'rival' ? 'Collectionneur rival' : 'Musée');
     if (o.kind === 'rival') body.append(h(`<p class="note"><i>« ${esc(o.motto)} »</i></p>`));
     const fee = duelFee(o.lvl);
     const act = h(`<div class="row" style="margin-top:14px">
@@ -380,7 +380,7 @@ export function openArt(aid, iid = null) {
   const o = ownerInfo(oid);
   const inMarket = S.market.lots.includes(aid) && !oid;
   const lot = S.auctions.find(l => l.aid === aid);
-  const where = it?.copy ? `Votre reproduction (qualité ${Math.round(it.copy * 100)} %)` : oid === 'me' ? (it?.wall ? 'Exposée dans votre musée' : 'Dans votre réserve') : o ? esc(o.name) + (o.city ? ', ' + esc(o.city) : '') : lot ? 'En vente à l’hôtel des ventes' : inMarket ? 'En vente à la galerie' : 'Introuvable pour l’instant';
+  const where = it?.copy ? `Votre reproduction (qualité ${Math.round(it.copy * 100)} %)` : oid === 'me' ? (it?.wall ? 'Exposée dans votre musée' : 'Dans votre réserve') : o ? 'Chez ' + esc(o.name) + (o.near ? ', près de ' + esc(o.near) : '') : lot ? 'En vente à l’hôtel des ventes' : inMarket ? 'En vente à la galerie' : 'Introuvable pour l’instant';
   modal().hidden = false;
   modal().innerHTML = `<div class="art">
     <button class="icon-btn close-x" data-x aria-label="Fermer">✕</button>

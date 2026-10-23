@@ -1,9 +1,10 @@
 // État de la partie, génération du monde et sauvegarde locale.
 import { ART, RARITY } from './catalog.js';
-import { RIVALS, placeCoords } from './places.js';
+import { RIVALS } from './places.js';
+import { landAt, nearestCity } from './map.js';
 import { rng, now, clamp } from './util.js';
 
-const KEY = 'vernissage-v2';
+const KEY = 'vernissage-v3';
 export let S = null;
 
 // Protections : elles renforcent votre musée quand un rival vous défie (bonus « à domicile »).
@@ -20,60 +21,43 @@ export const slotsFor = lvl => 4 + lvl * 2;
 export const extendCost = lvl => Math.round(12000 * Math.pow(2.5, lvl - 1));
 export const defCost = (d, lvl) => Math.round(d.base * Math.pow(1.85, lvl));
 
+// Le monde ne contient que des musées créés par des collectionneurs (vous et vos rivaux), posés n'importe où sur la terre ferme.
 function buildWorld(seed) {
   const r = rng(seed);
   const owners = {};
-  const inst = {};
-  const rivals = RIVALS.map((x, i) => ({ id: 'r' + i, ...x, money: 4e5 * Math.pow(2.6, x.lvl), def: {}, cool: 0 }));
-  for (const rv of rivals) for (const d of DEF) rv.def[d.k] = clamp(Math.round(rv.lvl + (r() * 3 - 1.5)), 0, 10);
-  const pool = [], met = [], cma = [];
-  for (const a of ART) {
-    if (a.s === 'wiki') {
-      const c = placeCoords(a.m);
-      if (/Volé|Collection privée/.test(a.m) || !c) {
-        if (/Détruit|Disparu|diverses/.test(a.m)) { pool.push(a.id); continue; }
-        const rich = rivals.filter(x => x.lvl >= 5);
-        owners[a.id] = rich[Math.floor(r() * rich.length)].id;
-        continue;
-      }
-      const key = a.m;
-      inst[key] ??= { id: 'i:' + key, name: key.split(',')[0].trim(), city: key.includes(',') ? key.split(',').slice(1).join(',').trim() : '', lat: c[0], lon: c[1], max: 0, def: {} };
-      inst[key].max = Math.max(inst[key].max, a.r);
-      owners[a.id] = inst[key].id;
-    } else if (a.s === 'met') met.push(a.id); else cma.push(a.id);
-  }
-  const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
-  shuffle(met); shuffle(cma);
-  const metKey = 'Metropolitan Museum, New York', cmaKey = 'Cleveland Museum of Art';
-  inst[metKey] ??= { id: 'i:' + metKey, name: 'Metropolitan Museum', city: 'New York', lat: 40.779, lon: -73.963, max: 3, def: {} };
-  inst[cmaKey] = { id: 'i:' + cmaKey, name: 'Cleveland Museum of Art', city: 'Cleveland', lat: 41.509, lon: -81.612, max: 3, def: {} };
-  met.splice(0, 160).forEach(id => { owners[id] = inst[metKey].id; });
-  cma.splice(0, 160).forEach(id => { owners[id] = inst[cmaKey].id; });
-  pool.push(...met, ...cma);
-  shuffle(pool);
-  for (const rv of rivals) {
-    const n = 5 + rv.lvl * 3;
-    let got = 0;
-    for (let i = 0; i < pool.length && got < n; i++) {
-      const a = ART[pool[i]];
-      if (owners[a.id] || a.r > Math.min(4, 1 + Math.ceil(rv.lvl / 2.5))) continue;
-      owners[a.id] = rv.id; got++;
+  const rivals = RIVALS.map((x, i) => {
+    let lat = 0, lon = 0;
+    for (let t = 0; t < 400; t++) {
+      lat = -40 + r() * 105; lon = -170 + r() * 345;
+      if (lat > 62 && lon > -75 && lon < -10) continue; // pas sur la calotte du Groenland
+      if (landAt(lat, lon)) break;
     }
+    return { id: 'r' + i, ...x, lat, lon, near: nearestCity(lat, lon), money: 4e5 * Math.pow(2.6, x.lvl), def: {}, cool: 0 };
+  });
+  for (const rv of rivals) for (const d of DEF) rv.def[d.k] = clamp(Math.round(rv.lvl + (r() * 3 - 1.5)), 0, 10);
+  const ids = ART.map(a => a.id);
+  for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+  // chaque rival démarre avec une collection à sa mesure ; les chefs-d'œuvre vont aux plus puissants
+  const cap = lvl => lvl >= 8 ? 5 : lvl >= 6 ? 4 : lvl >= 3 ? 3 : 2;
+  const want = Object.fromEntries(rivals.map(rv => [rv.id, 6 + rv.lvl * 4]));
+  const famousShare = 0.45;
+  for (const id of ids) {
+    const a = ART[id];
+    if (a.s === 'wiki' && r() > famousShare) continue;
+    const cands = rivals.filter(rv => want[rv.id] > 0 && cap(rv.lvl) >= a.r);
+    if (!cands.length) continue;
+    if (a.s !== 'wiki' && r() > 0.12) continue;
+    const rv = cands[Math.floor(r() * cands.length)];
+    owners[id] = rv.id; want[rv.id]--;
   }
-  for (const m of Object.values(inst)) {
-    const base = { 5: 9, 4: 7, 3: 5, 2: 3, 1: 2 }[m.max] ?? 4;
-    m.lvl = clamp(base + Math.round(r() * 2 - 0.5), 1, 10);
-    m.cool = 0;
-    for (const d of DEF) m.def[d.k] = clamp(Math.round(m.lvl + r() * 2 - 1), 0, 10);
-  }
-  return { owners, inst: Object.fromEntries(Object.values(inst).map(m => [m.id, m])), rivals };
+  return { owners, inst: {}, rivals };
 }
 
 export function newGame() {
   const seed = Math.floor(Math.random() * 1e9);
   const w = buildWorld(seed);
   S = {
-    v: 2, seed, t0: now(), last: now(), money: 30000,
+    v: 3, seed, t0: now(), last: now(), money: 30000,
     me: { placed: false, lat: 0, lon: 0, name: 'Mon musée', near: '', lvl: 1, def: Object.fromEntries(DEF.map(d => [d.k, 0])) },
     items: [], nid: 1, jobs: [], market: { at: 0, lots: [] }, auctions: [],
     owners: w.owners, inst: w.inst, rivals: w.rivals,
@@ -90,7 +74,7 @@ export function newGame() {
 export function load() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) { const s = JSON.parse(raw); if (s?.v === 2 && s.owners) { S = s; return S; } }
+    if (raw) { const s = JSON.parse(raw); if (s?.v === 3 && s.owners) { S = s; return S; } }
   } catch { /* stockage indisponible */ }
   return newGame();
 }

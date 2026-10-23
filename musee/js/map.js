@@ -28,8 +28,9 @@ let texture = null;
 let dirty = true;
 export const mapEvents = { onSelect: null, onPlace: null };
 
-export async function initMap(canvas) {
-  cv = canvas; ctx = cv.getContext('2d');
+let landReady = null;
+export function loadLand() { return landReady ??= fetchLand(); }
+async function fetchLand() {
   const [l, b] = await Promise.all([
     fetch('data/land.json').then(r => r.json()),
     fetch('data/borders.json').then(r => r.ok ? r.json() : []).catch(() => []),
@@ -47,6 +48,10 @@ export async function initMap(canvas) {
       if (i === 0 || Math.abs(line[i] - line[i - 2]) > 90) borders.moveTo(x, y); else borders.lineTo(x, y);
     }
   }
+}
+export async function initMap(canvas) {
+  cv = canvas; ctx = cv.getContext('2d');
+  await loadLand();
   makeTexture();
   resize();
   addEventListener('resize', resize);
@@ -138,7 +143,6 @@ export const markDirty = () => { dirty = true; };
 // ---------- marqueurs ----------
 function buildMarkers() {
   const m = [];
-  for (const i of Object.values(S.inst)) m.push({ id: i.id, kind: 'inst', lat: i.lat, lon: i.lon, name: i.name, lvl: i.lvl, pri: i.lvl + 2 });
   for (const r of S.rivals) m.push({ id: r.id, kind: 'rival', lat: r.lat, lon: r.lon, name: r.name, lvl: r.lvl, pri: r.lvl + 1 });
   if (S.me.placed) m.push({ id: 'me', kind: 'me', lat: S.me.lat, lon: S.me.lon, name: S.me.name, lvl: S.me.lvl, pri: 99 });
   for (const x of m) [x.wx, x.wy] = project(x.lat, x.lon);

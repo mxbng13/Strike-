@@ -3,12 +3,12 @@ import { loadCatalog } from './catalog.js';
 import { S, load, save, collectionValue, worksOf, ownerInfo, log } from './state.js';
 import { on, tick, catchUp, toast, setChallengeHandler } from './sim.js';
 import { incomingChallenge } from './duel.js';
-import { initMap, mapEvents, flyTo, setPlacing, nearestCity, select, markDirty } from './map.js';
+import { initMap, loadLand, mapEvents, flyTo, setPlacing, nearestCity, select, markDirty } from './map.js';
 import { openPanel, closeSheet, refreshPanel, openOwner, showToast, reveal, liveUpdate, goalsReady, setStartPlacing, currentPanel } from './ui.js';
 import { money, dur, esc, $, $$, h } from './util.js';
 
 async function boot() {
-  await loadCatalog();
+  await Promise.all([loadCatalog(), loadLand()]);
   load();
   await initMap($('#map'));
   on('toast', showToast);
@@ -89,7 +89,7 @@ function hud() {
   import('./state.js').then(({ incomePerMin }) => { $('#h-income').textContent = `+${money(incomePerMin())}/min`; });
   if (performance.now() - rankCache.t > 5000) {
     const mine = collectionValue('me');
-    const ids = [...S.rivals.map(r => r.id), ...Object.keys(S.inst)];
+    const ids = S.rivals.map(r => r.id);
     rankCache = { t: performance.now(), v: '#' + (1 + ids.filter(id => collectionValue(id) > mine).length) };
   }
   $('#h-rank').textContent = rankCache.v;
