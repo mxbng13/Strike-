@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vernissage Noir</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#0f1416">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,500;0,6..96,700;1,6..96,500&family=IBM+Plex+Mono:wght@500;600&family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="map" aria-label="Carte du monde des musées"></canvas>
+
+  <header id="hud">
+    <button class="brand" data-open="rank" aria-label="Classement">
+      <span class="brand-mark">V</span><span class="brand-name">Vernissage <i>Noir</i></span>
+    </button>
+    <div class="stats">
+      <div class="stat"><span class="lbl">Trésor</span><b id="h-money" class="num">—</b><small id="h-income" class="num"></small></div>
+      <div class="stat heat"><span class="lbl">Interpol</span><div class="heatbar"><i id="h-heat"></i></div></div>
+      <button class="stat rank" data-open="rank"><span class="lbl">Rang</span><b id="h-rank" class="num">—</b></button>
+    </div>
+    <button class="icon-btn" id="menu-btn" aria-label="Menu">☰</button>
+  </header>
+
+  <div id="maptools">
+    <button class="icon-btn" data-zoom="in" aria-label="Zoomer">+</button>
+    <button class="icon-btn" data-zoom="out" aria-label="Dézoomer">−</button>
+    <button class="icon-btn" data-zoom="home" aria-label="Mon musée">◎</button>
+  </div>
+  <div id="place-hint" hidden><b>Où bâtir votre musée ?</b><span>Touchez la terre ferme. Zoomez pour choisir votre ville.</span></div>
+
+  <section id="sheet" hidden aria-live="polite"></section>
+
+  <nav id="nav">
+    <button data-open="museum"><svg viewBox="0 0 24 24"><path d="M3 9 12 4l9 5v1H3zM5 11h2v7H5zm4 0h2v7H9zm4 0h2v7h-2zm4 0h2v7h-2zM3 19h18v2H3z"/></svg><span>Musée</span></button>
+    <button data-open="catalog"><svg viewBox="0 0 24 24"><path d="M4 4h7v7H4zm9 0h7v7h-7zM4 13h7v7H4zm9 0h7v7h-7z" fill-opacity=".9"/></svg><span>Catalogue</span></button>
+    <button data-open="market"><svg viewBox="0 0 24 24"><path d="M4 7h16l-1.5 12a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2zm4 0a4 4 0 0 1 8 0h-2a2 2 0 0 0-4 0z"/></svg><span>Marché</span></button>
+    <button data-open="auctions"><svg viewBox="0 0 24 24"><path d="m14.5 3 6.5 6.5-2 2-1.2-1.2-3.6 3.6 1.2 1.2-2 2L7 10.6l2-2 1.2 1.2 3.6-3.6L12.6 5zM3 19h10v2H3zm3.3-4.7 2.4 2.4L5.4 20 3 17.6z"/></svg><span>Enchères</span></button>
+    <button data-open="atelier"><svg viewBox="0 0 24 24"><path d="M20 3c-2 0-6 3-9 7l3 3c4-3 7-7 7-9a1 1 0 0 0-1-1zM9 12c-2 0-4 1.5-4 4 0 1.5-1 2.5-2 3 3 1 7 0 8-3z"/></svg><span>Atelier</span></button>
+    <button data-open="planque"><svg viewBox="0 0 24 24"><path d="M12 3a5 5 0 0 0-5 5v2H5v11h14V10h-2V8a5 5 0 0 0-5-5zm-3 7V8a3 3 0 0 1 6 0v2zm3 3a2 2 0 0 1 1 3.7V19h-2v-2.3A2 2 0 0 1 12 13z"/></svg><span>Planque</span></button>
+  </nav>
+
+  <div id="toasts"></div>
+  <div id="modal" hidden></div>
+  <div id="heist" hidden></div>
+  <div id="loading"><div class="ld-mark">V</div><p>Accrochage des œuvres…</p><div class="ld-bar"><i></i></div></div>
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,486 @@
+# Article Wikipédia (en) | Artiste | Date | Lieu actuel | Palier (5 mythique, 4 légendaire, 3 épique)
+Mona Lisa|Léonard de Vinci|1503|Louvre, Paris|5
+The Starry Night|Vincent van Gogh|1889|MoMA, New York|5
+Girl with a Pearl Earring|Johannes Vermeer|1665|Mauritshuis, La Haye|5
+The Scream|Edvard Munch|1893|Musée national, Oslo|5
+The Last Supper (Leonardo)|Léonard de Vinci|1498|Santa Maria delle Grazie, Milan|5
+The Birth of Venus|Sandro Botticelli|1485|Offices, Florence|5
+The Creation of Adam|Michel-Ange|1512|Chapelle Sixtine, Vatican|5
+The Night Watch|Rembrandt|1642|Rijksmuseum, Amsterdam|5
+Las Meninas|Diego Velázquez|1656|Prado, Madrid|5
+The Kiss (Klimt)|Gustav Klimt|1908|Belvedere, Vienne|5
+The Great Wave off Kanagawa|Hokusai|1831|Metropolitan Museum, New York|5
+Guernica (Picasso)|Pablo Picasso|1937|Reina Sofía, Madrid|5
+David (Michelangelo)|Michel-Ange|1504|Galleria dell'Accademia, Florence|5
+Venus de Milo|Inconnu (Grèce antique)|-100|Louvre, Paris|5
+Mask of Tutankhamun|Égypte ancienne|-1323|Grand Musée égyptien, Le Caire|5
+The Persistence of Memory|Salvador Dalí|1931|MoMA, New York|5
+Liberty Leading the People|Eugène Delacroix|1830|Louvre, Paris|5
+Winged Victory of Samothrace|Inconnu (Grèce antique)|-190|Louvre, Paris|5
+Nefertiti Bust|Thoutmôsis|-1345|Neues Museum, Berlin|5
+Salvator Mundi (Leonardo)|Léonard de Vinci|1500|Collection privée|5
+The Garden of Earthly Delights|Jérôme Bosch|1500|Prado, Madrid|5
+Rosetta Stone|Égypte ptolémaïque|-196|British Museum, Londres|5
+Water Lilies (Monet series)|Claude Monet|1915|Musée de l'Orangerie, Paris|4
+Impression, Sunrise|Claude Monet|1872|Musée Marmottan, Paris|4
+Sunflowers (Van Gogh series)|Vincent van Gogh|1888|National Gallery, Londres|4
+Café Terrace at Night|Vincent van Gogh|1888|Kröller-Müller, Otterlo|4
+Bedroom in Arles|Vincent van Gogh|1888|Musée Van Gogh, Amsterdam|4
+Self-Portrait with Bandaged Ear|Vincent van Gogh|1889|Courtauld, Londres|4
+Wheatfield with Crows|Vincent van Gogh|1890|Musée Van Gogh, Amsterdam|4
+The Potato Eaters|Vincent van Gogh|1885|Musée Van Gogh, Amsterdam|4
+Almond Blossoms|Vincent van Gogh|1890|Musée Van Gogh, Amsterdam|4
+Irises (painting)|Vincent van Gogh|1889|Getty Center, Los Angeles|4
+The Night Café|Vincent van Gogh|1888|Yale, New Haven|4
+Starry Night Over the Rhône|Vincent van Gogh|1888|Musée d'Orsay, Paris|4
+Portrait of Dr. Gachet|Vincent van Gogh|1890|Collection privée|4
+A Sunday Afternoon on the Island of La Grande Jatte|Georges Seurat|1886|Art Institute, Chicago|4
+Bal du moulin de la Galette|Pierre-Auguste Renoir|1876|Musée d'Orsay, Paris|4
+Luncheon of the Boating Party|Pierre-Auguste Renoir|1881|Phillips Collection, Washington|4
+Le Déjeuner sur l'herbe|Édouard Manet|1863|Musée d'Orsay, Paris|4
+Olympia (Manet)|Édouard Manet|1863|Musée d'Orsay, Paris|4
+A Bar at the Folies-Bergère|Édouard Manet|1882|Courtauld, Londres|4
+The Card Players|Paul Cézanne|1893|Collection privée|4
+The Large Bathers|Paul Cézanne|1906|Philadelphia Museum of Art|3
+Mont Sainte-Victoire (Cézanne)|Paul Cézanne|1904|Philadelphia Museum of Art|3
+Where Do We Come From? What Are We? Where Are We Going?|Paul Gauguin|1897|Museum of Fine Arts, Boston|4
+The Dance Class (Degas)|Edgar Degas|1874|Musée d'Orsay, Paris|3
+L'Absinthe|Edgar Degas|1876|Musée d'Orsay, Paris|3
+Little Dancer of Fourteen Years|Edgar Degas|1881|National Gallery of Art, Washington|4
+Paris Street; Rainy Day|Gustave Caillebotte|1877|Art Institute, Chicago|4
+The Floor Scrapers|Gustave Caillebotte|1875|Musée d'Orsay, Paris|3
+Whistler's Mother|James McNeill Whistler|1871|Musée d'Orsay, Paris|4
+American Gothic|Grant Wood|1930|Art Institute, Chicago|4
+Nighthawks (painting)|Edward Hopper|1942|Art Institute, Chicago|4
+Christina's World|Andrew Wyeth|1948|MoMA, New York|4
+The Son of Man|René Magritte|1964|Collection privée|4
+The Treachery of Images|René Magritte|1929|LACMA, Los Angeles|4
+Les Demoiselles d'Avignon|Pablo Picasso|1907|MoMA, New York|4
+The Old Guitarist|Pablo Picasso|1904|Art Institute, Chicago|4
+Composition with Red, Blue and Yellow|Piet Mondrian|1930|Kunsthaus, Zurich|3
+Broadway Boogie Woogie|Piet Mondrian|1943|MoMA, New York|3
+The Two Fridas|Frida Kahlo|1939|Musée d'Art moderne, Mexico|4
+Self-Portrait with Thorn Necklace and Hummingbird|Frida Kahlo|1940|Harry Ransom Center, Austin|4
+Portrait of Adele Bloch-Bauer I|Gustav Klimt|1907|Neue Galerie, New York|5
+The Tree of Life (Klimt)|Gustav Klimt|1909|MAK, Vienne|3
+Judith and the Head of Holofernes (Klimt)|Gustav Klimt|1901|Belvedere, Vienne|3
+Wanderer above the Sea of Fog|Caspar David Friedrich|1818|Kunsthalle, Hambourg|4
+The Sea of Ice|Caspar David Friedrich|1824|Kunsthalle, Hambourg|3
+The Fighting Temeraire|J. M. W. Turner|1839|National Gallery, Londres|4
+Rain, Steam and Speed – The Great Western Railway|J. M. W. Turner|1844|National Gallery, Londres|3
+The Hay Wain|John Constable|1821|National Gallery, Londres|4
+The Third of May 1808|Francisco Goya|1814|Prado, Madrid|4
+Saturn Devouring His Son|Francisco Goya|1823|Prado, Madrid|4
+The Nude Maja|Francisco Goya|1800|Prado, Madrid|3
+The Raft of the Medusa|Théodore Géricault|1819|Louvre, Paris|4
+The Death of Marat|Jacques-Louis David|1793|Musées royaux, Bruxelles|4
+Oath of the Horatii|Jacques-Louis David|1784|Louvre, Paris|3
+The Coronation of Napoleon|Jacques-Louis David|1807|Louvre, Paris|4
+Napoleon Crossing the Alps|Jacques-Louis David|1801|Château de Malmaison|4
+Grande Odalisque|Jean-Auguste-Dominique Ingres|1814|Louvre, Paris|3
+The Gleaners|Jean-François Millet|1857|Musée d'Orsay, Paris|3
+The Angelus (painting)|Jean-François Millet|1859|Musée d'Orsay, Paris|3
+The Origin of the World|Gustave Courbet|1866|Musée d'Orsay, Paris|3
+The Desperate Man|Gustave Courbet|1845|Collection privée|3
+The Swing (Fragonard)|Jean-Honoré Fragonard|1767|Wallace Collection, Londres|4
+Pilgrimage to Cythera|Antoine Watteau|1717|Louvre, Paris|3
+The Arnolfini Portrait|Jan van Eyck|1434|National Gallery, Londres|4
+Ghent Altarpiece|Jan van Eyck|1432|Cathédrale Saint-Bavon, Gand|5
+The Ambassadors (Holbein)|Hans Holbein le Jeune|1533|National Gallery, Londres|4
+Netherlandish Proverbs|Pieter Brueghel l'Ancien|1559|Gemäldegalerie, Berlin|4
+The Hunters in the Snow|Pieter Brueghel l'Ancien|1565|Kunsthistorisches Museum, Vienne|4
+The Tower of Babel (Bruegel)|Pieter Brueghel l'Ancien|1563|Kunsthistorisches Museum, Vienne|4
+Landscape with the Fall of Icarus|Pieter Brueghel l'Ancien|1560|Musées royaux, Bruxelles|3
+The Peasant Wedding|Pieter Brueghel l'Ancien|1567|Kunsthistorisches Museum, Vienne|3
+The Milkmaid (Vermeer)|Johannes Vermeer|1658|Rijksmuseum, Amsterdam|4
+View of Delft|Johannes Vermeer|1661|Mauritshuis, La Haye|4
+The Art of Painting|Johannes Vermeer|1668|Kunsthistorisches Museum, Vienne|4
+The Concert (Vermeer)|Johannes Vermeer|1664|Volé en 1990 (Gardner Museum)|5
+The Storm on the Sea of Galilee|Rembrandt|1633|Volé en 1990 (Gardner Museum)|5
+The Anatomy Lesson of Dr. Nicolaes Tulp|Rembrandt|1632|Mauritshuis, La Haye|4
+The Return of the Prodigal Son (Rembrandt)|Rembrandt|1669|Ermitage, Saint-Pétersbourg|4
+Syndics of the Drapers' Guild|Rembrandt|1662|Rijksmuseum, Amsterdam|3
+The Jewish Bride|Rembrandt|1665|Rijksmuseum, Amsterdam|3
+The Goldfinch (painting)|Carel Fabritius|1654|Mauritshuis, La Haye|4
+The Laughing Cavalier|Frans Hals|1624|Wallace Collection, Londres|3
+The Calling of Saint Matthew|Le Caravage|1600|San Luigi dei Francesi, Rome|4
+Judith Beheading Holofernes (Caravaggio)|Le Caravage|1599|Palais Barberini, Rome|4
+Medusa (Caravaggio)|Le Caravage|1597|Offices, Florence|4
+Bacchus (Caravaggio)|Le Caravage|1596|Offices, Florence|3
+The Supper at Emmaus (Caravaggio, London)|Le Caravage|1601|National Gallery, Londres|3
+Judith Slaying Holofernes (Artemisia Gentileschi, Naples)|Artemisia Gentileschi|1612|Capodimonte, Naples|4
+The School of Athens|Raphaël|1511|Musées du Vatican|5
+Sistine Madonna|Raphaël|1512|Gemäldegalerie, Dresde|4
+Lady with an Ermine|Léonard de Vinci|1490|Musée Czartoryski, Cracovie|5
+Vitruvian Man|Léonard de Vinci|1490|Gallerie dell'Accademia, Venise|5
+Virgin of the Rocks|Léonard de Vinci|1486|Louvre, Paris|4
+Ginevra de' Benci|Léonard de Vinci|1478|National Gallery of Art, Washington|4
+Annunciation (Leonardo)|Léonard de Vinci|1475|Offices, Florence|4
+La Belle Ferronnière|Léonard de Vinci|1495|Louvre, Paris|4
+Primavera (Botticelli)|Sandro Botticelli|1480|Offices, Florence|5
+The Last Judgment (Michelangelo)|Michel-Ange|1541|Chapelle Sixtine, Vatican|5
+Pietà (Michelangelo)|Michel-Ange|1499|Basilique Saint-Pierre, Rome|5
+Doni Tondo|Michel-Ange|1507|Offices, Florence|4
+Moses (Michelangelo)|Michel-Ange|1515|San Pietro in Vincoli, Rome|4
+Venus of Urbino|Titien|1534|Offices, Florence|4
+Bacchus and Ariadne|Titien|1523|National Gallery, Londres|3
+Assumption of the Virgin (Titian)|Titien|1518|Basilique dei Frari, Venise|3
+The Tempest (Giorgione)|Giorgione|1508|Gallerie dell'Accademia, Venise|3
+Sleeping Venus (Giorgione)|Giorgione|1510|Gemäldegalerie, Dresde|3
+The Wedding at Cana (Veronese)|Paul Véronèse|1563|Louvre, Paris|3
+Lamentation of Christ (Mantegna)|Andrea Mantegna|1480|Pinacothèque de Brera, Milan|3
+The Battle of San Romano|Paolo Uccello|1438|National Gallery, Londres|3
+The Baptism of Christ (Piero della Francesca)|Piero della Francesca|1450|National Gallery, Londres|3
+The Flagellation of Christ (Piero della Francesca)|Piero della Francesca|1460|Galleria Nazionale delle Marche, Urbino|3
+Isenheim Altarpiece|Matthias Grünewald|1515|Musée Unterlinden, Colmar|4
+Melencolia I|Albrecht Dürer|1514|Kunsthalle, Karlsruhe|3
+Self-Portrait (Dürer, Munich)|Albrecht Dürer|1500|Alte Pinakothek, Munich|4
+Young Hare|Albrecht Dürer|1502|Albertina, Vienne|4
+Dürer's Rhinoceros|Albrecht Dürer|1515|British Museum, Londres|3
+The Descent from the Cross (van der Weyden)|Rogier van der Weyden|1435|Prado, Madrid|4
+The Triumph of Death|Pieter Brueghel l'Ancien|1562|Prado, Madrid|4
+The Haywain Triptych|Jérôme Bosch|1516|Prado, Madrid|3
+The Judgement of Paris (Rubens, London)|Pierre Paul Rubens|1636|National Gallery, Londres|3
+The Elevation of the Cross|Pierre Paul Rubens|1610|Cathédrale d'Anvers|3
+The Massacre of the Innocents (Rubens)|Pierre Paul Rubens|1611|Art Gallery of Ontario, Toronto|4
+Venus at her Mirror|Diego Velázquez|1651|National Gallery, Londres|4
+Portrait of Innocent X (Velázquez)|Diego Velázquez|1650|Galleria Doria Pamphilj, Rome|4
+The Surrender of Breda|Diego Velázquez|1635|Prado, Madrid|3
+The Burial of the Count of Orgaz|Le Greco|1586|Santo Tomé, Tolède|4
+View of Toledo|Le Greco|1600|Metropolitan Museum, New York|4
+Et in Arcadia ego (Poussin)|Nicolas Poussin|1638|Louvre, Paris|3
+The Blue Boy|Thomas Gainsborough|1770|Huntington Library, San Marino|4
+Mr and Mrs Andrews|Thomas Gainsborough|1750|National Gallery, Londres|3
+The Nightmare|Henry Fuseli|1781|Detroit Institute of Arts|4
+Ophelia (painting)|John Everett Millais|1852|Tate Britain, Londres|4
+The Lady of Shalott (painting)|John William Waterhouse|1888|Tate Britain, Londres|4
+Flaming June|Frederic Leighton|1895|Museo de Arte de Ponce|4
+Proserpine (Rossetti)|Dante Gabriel Rossetti|1874|Tate Britain, Londres|3
+The Hireling Shepherd|William Holman Hunt|1851|Manchester Art Gallery|3
+Watson and the Shark|John Singleton Copley|1778|National Gallery of Art, Washington|3
+Washington Crossing the Delaware (1851 painting)|Emanuel Leutze|1851|Metropolitan Museum, New York|4
+Madame X (Madame Pierre Gautreau)|John Singer Sargent|1884|Metropolitan Museum, New York|4
+Carnation, Lily, Lily, Rose|John Singer Sargent|1886|Tate Britain, Londres|3
+The Gross Clinic|Thomas Eakins|1875|Philadelphia Museum of Art|3
+The Gulf Stream (painting)|Winslow Homer|1899|Metropolitan Museum, New York|3
+Snap the Whip (painting)|Winslow Homer|1872|Butler Institute, Youngstown|3
+The Child's Bath|Mary Cassatt|1893|Art Institute, Chicago|3
+Dance at Bougival|Pierre-Auguste Renoir|1883|Museum of Fine Arts, Boston|3
+Two Sisters (On the Terrace)|Pierre-Auguste Renoir|1881|Art Institute, Chicago|3
+Woman with a Parasol – Madame Monet and Her Son|Claude Monet|1875|National Gallery of Art, Washington|4
+Poppies (Monet)|Claude Monet|1873|Musée d'Orsay, Paris|3
+Rouen Cathedral (Monet series)|Claude Monet|1894|Musée d'Orsay, Paris|3
+Haystacks (Monet series)|Claude Monet|1891|Art Institute, Chicago|3
+Bridge over a Pond of Water Lilies|Claude Monet|1899|Metropolitan Museum, New York|3
+Woman in the Garden|Claude Monet|1866|Musée d'Orsay, Paris|3
+The Boulevard Montmartre at Night|Camille Pissarro|1897|National Gallery, Londres|3
+Moulin Rouge: La Goulue|Henri de Toulouse-Lautrec|1891|Musée Toulouse-Lautrec, Albi|3
+At the Moulin Rouge|Henri de Toulouse-Lautrec|1895|Art Institute, Chicago|3
+The Sleeping Gypsy|Henri Rousseau|1897|MoMA, New York|4
+The Dream (Henri Rousseau)|Henri Rousseau|1910|MoMA, New York|3
+Tiger in a Tropical Storm|Henri Rousseau|1891|National Gallery, Londres|3
+The Snake Charmer|Henri Rousseau|1907|Musée d'Orsay, Paris|3
+Vision After the Sermon|Paul Gauguin|1888|Galerie nationale d'Écosse, Édimbourg|3
+The Yellow Christ|Paul Gauguin|1889|Albright-Knox, Buffalo|3
+When Will You Marry?|Paul Gauguin|1892|Collection privée|4
+The Kiss (Rodin sculpture)|Auguste Rodin|1882|Musée Rodin, Paris|4
+The Thinker|Auguste Rodin|1904|Musée Rodin, Paris|5
+The Gates of Hell|Auguste Rodin|1917|Musée Rodin, Paris|4
+The Burghers of Calais|Auguste Rodin|1889|Musée Rodin, Paris|3
+Bird in Space|Constantin Brâncuși|1923|MoMA, New York|4
+Walking Man I|Alberto Giacometti|1960|Fondation Maeght|4
+The Dance (Matisse)|Henri Matisse|1910|Ermitage, Saint-Pétersbourg|4
+Woman with a Hat|Henri Matisse|1905|SFMOMA, San Francisco|3
+The Joy of Life|Henri Matisse|1906|Barnes Foundation, Philadelphie|3
+The Red Studio|Henri Matisse|1911|MoMA, New York|3
+I and the Village|Marc Chagall|1911|MoMA, New York|4
+The Blue Rider (painting)|Wassily Kandinsky|1903|Collection privée|3
+Composition VII|Wassily Kandinsky|1913|Galerie Tretiakov, Moscou|4
+Black Square|Kazimir Malevitch|1915|Galerie Tretiakov, Moscou|4
+The Fallen Angel (Cabanel)|Alexandre Cabanel|1868|Musée Fabre, Montpellier|3
+The Birth of Venus (Cabanel)|Alexandre Cabanel|1863|Musée d'Orsay, Paris|3
+The Birth of Venus (Bouguereau)|William-Adolphe Bouguereau|1879|Musée d'Orsay, Paris|3
+Dante and Virgil (Bouguereau)|William-Adolphe Bouguereau|1850|Musée d'Orsay, Paris|3
+Pollice Verso (Gérôme)|Jean-Léon Gérôme|1872|Phoenix Art Museum|3
+Barge Haulers on the Volga|Ilia Répine|1873|Musée russe, Saint-Pétersbourg|4
+Ivan the Terrible and His Son Ivan|Ilia Répine|1885|Galerie Tretiakov, Moscou|4
+The Ninth Wave|Ivan Aïvazovski|1850|Musée russe, Saint-Pétersbourg|4
+Morning in a Pine Forest|Ivan Chichkine|1889|Galerie Tretiakov, Moscou|3
+Bogatyrs (painting)|Viktor Vasnetsov|1898|Galerie Tretiakov, Moscou|3
+The Apotheosis of War|Vassili Verechtchaguine|1871|Galerie Tretiakov, Moscou|3
+Isle of the Dead (painting)|Arnold Böcklin|1880|Kunstmuseum, Bâle|4
+The Lovers (Magritte)|René Magritte|1928|MoMA, New York|3
+The Elephants|Salvador Dalí|1948|Collection privée|3
+Swans Reflecting Elephants|Salvador Dalí|1937|Collection privée|3
+The Hand of God (sculpture)|Carl Milles|1954|Millesgården, Stockholm|3
+Fine Wind, Clear Morning|Hokusai|1831|British Museum, Londres|4
+The Dream of the Fisherman's Wife|Hokusai|1814|Collection privée|3
+Sudden Shower over Shin-Ōhashi Bridge and Atake|Hiroshige|1857|Musée de Brooklyn|4
+Plum Park in Kameido|Hiroshige|1857|Musée de Brooklyn|3
+Fūjin and Raijin|Tawaraya Sōtatsu|1630|Kennin-ji, Kyoto|4
+Irises (Ogata Kōrin)|Ogata Kōrin|1705|Nezu Museum, Tokyo|4
+Along the River During the Qingming Festival|Zhang Zeduan|1100|Musée du Palais, Pékin|5
+Travelers Among Mountains and Streams|Fan Kuan|1000|Musée national du Palais, Taipei|4
+Early Spring (painting)|Guo Xi|1072|Musée national du Palais, Taipei|4
+Dwelling in the Fuchun Mountains|Huang Gongwang|1350|Musée national du Palais, Taipei|4
+Jadeite Cabbage|Chine, dynastie Qing|1880|Musée national du Palais, Taipei|4
+Terracotta Army|Chine, dynastie Qin|-210|Mausolée de Qin Shi Huang, Xi'an|5
+Flying Horse of Gansu|Chine, dynastie Han|150|Musée du Gansu, Lanzhou|4
+Admonitions Scroll|Gu Kaizhi|400|British Museum, Londres|4
+Night-Shining White|Han Gan|750|Metropolitan Museum, New York|3
+Gold mask of Agamemnon|Mycènes|-1550|Musée national, Athènes|5
+Laocoön and His Sons|Agésandre, Athénodore, Polydore|-40|Musées du Vatican|5
+Discobolus|Myron|-460|Musée national romain, Rome|4
+Artemision Bronze|Grèce antique|-460|Musée national, Athènes|4
+Riace bronzes|Grèce antique|-450|Museo Nazionale, Reggio de Calabre|4
+Apollo Belvedere|Léocharès (copie romaine)|120|Musées du Vatican|4
+Dying Gaul|Rome antique|-220|Musées du Capitole, Rome|4
+Capitoline Wolf|Inconnu|1200|Musées du Capitole, Rome|3
+Augustus of Prima Porta|Rome antique|15|Musées du Vatican|4
+Farnese Hercules|Glycon d'Athènes|216|Museo Archeologico, Naples|3
+Boxer at Rest|Grèce hellénistique|-330|Musée national romain, Rome|3
+Antikythera mechanism|Grèce antique|-100|Musée national, Athènes|5
+Elgin Marbles|Phidias|-438|British Museum, Londres|5
+Alexander Mosaic|Pompéi|-100|Museo Archeologico, Naples|4
+Portland Vase|Rome antique|10|British Museum, Londres|4
+Lycurgus Cup|Rome antique|350|British Museum, Londres|4
+Great Sphinx of Tanis|Égypte ancienne|-2600|Louvre, Paris|4
+Seated Scribe|Égypte ancienne|-2500|Louvre, Paris|4
+Narmer Palette|Égypte ancienne|-3100|Musée égyptien, Le Caire|4
+Younger Memnon|Égypte ancienne|-1250|British Museum, Londres|3
+Code of Hammurabi|Babylone|-1754|Louvre, Paris|5
+Ishtar Gate|Babylone|-575|Pergamonmuseum, Berlin|5
+Lamassu|Assyrie|-713|Louvre, Paris|4
+Standard of Ur|Sumer|-2600|British Museum, Londres|4
+Ram in a Thicket|Sumer|-2600|British Museum, Londres|3
+Lion Hunt of Ashurbanipal|Assyrie|-645|British Museum, Londres|3
+Venus of Willendorf|Paléolithique|-25000|Muséum d'histoire naturelle, Vienne|5
+Lion-man|Paléolithique|-38000|Museum Ulm|4
+Nebra sky disc|Âge du bronze|-1600|Musée de Halle|4
+Gundestrup cauldron|Celtes|-100|Musée national, Copenhague|4
+Sutton Hoo helmet|Anglo-Saxons|625|British Museum, Londres|4
+Lewis chessmen|Norvège médiévale|1150|British Museum, Londres|4
+Bayeux Tapestry|Angleterre normande|1077|Musée de la Tapisserie, Bayeux|5
+Book of Kells|Moines celtes|800|Trinity College, Dublin|5
+Très Riches Heures du Duc de Berry|Frères de Limbourg|1416|Musée Condé, Chantilly|4
+The Lady and the Unicorn|Flandres|1500|Musée de Cluny, Paris|4
+Crown of the Holy Roman Empire|Saint-Empire|970|Hofburg, Vienne|4
+Imperial State Crown|Joyaux de la Couronne|1937|Tour de Londres|5
+Hope Diamond|Inde (Golconde)|1666|Smithsonian, Washington|5
+Fabergé egg|Maison Fabergé|1885|Collections diverses|4
+Third Imperial Egg|Maison Fabergé|1887|Collection privée|4
+Benin Bronzes|Royaume du Bénin|1500|British Museum, Londres|4
+Queen Idia mask|Royaume du Bénin|1550|British Museum, Londres|4
+Ife Head|Ifé (Nigeria)|1300|British Museum, Londres|4
+Moai|Rapa Nui|1250|Île de Pâques|4
+Hoa Hakananai'a|Rapa Nui|1200|British Museum, Londres|4
+Aztec calendar stone|Aztèques|1502|Musée national d'anthropologie, Mexico|5
+Coyolxāuhqui Stone|Aztèques|1473|Templo Mayor, Mexico|4
+Mask of Pakal|Maya|683|Musée national d'anthropologie, Mexico|4
+Olmec colossal heads|Olmèques|-1200|Xalapa, Mexique|4
+Muisca raft|Muiscas|800|Museo del Oro, Bogotá|4
+Tumi|Culture Lambayeque|900|Museo Oro del Perú, Lima|3
+Bronze Buddha of Kamakura|Japon|1252|Kōtoku-in, Kamakura|4
+Dancing Girl (prehistoric sculpture)|Civilisation de l'Indus|-2500|Musée national, New Delhi|4
+Priest-King (sculpture)|Civilisation de l'Indus|-2000|Musée national, Karachi|3
+Nataraja|Inde, dynastie Chola|1000|Rijksmuseum, Amsterdam|4
+Lion Capital of Ashoka|Empire maurya|-250|Musée de Sarnath|4
+Gandhara Buddha (Tokyo National Museum)|Gandhara|200|Musée national de Tokyo|3
+The Hamzanama|Empire moghol|1570|MAK, Vienne|3
+Shah Jahan on a Globe with his Four Sons|Bichitr|1630|Collection Chester Beatty|3
+Ardabil Carpet|Perse safavide|1540|Victoria and Albert Museum, Londres|4
+Cyrus Cylinder|Perse achéménide|-539|British Museum, Londres|4
+Persepolis Administrative Archives|Perse achéménide|-500|Musée national d'Iran|3
+Pazyryk carpet|Scythes|-400|Ermitage, Saint-Pétersbourg|4
+Holy Face of Edessa|Byzance|600|Vatican|3
+Theotokos of Vladimir|Byzance|1131|Galerie Tretiakov, Moscou|4
+Trinity (Andrei Rublev)|Andreï Roublev|1411|Galerie Tretiakov, Moscou|4
+Maestà (Duccio)|Duccio|1311|Museo dell'Opera, Sienne|4
+The Lamentation of Christ (Giotto)|Giotto|1305|Chapelle des Scrovegni, Padoue|4
+Allegory of Good and Bad Government|Ambrogio Lorenzetti|1339|Palazzo Pubblico, Sienne|3
+Wilton Diptych|Inconnu (anglais ou français)|1396|National Gallery, Londres|4
+Portrait of a Man in a Turban|Jan van Eyck|1433|National Gallery, Londres|3
+Saint George and the Dragon (Uccello)|Paolo Uccello|1470|National Gallery, Londres|3
+Portrait of a Young Woman (Pollaiuolo)|Piero del Pollaiuolo|1470|Museo Poldi Pezzoli, Milan|3
+The Madonna of Chancellor Rolin|Jan van Eyck|1435|Louvre, Paris|4
+Hans Holbein the Younger's portrait of Henry VIII|Hans Holbein le Jeune|1537|Collection privée|4
+Armada Portrait|Inconnu (anglais)|1588|Woburn Abbey|3
+The Blue Room (Picasso)|Pablo Picasso|1901|Phillips Collection, Washington|3
+Boy with a Pipe|Pablo Picasso|1905|Collection privée|4
+Dora Maar au Chat|Pablo Picasso|1941|Collection privée|4
+Weeping Woman|Pablo Picasso|1937|Tate Modern, Londres|4
+The Dream (Picasso)|Pablo Picasso|1932|Collection privée|4
+Le Rêve (Picasso)|Pablo Picasso|1932|Collection privée|3
+Mother and Child (Klimt)|Gustav Klimt|1905|Galerie nationale d'art moderne, Rome|3
+Death and Life|Gustav Klimt|1915|Musée Leopold, Vienne|3
+Danaë (Klimt)|Gustav Klimt|1907|Collection privée|4
+Beethoven Frieze|Gustav Klimt|1902|Sécession, Vienne|4
+The Embrace (Schiele)|Egon Schiele|1917|Belvedere, Vienne|3
+Self-Portrait with Physalis|Egon Schiele|1912|Musée Leopold, Vienne|3
+Madonna (Edvard Munch)|Edvard Munch|1894|Musée Munch, Oslo|4
+The Sick Child (Munch)|Edvard Munch|1886|Musée national, Oslo|3
+The Dance of Life|Edvard Munch|1900|Musée national, Oslo|3
+Le Pont de l'Europe|Gustave Caillebotte|1876|Musée du Petit Palais, Genève|3
+The Cradle (painting)|Berthe Morisot|1872|Musée d'Orsay, Paris|3
+The Bath (Mary Cassatt)|Mary Cassatt|1893|Art Institute, Chicago|3
+Arrangement in Grey and Black No. 1|James McNeill Whistler|1871|Musée d'Orsay, Paris|3
+Nocturne in Black and Gold – The Falling Rocket|James McNeill Whistler|1875|Detroit Institute of Arts|3
+Liberty Leading the People|Eugène Delacroix|1830|Louvre, Paris|5
+The Death of Sardanapalus|Eugène Delacroix|1827|Louvre, Paris|4
+Women of Algiers|Eugène Delacroix|1834|Louvre, Paris|3
+The Valpinçon Bather|Jean-Auguste-Dominique Ingres|1808|Louvre, Paris|3
+The Turkish Bath|Jean-Auguste-Dominique Ingres|1862|Louvre, Paris|3
+The Stone Breakers|Gustave Courbet|1849|Détruit en 1945|3
+A Burial at Ornans|Gustave Courbet|1850|Musée d'Orsay, Paris|3
+The Horse Fair|Rosa Bonheur|1855|Metropolitan Museum, New York|3
+Ploughing in the Nivernais|Rosa Bonheur|1849|Musée d'Orsay, Paris|3
+The Monarch of the Glen (painting)|Edwin Landseer|1851|Galerie nationale d'Écosse, Édimbourg|3
+The Skating Minister|Henry Raeburn|1795|Galerie nationale d'Écosse, Édimbourg|3
+Saint Jerome Writing|Le Caravage|1608|Co-Cathédrale Saint-Jean, La Valette|3
+The Beheading of Saint John the Baptist (Caravaggio)|Le Caravage|1608|Co-Cathédrale Saint-Jean, La Valette|4
+Nativity with St. Francis and St. Lawrence|Le Caravage|1609|Volé en 1969 (Palerme)|5
+Boy Bitten by a Lizard|Le Caravage|1594|Fondation Longhi, Florence|3
+Basket of Fruit (Caravaggio)|Le Caravage|1599|Pinacothèque ambrosienne, Milan|3
+The Cardsharps|Le Caravage|1594|Kimbell Art Museum, Fort Worth|3
+The Fortune Teller (Caravaggio)|Le Caravage|1595|Louvre, Paris|3
+Ecstasy of Saint Teresa|Le Bernin|1652|Santa Maria della Vittoria, Rome|5
+Apollo and Daphne (Bernini)|Le Bernin|1625|Galerie Borghèse, Rome|5
+The Rape of Proserpina|Le Bernin|1622|Galerie Borghèse, Rome|4
+David (Bernini)|Le Bernin|1624|Galerie Borghèse, Rome|4
+David (Donatello)|Donatello|1440|Bargello, Florence|4
+Perseus with the Head of Medusa|Benvenuto Cellini|1554|Loggia dei Lanzi, Florence|4
+Salt Cellar (Cellini)|Benvenuto Cellini|1543|Kunsthistorisches Museum, Vienne|5
+The Rape of the Sabine Women (Giambologna)|Jean de Bologne|1583|Loggia dei Lanzi, Florence|3
+Veiled Christ|Giuseppe Sanmartino|1753|Chapelle Sansevero, Naples|4
+Psyche Revived by Cupid's Kiss|Antonio Canova|1793|Louvre, Paris|4
+The Three Graces (Canova)|Antonio Canova|1817|Victoria and Albert Museum, Londres|4
+Statue of Liberty|Frédéric Auguste Bartholdi|1886|Liberty Island, New York|5
+Christ the Redeemer (statue)|Paul Landowski|1931|Rio de Janeiro|5
+Cloud Gate|Anish Kapoor|2006|Millennium Park, Chicago|4
+Balloon Dog|Jeff Koons|1994|Collections diverses|4
+Campbell's Soup Cans|Andy Warhol|1962|MoMA, New York|4
+Marilyn Diptych|Andy Warhol|1962|Tate Modern, Londres|4
+Fountain (Duchamp)|Marcel Duchamp|1917|Réplique, Centre Pompidou|4
+Nude Descending a Staircase, No. 2|Marcel Duchamp|1912|Philadelphia Museum of Art|4
+No. 5, 1948|Jackson Pollock|1948|Collection privée|4
+Convergence (Pollock)|Jackson Pollock|1952|Albright-Knox, Buffalo|3
+Number 1 (Lavender Mist)|Jackson Pollock|1950|National Gallery of Art, Washington|3
+The Moon-Woman Cuts the Circle|Jackson Pollock|1943|Centre Pompidou, Paris|3
+Girl with Balloon|Banksy|2002|Mur, Londres|4
+The Wedding Feast at Cana (Veronese)|Paul Véronèse|1563|Louvre, Paris|3
+Saint Francis in Ecstasy (Bellini)|Giovanni Bellini|1480|Frick Collection, New York|3
+Madonna of the Meadow (Bellini)|Giovanni Bellini|1505|National Gallery, Londres|3
+Portrait of Doge Leonardo Loredan|Giovanni Bellini|1501|National Gallery, Londres|3
+The Feast of the Gods|Giovanni Bellini|1514|National Gallery of Art, Washington|3
+The Adoration of the Magi (Gentile da Fabriano)|Gentile da Fabriano|1423|Offices, Florence|3
+Mérode Altarpiece|Robert Campin|1427|The Cloisters, New York|3
+Portinari Altarpiece|Hugo van der Goes|1475|Offices, Florence|3
+The Moneylender and His Wife|Quentin Metsys|1514|Louvre, Paris|3
+The Ugly Duchess|Quentin Metsys|1513|National Gallery, Londres|3
+Portrait of Charles I in Three Positions|Antoine van Dyck|1636|Royal Collection|3
+Charles I at the Hunt|Antoine van Dyck|1635|Louvre, Paris|3
+The Lacemaker (Vermeer)|Johannes Vermeer|1670|Louvre, Paris|4
+Woman Holding a Balance|Johannes Vermeer|1664|National Gallery of Art, Washington|3
+Woman Reading a Letter|Johannes Vermeer|1663|Rijksmuseum, Amsterdam|3
+Girl Reading a Letter at an Open Window|Johannes Vermeer|1659|Gemäldegalerie, Dresde|3
+The Astronomer (Vermeer)|Johannes Vermeer|1668|Louvre, Paris|4
+The Geographer|Johannes Vermeer|1669|Städel, Francfort|3
+The Little Street|Johannes Vermeer|1658|Rijksmuseum, Amsterdam|4
+Self-Portrait with Two Circles|Rembrandt|1665|Kenwood House, Londres|4
+Danaë (Rembrandt)|Rembrandt|1636|Ermitage, Saint-Pétersbourg|3
+Belshazzar's Feast (Rembrandt)|Rembrandt|1635|National Gallery, Londres|4
+Aristotle with a Bust of Homer|Rembrandt|1653|Metropolitan Museum, New York|4
+The Polish Rider|Rembrandt|1655|Frick Collection, New York|3
+The Mill (Rembrandt)|Rembrandt|1648|National Gallery of Art, Washington|3
+The Threatened Swan|Jan Asselijn|1650|Rijksmuseum, Amsterdam|3
+The Merry Drinker|Frans Hals|1630|Rijksmuseum, Amsterdam|3
+The Merry Family|Jan Steen|1668|Rijksmuseum, Amsterdam|3
+The Avenue at Middelharnis|Meindert Hobbema|1689|National Gallery, Londres|3
+The Jewish Cemetery|Jacob van Ruisdael|1655|Detroit Institute of Arts|3
+The Windmill at Wijk bij Duurstede|Jacob van Ruisdael|1670|Rijksmuseum, Amsterdam|3
+Massacre of the Innocents (Bruegel)|Pieter Brueghel l'Ancien|1567|Royal Collection|3
+The Harvesters|Pieter Brueghel l'Ancien|1565|Metropolitan Museum, New York|4
+Children's Games (Bruegel)|Pieter Brueghel l'Ancien|1560|Kunsthistorisches Museum, Vienne|3
+The Blind Leading the Blind|Pieter Brueghel l'Ancien|1568|Capodimonte, Naples|3
+The Seven Deadly Sins and the Four Last Things|Jérôme Bosch|1500|Prado, Madrid|3
+The Ship of Fools (painting)|Jérôme Bosch|1500|Louvre, Paris|3
+The Temptation of St. Anthony (Bosch)|Jérôme Bosch|1501|Musée national d'Art ancien, Lisbonne|3
+The Conjurer (painting)|Jérôme Bosch|1502|Musée municipal, Saint-Germain-en-Laye|3
+Self-portrait (Van Gogh, September 1889)|Vincent van Gogh|1889|Musée d'Orsay, Paris|4
+The Church at Auvers|Vincent van Gogh|1890|Musée d'Orsay, Paris|3
+The Sower (Van Gogh)|Vincent van Gogh|1888|Kröller-Müller, Otterlo|3
+The Yellow House|Vincent van Gogh|1888|Musée Van Gogh, Amsterdam|3
+Olive Trees (Van Gogh series)|Vincent van Gogh|1889|Collections diverses|3
+Skull of a Skeleton with Burning Cigarette|Vincent van Gogh|1886|Musée Van Gogh, Amsterdam|3
+Starry Night (Munch)|Edvard Munch|1893|Getty Center, Los Angeles|3
+Golconda (painting)|René Magritte|1953|Menil Collection, Houston|3
+The Empire of Light|René Magritte|1954|Collections diverses|4
+The Kiss (Hayez)|Francesco Hayez|1859|Pinacothèque de Brera, Milan|4
+The Fourth Estate|Giuseppe Pellizza da Volpedo|1901|Museo del Novecento, Milan|3
+Unique Forms of Continuity in Space|Umberto Boccioni|1913|MoMA, New York|4
+Dynamism of a Dog on a Leash|Giacomo Balla|1912|Albright-Knox, Buffalo|3
+The Persistence of Memory|Salvador Dalí|1931|MoMA, New York|5
+Melancholy and Mystery of a Street|Giorgio de Chirico|1914|Collection privée|3
+The Song of Love|Giorgio de Chirico|1914|MoMA, New York|3
+Senecio (Klee)|Paul Klee|1922|Kunstmuseum, Bâle|3
+Twittering Machine|Paul Klee|1922|MoMA, New York|3
+Blue Horse I|Franz Marc|1911|Lenbachhaus, Munich|3
+The Large Blue Horses|Franz Marc|1911|Walker Art Center, Minneapolis|3
+The Tower of Blue Horses|Franz Marc|1913|Disparu depuis 1945|4
+Fate of the Animals|Franz Marc|1913|Kunstmuseum, Bâle|3
+Street, Dresden|Ernst Ludwig Kirchner|1908|MoMA, New York|3
+Metropolis (George Grosz)|George Grosz|1917|Musée Thyssen, Madrid|3
+The Kiss (Edvard Munch)|Edvard Munch|1897|Musée Munch, Oslo|3
+Lady Godiva (painting by John Collier)|John Collier|1897|Herbert Art Gallery, Coventry|3
+The Lady of Shalott (painting)|John William Waterhouse|1888|Tate Britain, Londres|4
+Hylas and the Nymphs|John William Waterhouse|1896|Manchester Art Gallery|3
+The Light of the World (painting)|William Holman Hunt|1853|Keble College, Oxford|3
+The Last of England|Ford Madox Brown|1855|Birmingham Museum|3
+The Scapegoat (painting)|William Holman Hunt|1856|Lady Lever Art Gallery|3
+Beata Beatrix|Dante Gabriel Rossetti|1870|Tate Britain, Londres|3
+The Golden Stairs|Edward Burne-Jones|1880|Tate Britain, Londres|3
+The Garden of Eden (Thomas Cole)|Thomas Cole|1828|Amon Carter Museum, Fort Worth|3
+The Oxbow|Thomas Cole|1836|Metropolitan Museum, New York|3
+The Heart of the Andes|Frederic Edwin Church|1859|Metropolitan Museum, New York|3
+Niagara (Church)|Frederic Edwin Church|1857|National Gallery of Art, Washington|3
+Among the Sierra Nevada, California|Albert Bierstadt|1868|Smithsonian, Washington|3
+The Peaceable Kingdom|Edward Hicks|1834|Collections diverses|3
+Breezing Up (A Fair Wind)|Winslow Homer|1876|National Gallery of Art, Washington|3
+Max Schmitt in a Single Scull|Thomas Eakins|1871|Metropolitan Museum, New York|3
+Automat (Hopper)|Edward Hopper|1927|Des Moines Art Center|3
+Chop Suey (painting)|Edward Hopper|1929|Collection privée|3
+Freedom from Want|Norman Rockwell|1943|Norman Rockwell Museum|3
+The Problem We All Live With|Norman Rockwell|1964|Norman Rockwell Museum|3
+Man at the Crossroads|Diego Rivera|1934|Palais des Beaux-Arts, Mexico|3
+Detroit Industry Murals|Diego Rivera|1933|Detroit Institute of Arts|4
+The Flower Carrier|Diego Rivera|1935|SFMOMA, San Francisco|3
+Abaporu|Tarsila do Amaral|1928|MALBA, Buenos Aires|4
+Self-Portrait with Cropped Hair|Frida Kahlo|1940|MoMA, New York|3
+The Broken Column|Frida Kahlo|1944|Museo Dolores Olmedo, Mexico|4
+Untitled (1982 Basquiat painting)|Jean-Michel Basquiat|1982|Collection privée|4
+Marilyn Monroe (Warhol)|Andy Warhol|1962|Collections diverses|3
+Shot Sage Blue Marilyn|Andy Warhol|1964|Collection privée|4
+Whaam!|Roy Lichtenstein|1963|Tate Modern, Londres|4
+Drowning Girl|Roy Lichtenstein|1963|MoMA, New York|3
+Portrait of an Artist (Pool with Two Figures)|David Hockney|1972|Collection privée|4
+A Bigger Splash (painting)|David Hockney|1967|Tate Britain, Londres|3
+The Physical Impossibility of Death in the Mind of Someone Living|Damien Hirst|1991|Collection privée|4
+For the Love of God|Damien Hirst|2007|Collection privée|5
+Maman (sculpture)|Louise Bourgeois|1999|Collections diverses|4
+Spiral Jetty|Robert Smithson|1970|Grand Lac Salé, Utah|3
+Pumpkin (Kusama)|Yayoi Kusama|1994|Naoshima|4
+The Gleaners|Jean-François Millet|1857|Musée d'Orsay, Paris|3
+Tahitian Women on the Beach|Paul Gauguin|1891|Musée d'Orsay, Paris|3
+The Card Players|Paul Cézanne|1893|Collection privée|4
+The Basket of Apples|Paul Cézanne|1893|Art Institute, Chicago|3
+The Circus (Seurat)|Georges Seurat|1891|Musée d'Orsay, Paris|3
+Bathers at Asnières|Georges Seurat|1884|National Gallery, Londres|3
+Les Poseuses|Georges Seurat|1888|Barnes Foundation, Philadelphie|3
+The Bathers (Renoir)|Pierre-Auguste Renoir|1887|Philadelphia Museum of Art|3
+Girls at the Piano|Pierre-Auguste Renoir|1892|Musée d'Orsay, Paris|3
+The Umbrellas|Pierre-Auguste Renoir|1886|National Gallery, Londres|3
+Music in the Tuileries|Édouard Manet|1862|National Gallery, Londres|3
+The Fifer|Édouard Manet|1866|Musée d'Orsay, Paris|3
+The Execution of Emperor Maximilian|Édouard Manet|1868|Kunsthalle, Mannheim|3
+Le Bon Bock|Édouard Manet|1873|Philadelphia Museum of Art|3
+The Railway (painting)|Édouard Manet|1873|National Gallery of Art, Washington|3

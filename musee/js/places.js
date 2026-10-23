@@ -1,0 +1,104 @@
+// Géographie du jeu : villes (étiquettes de la carte), lieux réels des œuvres, collectionneurs rivaux.
+
+// [mot-clé cherché dans le lieu de l'œuvre, latitude, longitude] — le premier qui correspond gagne
+export const PLACE_KEYS = [
+  ['Lady Lever', 53.35, -2.99], ['Maeght', 43.70, 7.12], ['Millesgården', 59.36, 18.12], ['Malmaison', 48.87, 2.17],
+  ['Woburn', 51.99, -0.59], ['Rockwell', 42.29, -73.32], ['Royal Collection', 51.50, -0.14], ['Chester Beatty', 53.34, -6.27],
+  ['Tour de Londres', 51.508, -0.076], ['Liberty Island', 40.69, -74.04], ['Philadelph', 39.97, -75.18], ['Detroit', 42.36, -83.06],
+  ['Manchester', 53.48, -2.24], ['Albright', 42.93, -78.87], ['Buffalo', 42.93, -78.87], ['Amon Carter', 32.75, -97.37],
+  ['Kimbell', 32.75, -97.36], ['Des Moines', 41.58, -93.68], ['Phoenix', 33.47, -112.07], ['Museum Ulm', 48.40, 9.99],
+  ['Halle', 51.48, 11.97], ['Vatican', 41.906, 12.454], ['Sixtine', 41.903, 12.454], ['Saint-Pierre', 41.902, 12.453],
+  ['Getty', 34.078, -118.474], ['LACMA', 34.064, -118.359], ['Huntington', 34.13, -118.11], ['Smithsonian', 38.89, -77.03],
+  ['Grand Musée égyptien', 29.99, 31.12], ['Xi\'an', 34.38, 109.28], ['Xalapa', 19.54, -96.91], ['Naoshima', 34.46, 133.99],
+  ['Utah', 41.44, -112.67], ['Rio de Janeiro', -22.95, -43.21], ['Pâques', -27.12, -109.36], ['Gardner', 42.338, -71.099],
+  ['Palerme', 38.12, 13.36], ['Kamakura', 35.32, 139.54], ['Sarnath', 25.38, 83.02], ['Coventry', 52.41, -1.51],
+  ['Oxford', 51.75, -1.26], ['Birmingham', 52.48, -1.90], ['Youngstown', 41.10, -80.65], ['Ponce', 18.01, -66.61],
+  ['Cleveland', 41.509, -81.612], ['Metropolitan', 40.779, -73.963], ['MoMA', 40.761, -73.977], ['Frick', 40.771, -73.967],
+  ['Neue Galerie', 40.781, -73.960], ['Cloisters', 40.865, -73.932], ['Brooklyn', 40.671, -73.964],
+  ['Louvre', 48.861, 2.336], ['Orsay', 48.860, 2.327], ['Orangerie', 48.864, 2.322], ['Marmottan', 48.859, 2.267],
+  ['Rodin', 48.855, 2.316], ['Pompidou', 48.861, 2.352], ['Cluny', 48.850, 2.344], ['Saint-Germain-en-Laye', 48.90, 2.09],
+  ['Paris', 48.86, 2.35], ['New York', 40.75, -73.98], ['La Haye', 52.08, 4.31], ['Oslo', 59.91, 10.75], ['Milan', 45.46, 9.19],
+  ['Florence', 43.77, 11.25], ['Rome', 41.90, 12.49], ['Amsterdam', 52.36, 4.88], ['Madrid', 40.41, -3.69], ['Vienne', 48.20, 16.37],
+  ['Caire', 30.05, 31.23], ['Berlin', 52.52, 13.40], ['Londres', 51.51, -0.13], ['Otterlo', 52.10, 5.77], ['New Haven', 41.31, -72.93],
+  ['Chicago', 41.88, -87.62], ['Washington', 38.89, -77.02], ['Los Angeles', 34.05, -118.25], ['Boston', 42.34, -71.09],
+  ['Hambourg', 53.55, 10.0], ['Bruxelles', 50.84, 4.36], ['Gand', 51.05, 3.72], ['Naples', 40.85, 14.25], ['Dresde', 51.05, 13.74],
+  ['Cracovie', 50.06, 19.94], ['Venise', 45.43, 12.33], ['Urbino', 43.72, 12.64], ['Colmar', 48.08, 7.36], ['Karlsruhe', 49.01, 8.40],
+  ['Munich', 48.14, 11.57], ['Anvers', 51.22, 4.40], ['Toronto', 43.65, -79.39], ['Tolède', 39.86, -4.02], ['Albi', 43.93, 2.15],
+  ['Édimbourg', 55.95, -3.19], ['Mexico', 19.43, -99.13], ['Austin', 30.28, -97.74], ['Montpellier', 43.61, 3.88],
+  ['Saint-Pétersbourg', 59.94, 30.31], ['Moscou', 55.75, 37.62], ['Bâle', 47.56, 7.59], ['Stockholm', 59.33, 18.07],
+  ['Kyoto', 35.01, 135.77], ['Tokyo', 35.68, 139.77], ['Pékin', 39.92, 116.39], ['Taipei', 25.10, 121.55], ['Lanzhou', 36.06, 103.83],
+  ['Athènes', 37.99, 23.73], ['Reggio', 38.11, 15.65], ['Copenhague', 55.67, 12.57], ['Dublin', 53.34, -6.25], ['Chantilly', 49.19, 2.48],
+  ['Bayeux', 49.28, -0.70], ['Bogotá', 4.60, -74.07], ['Lima', -12.05, -77.04], ['New Delhi', 28.61, 77.21], ['Karachi', 24.86, 67.0],
+  ['Fort Worth', 32.75, -97.37], ['La Valette', 35.90, 14.51], ['Padoue', 45.41, 11.88], ['Sienne', 43.32, 11.33], ['Francfort', 50.11, 8.68],
+  ['Lisbonne', 38.72, -9.14], ['Houston', 29.74, -95.40], ['Minneapolis', 44.97, -93.29], ['San Francisco', 37.79, -122.40],
+  ['Buenos Aires', -34.58, -58.40], ['Zurich', 47.37, 8.55], ['Mannheim', 49.49, 8.47], ['Genève', 46.20, 6.14], ['Iran', 35.69, 51.39],
+  ['Ermitage', 59.94, 30.31], ['Tretiakov', 55.74, 37.62],
+];
+export function placeCoords(m) {
+  for (const [k, lat, lon] of PLACE_KEYS) if (m.includes(k)) return [lat, lon];
+  return null;
+}
+
+// Villes affichées sur la carte (nom, lat, lon, importance 1-3)
+export const CITIES = [
+  ['Paris', 48.86, 2.35, 1], ['Londres', 51.51, -0.13, 1], ['New York', 40.71, -74.0, 1], ['Tokyo', 35.68, 139.77, 1],
+  ['Rome', 41.90, 12.49, 1], ['Madrid', 40.42, -3.70, 1], ['Berlin', 52.52, 13.40, 1], ['Moscou', 55.75, 37.62, 1],
+  ['Pékin', 39.90, 116.40, 1], ['Le Caire', 30.04, 31.24, 1], ['Mexico', 19.43, -99.13, 1], ['Rio de Janeiro', -22.91, -43.17, 1],
+  ['Sydney', -33.87, 151.21, 1], ['Los Angeles', 34.05, -118.24, 1], ['Chicago', 41.88, -87.63, 1], ['Mumbai', 19.08, 72.88, 1],
+  ['Shanghai', 31.23, 121.47, 1], ['Istanbul', 41.01, 28.98, 1], ['Buenos Aires', -34.60, -58.38, 1], ['Lagos', 6.52, 3.38, 1],
+  ['Johannesbourg', -26.20, 28.05, 2], ['Le Cap', -33.92, 18.42, 2], ['Nairobi', -1.29, 36.82, 2], ['Dubaï', 25.20, 55.27, 2],
+  ['Téhéran', 35.69, 51.39, 2], ['Séoul', 37.57, 126.98, 1], ['Hong Kong', 22.32, 114.17, 2], ['Singapour', 1.35, 103.82, 2],
+  ['Bangkok', 13.76, 100.50, 2], ['Delhi', 28.61, 77.21, 2], ['Karachi', 24.86, 67.01, 2], ['Lima', -12.05, -77.04, 2],
+  ['Bogotá', 4.71, -74.07, 2], ['São Paulo', -23.55, -46.63, 1], ['Santiago', -33.45, -70.67, 2], ['Toronto', 43.65, -79.38, 2],
+  ['Montréal', 45.50, -73.57, 2], ['Washington', 38.91, -77.04, 2], ['Boston', 42.36, -71.06, 2], ['San Francisco', 37.77, -122.42, 2],
+  ['Houston', 29.76, -95.37, 2], ['Miami', 25.76, -80.19, 2], ['Vancouver', 49.28, -123.12, 2], ['La Havane', 23.11, -82.37, 2],
+  ['Amsterdam', 52.37, 4.90, 2], ['Bruxelles', 50.85, 4.35, 2], ['Vienne', 48.21, 16.37, 2], ['Prague', 50.08, 14.44, 2],
+  ['Florence', 43.77, 11.26, 2], ['Venise', 45.44, 12.32, 2], ['Milan', 45.46, 9.19, 2], ['Barcelone', 41.39, 2.17, 2],
+  ['Lisbonne', 38.72, -9.14, 2], ['Athènes', 37.98, 23.73, 2], ['Stockholm', 59.33, 18.07, 2], ['Oslo', 59.91, 10.75, 2],
+  ['Copenhague', 55.68, 12.57, 2], ['Saint-Pétersbourg', 59.93, 30.36, 2], ['Varsovie', 52.23, 21.01, 2], ['Genève', 46.20, 6.14, 3],
+  ['Munich', 48.14, 11.58, 3], ['Marseille', 43.30, 5.37, 3], ['Lyon', 45.76, 4.84, 3], ['Bordeaux', 44.84, -0.58, 3],
+  ['Édimbourg', 55.95, -3.19, 3], ['Dublin', 53.35, -6.26, 3], ['Naples', 40.85, 14.27, 3], ['Kyoto', 35.01, 135.77, 3],
+  ['Osaka', 34.69, 135.50, 3], ['Taipei', 25.03, 121.57, 3], ['Xi’an', 34.34, 108.94, 3], ['Marrakech', 31.63, -7.98, 3],
+  ['Dakar', 14.72, -17.47, 3], ['Addis-Abeba', 9.03, 38.74, 3], ['Kinshasa', -4.44, 15.27, 3], ['Beyrouth', 33.89, 35.50, 3],
+  ['Jérusalem', 31.77, 35.21, 3], ['Bagdad', 33.31, 44.36, 3], ['Kaboul', 34.56, 69.21, 3], ['Katmandou', 27.72, 85.32, 3],
+  ['Hanoï', 21.03, 105.85, 3], ['Manille', 14.60, 120.98, 3], ['Jakarta', -6.21, 106.85, 3], ['Melbourne', -37.81, 144.96, 3],
+  ['Auckland', -36.85, 174.76, 3], ['Anchorage', 61.22, -149.90, 3], ['Reykjavik', 64.15, -21.94, 3], ['Las Vegas', 36.17, -115.14, 3],
+  ['Monaco', 43.74, 7.42, 3], ['Turin', 45.07, 7.69, 3], ['Cuzco', -13.53, -71.97, 3], ['La Paz', -16.50, -68.15, 3],
+];
+
+// Collectionneurs rivaux (inventés) : ils achètent aux enchères, se défendent et attaquent votre musée.
+export const RIVALS = [
+  { name: 'Syndicat du Lotus', boss: 'Madame Wei', lat: 22.28, lon: 114.16, lvl: 7, aggr: 0.8, motto: 'Rien ne nous échappe.' },
+  { name: 'Maison Orlov', boss: 'Dmitri Orlov', lat: 55.76, lon: 37.60, lvl: 8, aggr: 0.7, motto: 'L’art appartient aux forts.' },
+  { name: 'Fondation Moreau', boss: 'Hélène Moreau', lat: 46.21, lon: 6.15, lvl: 6, aggr: 0.3, motto: 'La patience paie toujours.' },
+  { name: 'Collection Vasquez', boss: 'Rafael Vasquez', lat: -34.59, lon: -58.38, lvl: 5, aggr: 0.6, motto: 'Tout a un prix.' },
+  { name: 'Le Corbeau', boss: '« Le Corbeau »', lat: 43.30, lon: 5.38, lvl: 4, aggr: 0.9, motto: 'Vous ne me verrez pas venir.' },
+  { name: 'Galerie Kuroda', boss: 'Kenji Kuroda', lat: 34.69, lon: 135.50, lvl: 6, aggr: 0.4, motto: 'La beauté est une discipline.' },
+  { name: 'Palais Al-Sayed', boss: 'Cheikh Al-Sayed', lat: 25.20, lon: 55.27, lvl: 9, aggr: 0.3, motto: 'Le meilleur, ou rien.' },
+  { name: 'Collection Okonkwo', boss: 'Adaeze Okonkwo', lat: 6.45, lon: 3.40, lvl: 5, aggr: 0.5, motto: 'Rendre ce qui a été pris.' },
+  { name: 'Fondation Lindqvist', boss: 'Astrid Lindqvist', lat: 59.33, lon: 18.06, lvl: 3, aggr: 0.2, motto: 'Le froid conserve tout.' },
+  { name: 'Atelier Bellandi', boss: 'Marco Bellandi', lat: 45.44, lon: 12.33, lvl: 4, aggr: 0.5, motto: 'Un faux vaut un vrai, s’il est bien fait.' },
+  { name: 'Villa Esperanza', boss: 'Lucía Esperanza', lat: 23.13, lon: -82.38, lvl: 3, aggr: 0.6, motto: 'Le soleil efface les traces.' },
+  { name: 'Groupe Ferreira', boss: 'Bruno Ferreira', lat: -23.55, lon: -46.63, lvl: 5, aggr: 0.7, motto: 'Les affaires sont les affaires.' },
+  { name: 'Cabinet Van Rijn', boss: 'Pieter van Rijn', lat: 51.22, lon: 4.40, lvl: 4, aggr: 0.3, motto: 'Les maîtres anciens, et rien d’autre.' },
+  { name: 'Dynastie Chen', boss: 'Chen Long', lat: 31.23, lon: 121.47, lvl: 8, aggr: 0.6, motto: 'Mille ans de patience.' },
+  { name: 'Collection Mbeki', boss: 'Thabo Mbeki-Roux', lat: -33.92, lon: 18.42, lvl: 3, aggr: 0.4, motto: 'Au bout du monde, tout se cache.' },
+  { name: 'Fondation Haddad', boss: 'Nadia Haddad', lat: 33.89, lon: 35.50, lvl: 4, aggr: 0.4, motto: 'Les ruines parlent.' },
+  { name: 'Galerie Nakamura', boss: 'Yui Nakamura', lat: 37.57, lon: 126.98, lvl: 2, aggr: 0.5, motto: 'Jeune, mais affamée.' },
+  { name: 'Cercle de Boston', boss: 'Inconnu', lat: 42.36, lon: -71.06, lvl: 7, aggr: 0.5, motto: 'Les cadres vides de 1990 sont notre œuvre.' },
+  { name: 'Musée Kapoor', boss: 'Vikram Kapoor', lat: 19.08, lon: 72.88, lvl: 5, aggr: 0.4, motto: 'Le monde entier dans un palais.' },
+  { name: 'Collection Whitmore', boss: 'Grace Whitmore', lat: -33.87, lon: 151.21, lvl: 3, aggr: 0.3, motto: 'Loin des yeux, près du coffre.' },
+  { name: 'Galerie Duval', boss: 'Étienne Duval', lat: 45.50, lon: -73.57, lvl: 2, aggr: 0.3, motto: 'Le goût avant tout.' },
+  { name: 'Fondation Rossi', boss: 'Carla Rossi', lat: 45.07, lon: 7.69, lvl: 3, aggr: 0.5, motto: 'La famille d’abord.' },
+  { name: 'Syndicat Novák', boss: 'Pavel Novák', lat: 50.08, lon: 14.43, lvl: 2, aggr: 0.8, motto: 'Rapide et sans bruit.' },
+  { name: 'Galerie Sterling', boss: 'Jack Sterling', lat: 36.17, lon: -115.14, lvl: 6, aggr: 0.7, motto: 'La maison gagne toujours.' },
+  { name: 'Maison Saint-Clair', boss: 'Comtesse de Saint-Clair', lat: 43.74, lon: 7.42, lvl: 7, aggr: 0.4, motto: 'Le luxe est une arme.' },
+  { name: 'Collection Aydın', boss: 'Selim Aydın', lat: 41.01, lon: 28.98, lvl: 5, aggr: 0.5, motto: 'Entre deux mondes.' },
+  { name: 'Les Faussaires d’Anvers', boss: 'Sven Mertens', lat: 51.25, lon: 4.45, lvl: 1, aggr: 0.6, motto: 'Copier, c’est déjà voler.' },
+  { name: 'Galerie du Pacifique', boss: 'Leilani Kahale', lat: 21.31, lon: -157.86, lvl: 2, aggr: 0.2, motto: 'L’horizon pour seul mur.' },
+];
+
+export const FIRST = ['Lucien', 'Inès', 'Malik', 'Sofia', 'Hugo', 'Yasmine', 'Arthur', 'Nina', 'Victor', 'Léa', 'Oskar', 'Zoé', 'Rémi', 'Chloé',
+  'Kenzo', 'Ana', 'Boris', 'Mila', 'Théo', 'Jade', 'Samir', 'Elsa', 'Diego', 'Iris', 'Max', 'Lina', 'Paco', 'Alba', 'Igor', 'Rose'];
+export const NICK = ['le Chat', 'Zéro', 'l’Ombre', 'la Fouine', 'Doigts-de-fée', 'le Mur', 'Turbo', 'la Plume', 'Silence', 'le Pinceau',
+  'Courant d’air', 'Bulldozer', 'la Souris', 'Néon', 'Lame', 'Velours', 'le Spectre', 'Trois-Clés', 'Satin', 'Frein-à-main'];
