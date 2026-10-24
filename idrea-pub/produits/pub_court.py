@@ -6,7 +6,7 @@
   fin   logo IDREA, produit, idrea.fr, « Lien en bio »
 
 Prérequis : python3 ../voix_off.py <produit>/court.json <produit>/build_court
-Usage     : python3 pub_court.py <produit> [--apercu T ...]  -> <produit>/build_court/idrea_<produit>_court.mp4
+Usage     : python3 pub_court.py <produit> [--version court2] [--apercu T ...]  -> <produit>/build_court/idrea_<produit>_court.mp4
 """
 import json, math, os, sys
 import numpy as np
@@ -190,16 +190,17 @@ def sons(T):
 def main():
     produit = sys.argv[1]
     dossier = os.path.join(ICI, produit)
-    C.update(json.load(open(os.path.join(dossier, "court.json"))))
-    build = os.path.join(dossier, "build_court")
+    version = sys.argv[sys.argv.index("--version") + 1] if "--version" in sys.argv else "court"  # ex. court2
+    C.update(json.load(open(os.path.join(dossier, f"{version}.json"))))
+    build = os.path.join(dossier, f"build_{version}")
     T = M.charger_timeline(build, fin_hold=1.6)
     construire(produit)
     if "--apercu" in sys.argv:
         for a in sys.argv[sys.argv.index("--apercu") + 1:]:
             Image.fromarray(image(T, float(a))).save(os.path.join(build, f"apercu_{a}.png"))
         return
-    M.produire(T, image, build, sons(T), nom=f"idrea_{produit}_court.mp4", srt=f"idrea_{produit}_court_sous-titres.srt",
-               musique_args=("--direct",))
+    M.produire(T, image, build, sons(T), nom=f"idrea_{produit}_{version}.mp4", srt=f"idrea_{produit}_{version}_sous-titres.srt",
+               musique_args=("--direct", *C.get("musique", [])))
 
 
 if __name__ == "__main__":

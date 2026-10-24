@@ -1,6 +1,6 @@
 """Détoure une photo produit sur fond clair -> PNG transparent, bords nets et sans halo blanc.
 
-Usage : python3 detourage.py source.jpg sortie.png [tolérance] [x0,y0,x1,y1 | -] [rognage px, impair] [--trous] [--sombre]
+Usage : python3 detourage.py source.jpg sortie.png [tolérance] [x0,y0,x1,y1 | -] [rognage px, impair] [--trous] [--sombre] [--sol]
   - le fond (et l'ombre portée claire) est retiré par remplissage depuis les bords de l'image ;
   - les pixels de bord sont « décontaminés » (on retire le blanc du fond mélangé à la couleur) ;
   - boîte optionnelle (en fractions de l'image) pour ne garder qu'un objet (ex. sans câble ni brosse).
@@ -10,7 +10,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
 
-def detourer(src, dst, tol=34, boite=None, rognage=5, trous=False, sombre=False):
+def detourer(src, dst, tol=34, boite=None, rognage=5, trous=False, sombre=False, sol=False):
     im = Image.open(src).convert("RGB")
     if boite:
         w, h = im.size
@@ -35,6 +35,12 @@ def detourer(src, dst, tol=34, boite=None, rognage=5, trous=False, sombre=False)
         mx, mn = arr.max(-1), arr.min(-1)
         sat = (mx - mn) / np.maximum(mx, 1)
         fond_mask |= ~((mx < 175) | (sat > 0.22))
+    if sol:  # sol / reflet clair sous le produit : tons clairs et peu saturés dans le bas de l'image
+        mx, mn = arr.max(-1), arr.min(-1)
+        sat = (mx - mn) / np.maximum(mx, 1)
+        bas = np.zeros(mx.shape, bool)
+        bas[int(mx.shape[0] * 0.8):] = True
+        fond_mask |= bas & (mx > 120) & (sat < 0.15)
     alpha = Image.fromarray(np.where(fond_mask, 0, 255).astype(np.uint8), "L")
     if sombre:  # referme les petits trous (reflets brillants sur la pierre)
         alpha = alpha.filter(ImageFilter.MaxFilter(5)).filter(ImageFilter.MinFilter(5))
@@ -54,5 +60,5 @@ if __name__ == "__main__":
     tol = float(sys.argv[3]) if len(sys.argv) > 3 else 34
     boite = [float(v) for v in sys.argv[4].split(",")] if len(sys.argv) > 4 and sys.argv[4] != "-" else None
     rognage = int(sys.argv[5]) if len(sys.argv) > 5 else 5
-    r = detourer(sys.argv[1], sys.argv[2], tol, boite, rognage, "--trous" in sys.argv, "--sombre" in sys.argv)
+    r = detourer(sys.argv[1], sys.argv[2], tol, boite, rognage, "--trous" in sys.argv, "--sombre" in sys.argv, "--sol" in sys.argv)
     print(sys.argv[2], r.size)

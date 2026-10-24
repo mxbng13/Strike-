@@ -1,0 +1,16 @@
+{
+ "lignes": [
+  "Un glaçon sur le visage le matin ? Oui, et voilà comment.",
+  "Tu remplis le moule d'eau, ou d'infusion refroidie, et direction le congélateur.",
+  "Le manche en silicone protège tes doigts du froid. Tu le fais glisser sans t'arrêter.",
+  "Le rouleau de glace est chez Idréa, le lien est en bio."
+ ],
+ "voix": "fr-FR-VivienneMultilingualNeural",
+ "debit": "+8%",
+ "musique": ["--variante2"],
+ "accroche": ["UN GLAÇON", "SUR LE VISAGE ?"],
+ "couleur": [52, 158, 150],
+ "puces2": [["EAU OU INFUSION", "infusion"], ["AU CONGÉLATEUR", "congélateur"]],
+ "puces3": [["MANCHE ANTI-FROID", "manche"], ["GLISSE SANS T'ARRÊTER", "glisser"]],
+ "prix": ["SEULEMENT", "7,99 €"]
+}

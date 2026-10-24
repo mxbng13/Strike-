@@ -1,6 +1,6 @@
 """Musique de fond originale (synthèse numpy, donc libre de droits) + effets sonores.
 
-Usage : python3 musique.py DUREE_S [DOSSIER] [--direct]  ->  DOSSIER/musique.wav, DOSSIER/sfx.wav
+Usage : python3 musique.py DUREE_S [DOSSIER] [--direct] [--variante2]  ->  DOSSIER/musique.wav, DOSSIER/sfx.wav
 Les instants des effets (whoosh, pop, impact) sont lus dans build/timeline.json
 (écrit par rendu.py) pour rester synchronisés avec l'image.
 """
@@ -10,6 +10,7 @@ import wave
 
 SR = 44100
 DIRECT = False
+VARIANTE = 1
 BPM = 96
 HERE = os.path.dirname(os.path.abspath(__file__))
 BUILD = os.path.join(HERE, "build")
@@ -82,10 +83,16 @@ def mtof(m):
 
 def musique(duree):
     buf = np.zeros(int((duree + 2) * SR))
-    beat = 60 / BPM
-    # Progression Fmaj7 – Am7 – Dm9 – Bbmaj7, chaude et « clean beauty »
-    accords = [[53, 57, 60, 64], [57, 60, 64, 67], [50, 57, 60, 64], [46, 53, 57, 62]]
-    basses = [41, 45, 38, 46]
+    if VARIANTE == 2:
+        # variante 2 : plus rapide et plus pop, Am – F – C – G avec arpège pincé
+        beat = 60 / 112
+        accords = [[57, 60, 64, 69], [53, 57, 60, 65], [48, 52, 55, 60], [55, 59, 62, 67]]
+        basses = [45, 41, 48, 43]
+    else:
+        beat = 60 / BPM
+        # Progression Fmaj7 – Am7 – Dm9 – Bbmaj7, chaude et « clean beauty »
+        accords = [[53, 57, 60, 64], [57, 60, 64, 67], [50, 57, 60, 64], [46, 53, 57, 62]]
+        basses = [41, 45, 38, 46]
     bar = 4 * beat
     nbar = int(duree / bar) + 2
     pk, ph, pc = kick(), hat(), clap()
@@ -94,8 +101,12 @@ def musique(duree):
         ch = accords[b % 4]
         for m in ch:
             ajouter(buf, note(mtof(m), bar + 0.4, "pad"), t0)
-        for k, off in enumerate((0, 1.5, 2.5)):
-            ajouter(buf, note(mtof(ch[(k + b) % 4] + 12), 1.2, "keys"), t0 + off * beat)
+        if VARIANTE == 2:  # arpège en croches, une octave au-dessus
+            for k in range(8):
+                ajouter(buf, 0.8 * note(mtof(ch[(0, 1, 2, 3, 2, 1, 2, 3)[k]] + 12), 0.45, "keys"), t0 + k * beat / 2)
+        else:
+            for k, off in enumerate((0, 1.5, 2.5)):
+                ajouter(buf, note(mtof(ch[(k + b) % 4] + 12), 1.2, "keys"), t0 + off * beat)
         ajouter(buf, note(mtof(basses[b % 4] - 12), bar, "bass"), t0)
         intro = b == 0 and not DIRECT  # première mesure sans batterie : l'accroche respire
         for q in range(4):
@@ -157,6 +168,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         BUILD = sys.argv[2]
     DIRECT = "--direct" in sys.argv  # batterie dès la première seconde (accroche plus nerveuse)
+    VARIANTE = 2 if "--variante2" in sys.argv else 1
     os.makedirs(BUILD, exist_ok=True)
     tl = {}
     p = os.path.join(BUILD, "timeline.json")

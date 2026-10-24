@@ -44,9 +44,12 @@ async def une_ligne(i, texte):
 
 
 async def main():
-    global BUILD, LIGNES
+    global BUILD, LIGNES, VOICE, RATE
     if len(sys.argv) > 2:
-        LIGNES = json.load(open(sys.argv[1]))["lignes"]
+        cfg = json.load(open(sys.argv[1]))
+        LIGNES = cfg["lignes"]
+        VOICE = cfg.get("voix", VOICE)
+        RATE = cfg.get("debit", RATE)
         BUILD = os.path.abspath(sys.argv[2])
     os.makedirs(BUILD, exist_ok=True)
     res = [await une_ligne(i, t) for i, t in enumerate(LIGNES)]
