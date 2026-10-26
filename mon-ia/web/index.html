@@ -361,7 +361,7 @@ renderAll();
 
 // Code d'accès : seule une empreinte du code est dans la page. Une fois déverrouillé, cet appareil s'en souvient.
 const LOCK_SALT = 'mon-ia-mxbng13';
-const LOCK_HASH = '__LOCK_HASH__';
+const LOCK_HASH = '99529e63181cfc4e8760fc6a6a5148ca38cb35ef6d0789f01e87d5763a39100b';
 async function hashCode(code) {
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(code), 'PBKDF2', false, ['deriveBits']);
   const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: new TextEncoder().encode(LOCK_SALT), iterations: 300000, hash: 'SHA-256' }, key, 256);
