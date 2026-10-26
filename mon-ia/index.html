@@ -125,6 +125,7 @@
       <fieldset><legend>Images</legend>
         <label for="imageProvider">Fournisseur</label>
         <select id="imageProvider" name="imageProvider">
+          <option value="hf">Gratuit haute qualité, sans clé (FLUX.2, Flux Kontext)</option>
           <option value="pollinations">Pollinations avec compte gratuit (meilleurs modèles gratuits)</option>
           <option value="gemini">Google Gemini (le plus beau, payant)</option>
           <option value="openai">OpenAI (gpt-image-1)</option>
@@ -177,15 +178,16 @@ const DEFAULTS = {
   providerFilters: 'min',
   textProvider: 'free', textBaseUrl: '', textApiKey: '', textModel: 'openai',
   temperature: 0.8, maxTokens: 2048, historyLength: 30,
-  imageProvider: 'free', imageApiKey: '', geminiApiKey: '', pollinationsKey: '', imageModel: 'flux', imageAspect: '1:1', imageQuality: 'high',
+  imageProvider: 'hf', imageApiKey: '', geminiApiKey: '', pollinationsKey: '', imageModel: 'flux', imageAspect: '1:1', imageQuality: 'high',
 };
-const IMAGE_MODELS = { pollinations: 'microsoft/mai-image-2.6', gemini: 'gemini-3-pro-image', openai: 'gpt-image-1', free: 'flux' };
+const IMAGE_MODELS = { hf: '', pollinations: 'microsoft/mai-image-2.6', gemini: 'gemini-3-pro-image', openai: 'gpt-image-1', free: 'flux' };
 // Modèles Pollinations gratuits qui savent modifier une photo, du meilleur au plus économique.
 const EDIT_MODELS = ['black-forest-labs/flux.1-kontext-pro', 'openai/gpt-image-1-mini', 'microsoft/mai-image-2.6', 'black-forest-labs/flux.2-klein-4b'];
 const IMAGE_MODEL_HINTS = {
   gemini: 'gemini-3-pro-image (Nano Banana Pro, le plus beau) · gemini-nano-banana-2.1 · gemini-3.1-flash-image (plus rapides et moins chers)',
   openai: 'gpt-image-1',
   free: 'flux, turbo',
+  hf: 'Choisi automatiquement : FLUX.2 pour créer, Flux Kontext / Qwen pour modifier tes photos.',
   pollinations: 'microsoft/mai-image-2.6 (photoréaliste) · gpt-image-2 (le plus précis, consomme plus) · flux-klein · zimage (le plus économique, plus d’images par jour)',
 };
 // Taille en pixels pour chaque format (OpenAI n'accepte que ces trois tailles).
@@ -209,6 +211,10 @@ function read(key, fallback) { try { return JSON.parse(localStorage.getItem(key)
 function write(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch { return false; } }
 
 let settings = { ...DEFAULTS, ...read('mon-ia-settings', {}) };
+// Anciens réglages sans clé : on passe au mode gratuit haute qualité.
+if (settings.imageProvider === 'free' || (settings.imageProvider === 'pollinations' && !settings.pollinationsKey)) {
+  settings.imageProvider = 'hf'; settings.imageModel = '';
+}
 let messages = read('mon-ia-messages', []);
 let imageMode = false;
 
@@ -323,7 +329,16 @@ async function generateImage(prompt) {
     return img.b64_json ? `data:image/png;base64,${img.b64_json}` : img.url;
   }
   const [width, height] = FREE_SIZES[s.imageAspect] || FREE_SIZES['1:1'];
-  const params = new URLSearchParams({ width, height, model: s.imageModel || IMAGE_MODELS.free, nologo: 'true', enhance: 'true', seed: Math.floor(Math.random() * 1e9) });
+  if (s.imageProvider === 'hf') {
+    try {
+      return await huggingFace('black-forest-labs/FLUX.2-dev', '/infer', {
+        prompt, input_images: [], width: Math.round(width / 16) * 16, height: Math.round(height / 16) * 16, randomize_seed: true,
+      });
+    } catch (err) {
+      console.warn('FLUX.2 indisponible, repli sur Pollinations', err);
+    }
+  }
+  const params = new URLSearchParams({ width, height, model: s.imageProvider === 'free' ? s.imageModel || IMAGE_MODELS.free : IMAGE_MODELS.free, nologo: 'true', enhance: 'true', seed: Math.floor(Math.random() * 1e9) });
   const res = await fetch(`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?${params}`);
   if (res.status === 402 || res.status === 429) {
     throw new Error('Le service gratuit limite à environ 1 image toutes les 45 secondes. Pour des images sans attente et de bien meilleure qualité, choisis Google Gemini dans Paramètres.');
@@ -348,6 +363,47 @@ function loadPhoto(file) {
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Impossible de lire cette photo.')); };
     img.src = url;
   });
+}
+
+let gradioModule;
+function gradioClient() {
+  if (!gradioModule) {
+    // Les serveurs Hugging Face refusent les requêtes « avec cookies » venant d'un autre site :
+    // on les envoie sans cookies, et sans en-tête inutile sur les lectures.
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = (input, init = {}) => {
+      const url = typeof input === 'string' ? input : input.url;
+      if (url.includes('.hf.space/')) {
+        init = { ...init, credentials: 'omit' };
+        if ((init.method || 'GET').toUpperCase() === 'GET' && init.headers) {
+          const headers = new Headers(init.headers);
+          headers.delete('content-type');
+          init.headers = headers;
+        }
+      }
+      return nativeFetch(input, init);
+    };
+    gradioModule = import('https://cdn.jsdelivr.net/npm/@gradio/client@1.15.0/+esm');
+  }
+  return gradioModule;
+}
+
+// Appelle un modèle open source hébergé gratuitement sur Hugging Face et renvoie l'image.
+async function huggingFace(space, endpoint, args) {
+  const { Client } = await gradioClient();
+  let result;
+  try {
+    const client = await Client.connect(space);
+    result = await client.predict(endpoint, args);
+  } catch (err) {
+    const msg = err?.message || String(err);
+    if (/quota|limit/i.test(msg)) throw new Error('Le quota gratuit de Hugging Face est atteint pour l’instant. Il se recharge au fil de la journée : réessaie un peu plus tard.');
+    throw new Error(`Le modèle gratuit n’a pas répondu (${msg}). Réessaie dans un moment.`);
+  }
+  const out = result.data[0];
+  const file = Array.isArray(out) ? out[0]?.image || out[0] : out;
+  if (!file?.url) throw new Error('Le modèle gratuit n’a pas renvoyé d’image. Réessaie.');
+  return blobToDataUrl(await (await fetch(file.url)).blob());
 }
 
 async function editImage(prompt, source) {
@@ -406,7 +462,15 @@ async function editImage(prompt, source) {
     }
     throw new Error(`Pollinations n’a pas pu modifier la photo (${lastError}). Réessaie plus tard.`);
   }
-  throw new Error('Pour modifier une photo, il faut ta clé Pollinations (gratuite). Va dans Paramètres → Images, colle ta clé sk_… dans « Clé Pollinations » et appuie sur Enregistrer.');
+  // Sans clé : modèles de retouche gratuits hébergés sur Hugging Face.
+  const blob = await (await fetch(source)).blob();
+  const { handle_file } = await gradioClient();
+  try {
+    return await huggingFace('black-forest-labs/FLUX.1-Kontext-Dev', '/infer', { input_image: handle_file(blob), prompt, randomize_seed: true, steps: 28 });
+  } catch (err) {
+    console.warn('Flux Kontext indisponible, essai avec Qwen', err);
+    return await huggingFace('multimodalart/Qwen-Image-Edit-Fast', '/infer', { image: handle_file(blob), prompt, randomize_seed: true });
+  }
 }
 
 let attachment = null;
@@ -460,7 +524,7 @@ async function send() {
 
   const userMsg = { role: 'user', content: wantImage ? '🖼️ ' + text : text, kind: wantImage ? 'image' : undefined, image: source || undefined };
   messages.push(userMsg); render(userMsg); store();
-  const pending = render({ role: 'assistant', content: source ? 'Modification de la photo…' : wantImage ? 'Création de l’image…' : '…' });
+  const pending = render({ role: 'assistant', content: source ? 'Modification de la photo… (30 s à 1 min)' : wantImage ? 'Création de l’image… (jusqu’à 1 min)' : '…' });
   $('#sendBtn').disabled = true;
 
   try {
