@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Mon IA</title>
+<style>
+  :root { --bg:#0f1115; --panel:#181b22; --line:#2a2f3a; --text:#e8eaf0; --muted:#8b93a7; --accent:#7c5cff; --me:#2b2350; --err:#ff6b6b; color-scheme:dark; }
+  * { box-sizing: border-box; }
+  html, body { height:100%; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.5 system-ui, sans-serif; display:flex; flex-direction:column;
+         padding-top:env(safe-area-inset-top, 0px); padding-bottom:env(safe-area-inset-bottom, 0px); }
+  header { display:flex; align-items:center; gap:8px; padding:10px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px)); border-bottom:1px solid var(--line); }
+  header h1 { font-size:17px; margin:0; flex:1; }
+  button { background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:8px 12px; font:inherit; font-size:15px; cursor:pointer; }
+  button.primary, button.on { background:var(--accent); border-color:var(--accent); }
+  #log { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:10px; }
+  .msg { max-width:min(720px, 88%); padding:10px 14px; border-radius:14px; background:var(--panel); white-space:pre-wrap; word-wrap:break-word; }
+  .msg.user { align-self:flex-end; background:var(--me); }
+  .msg.error { color:var(--err); }
+  .msg img { display:block; max-width:100%; border-radius:10px; margin-top:6px; }
+  .msg .hint { margin-top:4px; }
+  .empty { margin:auto; text-align:center; color:var(--muted); max-width:300px; }
+  form#composer { display:flex; gap:8px; padding:10px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px)); border-top:1px solid var(--line); }
+  textarea { flex:1; min-width:0; resize:none; background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:10px; font:inherit; min-height:44px; max-height:160px; }
+  #settings { position:fixed; inset:0; background:var(--bg); overflow-y:auto; padding:calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+  #settings .wrap { max-width:640px; margin:0 auto; }
+  fieldset { border:1px solid var(--line); border-radius:12px; margin:0 0 16px; padding:12px 14px; }
+  legend { color:var(--muted); padding:0 6px; }
+  label { display:block; margin:10px 0 4px; color:var(--muted); font-size:13px; }
+  input, select, #settings textarea { width:100%; background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 10px; font:inherit; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; } .row > div { flex:1; min-width:120px; }
+  .check { display:flex; gap:8px; align-items:center; color:var(--text); font-size:15px; }
+  .check input { width:auto; }
+  .hint { color:var(--muted); font-size:12px; margin:4px 0 0; }
+  .confirm { display:flex; gap:8px; align-items:center; }
+  #lock { position:fixed; inset:0; z-index:10; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:16px; }
+  #lock[hidden] { display:none; }
+  #lock form { width:100%; max-width:320px; display:flex; flex-direction:column; gap:10px; text-align:center; }
+  #lock input { text-align:center; font-size:18px; }
+</style>
+</head>
+<body>
+<div id="lock">
+  <form id="lockForm">
+    <h2 style="margin:0">Mon IA</h2>
+    <label for="lockCode" style="margin:0">Code d’accès</label>
+    <input id="lockCode" type="password" autocomplete="current-password" autofocus>
+    <button class="primary">Entrer</button>
+    <p class="hint" id="lockError"></p>
+  </form>
+</div>
+<header>
+  <h1 id="title">Mon IA</h1>
+  <button id="clear">Effacer</button>
+  <button id="openSettings">Paramètres</button>
+</header>
+
+<div id="log"></div>
+
+<form id="composer">
+  <button type="button" id="imgMode" title="Mode image" aria-label="Mode image">🖼️</button>
+  <textarea id="input" rows="1" placeholder="Écris ton message…"></textarea>
+  <button class="primary" id="sendBtn">Envoyer</button>
+</form>
+
+<div id="settings" hidden>
+  <div class="wrap">
+    <div class="row" style="align-items:center;margin-bottom:12px">
+      <h2 style="margin:0;flex:1">Paramètres</h2>
+      <button id="closeSettings" type="button">Fermer</button>
+    </div>
+    <p class="hint" style="margin-bottom:12px">Tout est enregistré uniquement sur cet appareil (dans ton navigateur). Tes clés API ne sont envoyées qu’au fournisseur que tu choisis.</p>
+    <form id="settingsForm">
+      <fieldset><legend>Personnalité & règles</legend>
+        <label for="assistantName">Nom de l’IA</label><input id="assistantName" name="assistantName">
+        <label for="systemPrompt">Instructions — c’est ici que tu décides de son comportement</label>
+        <textarea id="systemPrompt" name="systemPrompt" rows="6"></textarea>
+        <label for="blockedWords">Mots bloqués (un par ligne) — refusés dans tes messages et tes prompts d’image</label>
+        <textarea id="blockedWords" name="blockedWords" rows="3"></textarea>
+        <label class="check"><input type="checkbox" id="imagesEnabled" name="imagesEnabled"> Génération d’images activée</label>
+      </fieldset>
+
+      <fieldset><legend>Modèle de texte</legend>
+        <label for="textProvider">Fournisseur</label>
+        <select id="textProvider" name="textProvider">
+          <option value="free">Gratuit, sans clé (Pollinations)</option>
+          <option value="openai">OpenAI</option>
+          <option value="openrouter">OpenRouter (des centaines de modèles)</option>
+          <option value="anthropic">Anthropic (Claude)</option>
+          <option value="custom">Autre API compatible OpenAI</option>
+        </select>
+        <div id="textCustomUrl"><label for="textBaseUrl">URL de l’API</label><input id="textBaseUrl" name="textBaseUrl" placeholder="https://…/v1"></div>
+        <div id="textKeyBox"><label for="textApiKey">Clé API</label><input id="textApiKey" name="textApiKey" type="password" autocomplete="off"></div>
+        <label for="textModel">Modèle</label><input id="textModel" name="textModel">
+        <p class="hint" id="textModelHint"></p>
+        <div class="row">
+          <div><label for="temperature">Créativité (0–2)</label><input id="temperature" name="temperature" type="number" step="0.1" min="0" max="2"></div>
+          <div><label for="maxTokens">Longueur max</label><input id="maxTokens" name="maxTokens" type="number" min="1"></div>
+          <div><label for="historyLength">Mémoire (messages)</label><input id="historyLength" name="historyLength" type="number" min="1"></div>
+        </div>
+      </fieldset>
+
+      <fieldset><legend>Images</legend>
+        <label for="imageProvider">Fournisseur</label>
+        <select id="imageProvider" name="imageProvider">
+          <option value="free">Gratuit, sans clé (Pollinations)</option>
+          <option value="openai">OpenAI (gpt-image-1, dall-e-3)</option>
+        </select>
+        <div id="imageKeyBox"><label for="imageApiKey">Clé API OpenAI</label><input id="imageApiKey" name="imageApiKey" type="password" autocomplete="off"></div>
+        <div class="row">
+          <div><label for="imageModel">Modèle</label><input id="imageModel" name="imageModel"></div>
+          <div><label for="imageSize">Taille</label><input id="imageSize" name="imageSize" placeholder="1024x1024"></div>
+        </div>
+        <p class="hint">Gratuit : modèles flux, turbo… · OpenAI : gpt-image-1, dall-e-3</p>
+      </fieldset>
+
+      <button class="primary" style="width:100%">Enregistrer</button>
+      <p class="hint" id="saved"></p>
+    </form>
+  </div>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const log = $('#log'), input = $('#input'), form = $('#settingsForm');
+
+const DEFAULTS = {
+  assistantName: 'Mon IA',
+  systemPrompt: 'Tu es mon assistant personnel. Réponds en français, directement et sans détour.',
+  blockedWords: [],
+  imagesEnabled: true,
+  textProvider: 'free', textBaseUrl: '', textApiKey: '', textModel: 'openai',
+  temperature: 0.8, maxTokens: 2048, historyLength: 30,
+  imageProvider: 'free', imageApiKey: '', imageModel: 'flux', imageSize: '1024x1024',
+};
+const TEXT_URLS = {
+  free: 'https://text.pollinations.ai/openai',
+  openai: 'https://api.openai.com/v1/chat/completions',
+  openrouter: 'https://openrouter.ai/api/v1/chat/completions',
+  anthropic: 'https://api.anthropic.com/v1/messages',
+};
+const MODEL_HINTS = {
+  free: 'Exemples : openai, mistral, deepseek',
+  openai: 'Exemples : gpt-4o-mini, gpt-4o',
+  openrouter: 'Nom complet, ex. meta-llama/llama-3.1-70b-instruct',
+  anthropic: 'Exemples : claude-sonnet-5-5, claude-haiku-5-5',
+  custom: 'Le nom du modèle chez ce fournisseur',
+};
+
+function read(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
+function write(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch { return false; } }
+
+let settings = { ...DEFAULTS, ...read('mon-ia-settings', {}) };
+let messages = read('mon-ia-messages', []);
+let imageMode = false;
+
+function store() {
+  // Si la mémoire du navigateur est pleine, on retire les plus vieilles images.
+  while (!write('mon-ia-messages', messages)) {
+    const old = messages.find((m) => m.image);
+    if (!old) break;
+    old.image = null; old.content += ' (image retirée, mémoire pleine)';
+  }
+}
+
+function findBlockedWord(text) {
+  const lower = text.toLowerCase();
+  return settings.blockedWords.find((w) => w && lower.includes(w.toLowerCase()));
+}
+
+async function readError(res) {
+  const body = await res.text();
+  try { const j = JSON.parse(body); return j.error?.message || j.error || j.message || body; } catch { return body.slice(0, 300); }
+}
+
+async function chat(history) {
+  const s = settings;
+  const msgs = history.slice(-s.historyLength).map((m) => ({ role: m.role, content: m.content }));
+  if (s.textProvider !== 'free' && !s.textApiKey && s.textProvider !== 'custom') throw new Error('Ajoute ta clé API dans Paramètres (ou choisis le fournisseur gratuit).');
+  if (s.textProvider === 'anthropic') {
+    const res = await fetch(TEXT_URLS.anthropic, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': s.textApiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: s.textModel, max_tokens: s.maxTokens, temperature: s.temperature, system: s.systemPrompt, messages: msgs }),
+    });
+    if (!res.ok) throw new Error(`Fournisseur (${res.status}) : ${await readError(res)}`);
+    const json = await res.json();
+    return json.content.filter((b) => b.type === 'text').map((b) => b.text).join('');
+  }
+  const url = s.textProvider === 'custom' ? s.textBaseUrl.replace(/\/+$/, '') + '/chat/completions' : TEXT_URLS[s.textProvider];
+  const headers = { 'content-type': 'application/json' };
+  if (s.textApiKey && s.textProvider !== 'free') headers.authorization = `Bearer ${s.textApiKey}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ model: s.textModel, temperature: s.temperature, max_tokens: s.maxTokens, messages: [{ role: 'system', content: s.systemPrompt }, ...msgs] }),
+  });
+  if (!res.ok) throw new Error(`Fournisseur (${res.status}) : ${await readError(res)}`);
+  const json = await res.json();
+  return json.choices[0].message.content;
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.readAsDataURL(blob); });
+}
+
+async function generateImage(prompt) {
+  const s = settings;
+  const [width, height] = (s.imageSize || '1024x1024').split('x').map(Number);
+  if (s.imageProvider === 'openai') {
+    if (!s.imageApiKey) throw new Error('Ajoute ta clé API OpenAI dans Paramètres (ou choisis le fournisseur gratuit).');
+    const body = { model: s.imageModel, prompt, size: s.imageSize, n: 1 };
+    if (s.imageModel.startsWith('dall-e')) body.response_format = 'b64_json';
+    const res = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${s.imageApiKey}` },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Fournisseur (${res.status}) : ${await readError(res)}`);
+    const img = (await res.json()).data[0];
+    return img.b64_json ? `data:image/png;base64,${img.b64_json}` : img.url;
+  }
+  const params = new URLSearchParams({ width, height, model: s.imageModel || 'flux', nologo: 'true', seed: Math.floor(Math.random() * 1e9) });
+  const res = await fetch(`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?${params}`);
+  if (!res.ok) throw new Error(`Fournisseur (${res.status}) : ${await readError(res)}`);
+  return blobToDataUrl(await res.blob());
+}
+
+function render(m) {
+  log.querySelector('.empty')?.remove();
+  const div = document.createElement('div');
+  div.className = 'msg' + (m.role === 'user' ? ' user' : '') + (m.error ? ' error' : '');
+  div.textContent = m.content;
+  if (m.image) {
+    const img = document.createElement('img');
+    img.src = m.image; img.alt = m.content;
+    const p = document.createElement('p');
+    p.className = 'hint'; p.textContent = 'Appui long sur l’image pour l’enregistrer';
+    div.append(img, p);
+  }
+  log.append(div);
+  log.scrollTop = log.scrollHeight;
+  return div;
+}
+
+function renderAll() {
+  log.innerHTML = '';
+  if (!messages.length) {
+    log.innerHTML = '<p class="empty">Pose-moi une question, ou appuie sur 🖼️ pour créer une image.<br><br>Règle ma personnalité et mes limites dans <b>Paramètres</b>.</p>';
+  }
+  messages.forEach(render);
+}
+
+async function send() {
+  let text = input.value.trim();
+  if (!text) return;
+  let wantImage = imageMode;
+  if (text.startsWith('/image ')) { wantImage = true; text = text.slice(7).trim(); }
+  input.value = '';
+
+  const userMsg = { role: 'user', content: wantImage ? '🖼️ ' + text : text, kind: wantImage ? 'image' : undefined };
+  messages.push(userMsg); render(userMsg); store();
+  const pending = render({ role: 'assistant', content: wantImage ? 'Création de l’image…' : '…' });
+  $('#sendBtn').disabled = true;
+
+  try {
+    const blocked = findBlockedWord(text);
+    if (blocked) throw new Error(`Bloqué par tes paramètres (mot : « ${blocked} »)`);
+    if (wantImage) {
+      if (!settings.imagesEnabled) throw new Error('La génération d’images est désactivée dans tes paramètres.');
+      messages.push({ role: 'assistant', content: text, image: await generateImage(text), kind: 'image' });
+    } else {
+      // Les images ne sont pas renvoyées au modèle de texte.
+      const history = messages.filter((m) => !m.error && !m.kind);
+      messages.push({ role: 'assistant', content: await chat(history) });
+    }
+  } catch (err) {
+    messages.push({ role: 'assistant', content: err.message === 'Failed to fetch' ? 'Impossible de joindre le fournisseur. Vérifie ta connexion et tes paramètres.' : err.message, error: true });
+  }
+  $('#sendBtn').disabled = false;
+  pending.remove(); render(messages[messages.length - 1]); store();
+}
+
+$('#composer').addEventListener('submit', (e) => { e.preventDefault(); send(); });
+input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !('ontouchstart' in window)) { e.preventDefault(); send(); } });
+$('#imgMode').addEventListener('click', () => {
+  imageMode = !imageMode;
+  $('#imgMode').classList.toggle('on', imageMode);
+  input.placeholder = imageMode ? 'Décris l’image à créer…' : 'Écris ton message…';
+});
+
+// Effacer : deuxième appui pour confirmer (les boîtes de dialogue ne sont pas fiables partout).
+let clearTimer;
+$('#clear').addEventListener('click', (e) => {
+  const btn = e.currentTarget;
+  if (btn.dataset.armed) {
+    messages = []; store(); renderAll();
+    delete btn.dataset.armed; btn.textContent = 'Effacer'; clearTimeout(clearTimer);
+    return;
+  }
+  btn.dataset.armed = '1'; btn.textContent = 'Confirmer ?';
+  clearTimer = setTimeout(() => { delete btn.dataset.armed; btn.textContent = 'Effacer'; }, 3000);
+});
+
+function updateProviderFields() {
+  const tp = form.textProvider.value;
+  $('#textCustomUrl').hidden = tp !== 'custom';
+  $('#textKeyBox').hidden = tp === 'free';
+  $('#textModelHint').textContent = MODEL_HINTS[tp];
+  $('#imageKeyBox').hidden = form.imageProvider.value !== 'openai';
+}
+
+function fillForm() {
+  for (const el of form.elements) {
+    if (!el.name) continue;
+    if (el.type === 'checkbox') el.checked = !!settings[el.name];
+    else if (el.name === 'blockedWords') el.value = settings.blockedWords.join('\n');
+    else el.value = settings[el.name] ?? '';
+  }
+  updateProviderFields();
+}
+
+function applyName() {
+  $('#title').textContent = settings.assistantName || 'Mon IA';
+  document.title = settings.assistantName || 'Mon IA';
+}
+
+form.textProvider.addEventListener('change', () => {
+  const defaults = { free: 'openai', openai: 'gpt-4o-mini', openrouter: 'openai/gpt-4o-mini', anthropic: 'claude-sonnet-5-5', custom: '' };
+  form.textModel.value = defaults[form.textProvider.value];
+  updateProviderFields();
+});
+form.imageProvider.addEventListener('change', () => {
+  form.imageModel.value = form.imageProvider.value === 'openai' ? 'gpt-image-1' : 'flux';
+  updateProviderFields();
+});
+
+$('#openSettings').addEventListener('click', () => { fillForm(); $('#saved').textContent = ''; $('#settings').hidden = false; });
+$('#closeSettings').addEventListener('click', () => { $('#settings').hidden = true; });
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const next = { ...settings };
+  for (const el of form.elements) {
+    if (!el.name) continue;
+    if (el.type === 'checkbox') next[el.name] = el.checked;
+    else if (el.name === 'blockedWords') next.blockedWords = el.value.split('\n').map((w) => w.trim()).filter(Boolean);
+    else if (el.type === 'number') next[el.name] = Number(el.value) || DEFAULTS[el.name];
+    else next[el.name] = el.value.trim();
+  }
+  settings = next;
+  applyName();
+  $('#saved').textContent = write('mon-ia-settings', settings) ? 'Enregistré ✔' : 'Impossible d’enregistrer sur cet appareil (navigation privée ?). Les réglages valent jusqu’à la fermeture.';
+});
+
+applyName();
+renderAll();
+
+// Code d'accès : seule une empreinte du code est dans la page. Une fois déverrouillé, cet appareil s'en souvient.
+const LOCK_SALT = 'mon-ia-mxbng13';
+const LOCK_HASH = '99529e63181cfc4e8760fc6a6a5148ca38cb35ef6d0789f01e87d5763a39100b';
+async function hashCode(code) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(code), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: new TextEncoder().encode(LOCK_SALT), iterations: 300000, hash: 'SHA-256' }, key, 256);
+  return [...new Uint8Array(bits)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+if (read('mon-ia-unlocked', '') === LOCK_HASH) $('#lock').hidden = true;
+$('#lockForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  $('#lockError').textContent = '';
+  if (await hashCode($('#lockCode').value) === LOCK_HASH) {
+    write('mon-ia-unlocked', LOCK_HASH);
+    $('#lock').hidden = true;
+  } else {
+    $('#lockError').textContent = 'Code incorrect.';
+    $('#lockCode').value = '';
+  }
+});
+</script>
+</body>
+</html>
