@@ -37,9 +37,22 @@
   .check input { width:auto; }
   .hint { color:var(--muted); font-size:12px; margin:4px 0 0; }
   .confirm { display:flex; gap:8px; align-items:center; }
+  #lock { position:fixed; inset:0; z-index:10; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:16px; }
+  #lock[hidden] { display:none; }
+  #lock form { width:100%; max-width:320px; display:flex; flex-direction:column; gap:10px; text-align:center; }
+  #lock input { text-align:center; font-size:18px; }
 </style>
 </head>
 <body>
+<div id="lock">
+  <form id="lockForm">
+    <h2 style="margin:0">Mon IA</h2>
+    <label for="lockCode" style="margin:0">Code d’accès</label>
+    <input id="lockCode" type="password" autocomplete="current-password" autofocus>
+    <button class="primary">Entrer</button>
+    <p class="hint" id="lockError"></p>
+  </form>
+</div>
 <header>
   <h1 id="title">Mon IA</h1>
   <button id="clear">Effacer</button>
@@ -345,6 +358,27 @@ form.addEventListener('submit', (e) => {
 
 applyName();
 renderAll();
+
+// Code d'accès : seule une empreinte du code est dans la page. Une fois déverrouillé, cet appareil s'en souvient.
+const LOCK_SALT = 'mon-ia-mxbng13';
+const LOCK_HASH = '__LOCK_HASH__';
+async function hashCode(code) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(code), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: new TextEncoder().encode(LOCK_SALT), iterations: 300000, hash: 'SHA-256' }, key, 256);
+  return [...new Uint8Array(bits)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+if (read('mon-ia-unlocked', '') === LOCK_HASH) $('#lock').hidden = true;
+$('#lockForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  $('#lockError').textContent = '';
+  if (await hashCode($('#lockCode').value) === LOCK_HASH) {
+    write('mon-ia-unlocked', LOCK_HASH);
+    $('#lock').hidden = true;
+  } else {
+    $('#lockError').textContent = 'Code incorrect.';
+    $('#lockCode').value = '';
+  }
+});
 </script>
 </body>
 </html>
