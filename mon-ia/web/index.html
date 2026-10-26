@@ -447,7 +447,12 @@ const HOME_CLASSES = [
   ['bateau', /bateau|navire|voilier|paquebot|\bships?\b|\bboats?\b/],
   ['camion', /camion|poids lourd|\btrucks?\b/],
 ];
-const HOME_NULL = HOME_CLASSES.length;
+// Les versions de ton IA maison. « active » est celle utilisée pour créer les images.
+const HOME_MODELS = {
+  v1: { file: 'model.onnx', res: 32, nullId: 10, steps: 25 },
+  v2: { file: 'model64.onnx', res: 64, nullId: 1000, steps: 20, subjects: 'sujets.json' },
+};
+const HOME_ACTIVE = 'v1';
 const HOME_T = 1000;
 // Même calendrier de bruit que pendant l'entraînement (cosinus).
 const HOME_ALPHAS = (() => {
@@ -466,16 +471,53 @@ function loadScript(src) {
   });
 }
 
-let homeModel;
-function loadHomeModel() {
-  homeModel ??= (async () => {
+// Utilise la carte graphique du téléphone (WebGPU) quand elle est disponible, sinon le processeur.
+let homeRuntime;
+function loadHomeRuntime() {
+  homeRuntime ??= (async () => {
     const base = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
-    await loadScript(base + 'ort.wasm.min.js');
+    const gpu = !!navigator.gpu && !!(await navigator.gpu.requestAdapter().catch(() => null));
+    await loadScript(base + (gpu ? 'ort.webgpu.min.js' : 'ort.wasm.min.js'));
     ort.env.wasm.numThreads = 1;
     ort.env.wasm.wasmPaths = base;
-    return ort.InferenceSession.create('model.onnx');
-  })().catch((err) => { homeModel = null; throw err; });
-  return homeModel;
+    return { gpu };
+  })().catch((err) => { homeRuntime = null; throw err; });
+  return homeRuntime;
+}
+
+const homeSessions = {};
+function loadHomeModel(version) {
+  homeSessions[version] ??= (async () => {
+    const { gpu } = await loadHomeRuntime();
+    const cfg = HOME_MODELS[version];
+    let session;
+    try {
+      session = await ort.InferenceSession.create(cfg.file, { executionProviders: gpu ? ['webgpu', 'wasm'] : ['wasm'] });
+    } catch (err) {
+      if (!gpu) throw err;
+      session = await ort.InferenceSession.create(cfg.file, { executionProviders: ['wasm'] });
+    }
+    const subjects = cfg.subjects ? await (await fetch(cfg.subjects)).json() : null;
+    return { session, subjects, gpu };
+  })().catch((err) => { delete homeSessions[version]; throw err; });
+  return homeSessions[version];
+}
+
+const plain = (t) => t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+
+// Trouve le sujet demandé : le mot-clé le plus long présent dans la phrase gagne.
+function findSubject(prompt, version, subjects) {
+  if (version === 'v1') return HOME_CLASSES.findIndex(([, re]) => re.test(prompt.toLowerCase()));
+  const text = ' ' + plain(prompt) + ' ';
+  let best = -1, bestLen = 0;
+  for (const [id, words] of subjects) {
+    for (const w of words) {
+      const k = plain(w);
+      if (k.length <= bestLen || k.length < 3) continue;
+      if (text.includes(' ' + k + ' ') || text.includes(' ' + k + 's ') || text.includes(' ' + k + 'x ')) { best = id; bestLen = k.length; }
+    }
+  }
+  return best;
 }
 
 function randn(n) {
@@ -490,28 +532,32 @@ function randn(n) {
 }
 
 async function generateHomeImage(prompt, onProgress) {
-  const text = prompt.toLowerCase();
-  const found = HOME_CLASSES.findIndex(([, re]) => re.test(text));
-  if (found < 0) {
-    throw new Error('Mon IA maison ne connaît pour l’instant que : ' + HOME_CLASSES.map(([n]) => n).join(', ') + '. Demande par exemple « un cheval ». On lui apprendra d’autres sujets ensuite.');
-  }
+  const version = HOME_ACTIVE;
+  const cfg = HOME_MODELS[version];
   onProgress('Chargement de mon IA…');
-  const session = await loadHomeModel();
-  const count = 4, size = 3 * 32 * 32, steps = 25, guidance = 3;
+  const { session, subjects, gpu } = await loadHomeModel(version);
+  const found = findSubject(prompt, version, subjects);
+  if (found < 0) {
+    throw new Error(version === 'v1'
+      ? 'Mon IA maison ne connaît pour l’instant que : ' + HOME_CLASSES.map(([n]) => n).join(', ') + '. Demande par exemple « un cheval ».'
+      : 'Je ne connais pas encore ce sujet. Essaie par exemple : un tigre, une montagne, une pizza, une guitare, un volcan, un phare, un pompier…');
+  }
+  const res = cfg.res, size = 3 * res * res, steps = cfg.steps, guidance = 3;
+  const count = res === 32 || gpu ? 4 : 2;
   let x = randn(count * size);
   const labels = new BigInt64Array(count * 2);
-  for (let i = 0; i < count; i++) { labels[i] = BigInt(found); labels[count + i] = BigInt(HOME_NULL); }
+  for (let i = 0; i < count; i++) { labels[i] = BigInt(found); labels[count + i] = BigInt(cfg.nullId); }
   const ts = Array.from({ length: steps }, (_, i) => Math.round((HOME_T - 1) * (1 - i / (steps - 1))));
   for (let i = 0; i < steps; i++) {
     const t = ts[i];
     // Une passe avec le sujet et une sans : la différence « pousse » l'image vers le sujet demandé.
     const xx = new Float32Array(count * 2 * size); xx.set(x); xx.set(x, count * size);
     const out = await session.run({
-      x: new ort.Tensor('float32', xx, [count * 2, 3, 32, 32]),
+      x: new ort.Tensor('float32', xx, [count * 2, 3, res, res]),
       t: new ort.Tensor('float32', new Float32Array(count * 2).fill(t), [count * 2]),
       y: new ort.Tensor('int64', labels, [count * 2]),
     });
-    const eps = out.eps.data;
+    const eps = await out.eps.getData();
     const a = HOME_ALPHAS[t], aPrev = i + 1 < steps ? HOME_ALPHAS[ts[i + 1]] : 1;
     const next = new Float32Array(count * size);
     for (let j = 0; j < count * size; j++) {
@@ -523,16 +569,17 @@ async function generateHomeImage(prompt, onProgress) {
     onProgress(`Création… ${Math.round(((i + 1) / steps) * 100)} %`);
     await new Promise((r) => setTimeout(r));
   }
-  // 4 variantes 32×32, agrandies et rangées en 2×2.
-  const small = document.createElement('canvas'); small.width = small.height = 32;
+  // Les variantes, agrandies à 256 px et rangées côte à côte (2×2 ou 2×1).
+  const small = document.createElement('canvas'); small.width = small.height = res;
   const sctx = small.getContext('2d');
-  const big = document.createElement('canvas'); big.width = big.height = 512;
+  const big = document.createElement('canvas'); big.width = 512; big.height = count > 2 ? 512 : 256;
   const ctx = big.getContext('2d');
   ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  const px = res * res;
   for (let k = 0; k < count; k++) {
-    const img = sctx.createImageData(32, 32);
-    for (let p = 0; p < 1024; p++) {
-      for (let c = 0; c < 3; c++) img.data[p * 4 + c] = Math.round((x[k * size + c * 1024 + p] + 1) * 127.5);
+    const img = sctx.createImageData(res, res);
+    for (let p = 0; p < px; p++) {
+      for (let c = 0; c < 3; c++) img.data[p * 4 + c] = Math.round((x[k * size + c * px + p] + 1) * 127.5);
       img.data[p * 4 + 3] = 255;
     }
     sctx.putImageData(img, 0, 0);
