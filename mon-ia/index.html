@@ -113,10 +113,15 @@
       <fieldset><legend>Images</legend>
         <label for="imageProvider">Fournisseur</label>
         <select id="imageProvider" name="imageProvider">
-          <option value="gemini">Google Gemini (le plus beau)</option>
+          <option value="pollinations">Pollinations avec compte gratuit (meilleurs modèles gratuits)</option>
+          <option value="gemini">Google Gemini (le plus beau, payant)</option>
           <option value="openai">OpenAI (gpt-image-1)</option>
           <option value="free">Gratuit, sans clé (Pollinations, qualité moyenne, 1 image / 45 s)</option>
         </select>
+        <div id="pollinationsKeyBox">
+          <label for="pollinationsKey">Clé Pollinations</label><input id="pollinationsKey" name="pollinationsKey" type="password" autocomplete="off">
+          <p class="hint">Gratuit : connecte-toi avec GitHub sur <a href="https://enter.pollinations.ai" target="_blank" rel="noopener" style="color:inherit">enter.pollinations.ai</a>, crée une clé et colle-la ici. Tu as un quota d’images gratuit qui se recharge chaque jour.</p>
+        </div>
         <div id="geminiKeyBox">
           <label for="geminiApiKey">Clé API Google Gemini</label><input id="geminiApiKey" name="geminiApiKey" type="password" autocomplete="off">
           <p class="hint">À créer sur <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:inherit">aistudio.google.com/apikey</a>. Payant à l’image (quelques centimes), pas d’attente entre deux images.</p>
@@ -160,13 +165,14 @@ const DEFAULTS = {
   providerFilters: 'min',
   textProvider: 'free', textBaseUrl: '', textApiKey: '', textModel: 'openai',
   temperature: 0.8, maxTokens: 2048, historyLength: 30,
-  imageProvider: 'free', imageApiKey: '', geminiApiKey: '', imageModel: 'flux', imageAspect: '1:1', imageQuality: 'high',
+  imageProvider: 'free', imageApiKey: '', geminiApiKey: '', pollinationsKey: '', imageModel: 'flux', imageAspect: '1:1', imageQuality: 'high',
 };
-const IMAGE_MODELS = { gemini: 'gemini-3-pro-image', openai: 'gpt-image-1', free: 'flux' };
+const IMAGE_MODELS = { pollinations: 'microsoft/mai-image-2.6', gemini: 'gemini-3-pro-image', openai: 'gpt-image-1', free: 'flux' };
 const IMAGE_MODEL_HINTS = {
   gemini: 'gemini-3-pro-image (Nano Banana Pro, le plus beau) · gemini-nano-banana-2.1 · gemini-3.1-flash-image (plus rapides et moins chers)',
   openai: 'gpt-image-1',
   free: 'flux, turbo',
+  pollinations: 'microsoft/mai-image-2.6 (photoréaliste) · gpt-image-2 (le plus précis, consomme plus) · flux-klein · zimage (le plus économique, plus d’images par jour)',
 };
 // Taille en pixels pour chaque format (OpenAI n'accepte que ces trois tailles).
 const OPENAI_SIZES = { '1:1': '1024x1024', '9:16': '1024x1536', '3:4': '1024x1536', '4:3': '1536x1024', '16:9': '1536x1024' };
@@ -276,6 +282,19 @@ async function generateImage(prompt) {
     }
     return `data:${img.mimeType || img.mime_type || 'image/png'};base64,${img.data}`;
   }
+  if (s.imageProvider === 'pollinations') {
+    if (!s.pollinationsKey) throw new Error('Ajoute ta clé Pollinations dans Paramètres (gratuite sur enter.pollinations.ai).');
+    const [width, height] = FREE_SIZES[s.imageAspect] || FREE_SIZES['1:1'];
+    const params = new URLSearchParams({ model: s.imageModel || IMAGE_MODELS.pollinations, width, height, nologo: 'true', seed: Math.floor(Math.random() * 1e9) });
+    if (s.imageQuality !== 'standard') params.set('quality', 'high');
+    const res = await fetch(`https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?${params}`, {
+      headers: { authorization: `Bearer ${s.pollinationsKey}` },
+    });
+    if (res.status === 401) throw new Error('Clé Pollinations refusée. Vérifie-la dans Paramètres.');
+    if (res.status === 402) throw new Error('Quota gratuit du jour épuisé pour ce modèle. Essaie le modèle zimage (plus économique) ou reviens demain.');
+    if (!res.ok) throw new Error(`Pollinations (${res.status}) : ${await readError(res)}`);
+    return blobToDataUrl(await res.blob());
+  }
   if (s.imageProvider === 'openai') {
     if (!s.imageApiKey) throw new Error('Ajoute ta clé API OpenAI dans Paramètres (ou choisis le fournisseur gratuit).');
     const body = { model: s.imageModel || IMAGE_MODELS.openai, prompt, size: OPENAI_SIZES[s.imageAspect], n: 1, quality: s.imageQuality === 'standard' ? 'medium' : 'high' };
@@ -383,6 +402,7 @@ function updateProviderFields() {
   const ip = form.imageProvider.value;
   $('#imageKeyBox').hidden = ip !== 'openai';
   $('#geminiKeyBox').hidden = ip !== 'gemini';
+  $('#pollinationsKeyBox').hidden = ip !== 'pollinations';
   $('#imageModelHint').textContent = IMAGE_MODEL_HINTS[ip];
 }
 
