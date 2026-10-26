@@ -94,6 +94,7 @@
         <label for="blockedWords">Mots bloqués (un par ligne) — refusés dans tes messages et tes prompts d’image</label>
         <textarea id="blockedWords" name="blockedWords" rows="3"></textarea>
         <label class="check"><input type="checkbox" id="imagesEnabled" name="imagesEnabled"> Génération d’images activée</label>
+        <label class="check"><input type="checkbox" id="enhancePrompts" name="enhancePrompts"> Améliorer automatiquement mes descriptions (meilleures images)</label>
         <label for="providerFilters">Filtres du fournisseur d’images (Gemini, OpenAI)</label>
         <select id="providerFilters" name="providerFilters">
           <option value="min">Au minimum autorisé</option>
@@ -176,6 +177,7 @@ const DEFAULTS = {
   blockedWords: [],
   imagesEnabled: true,
   providerFilters: 'min',
+  enhancePrompts: true,
   textProvider: 'free', textBaseUrl: '', textApiKey: '', textModel: 'openai',
   temperature: 0.8, maxTokens: 2048, historyLength: 30,
   imageProvider: 'hf', imageApiKey: '', geminiApiKey: '', pollinationsKey: '', imageModel: 'flux', imageAspect: '1:1', imageQuality: 'high',
@@ -266,6 +268,30 @@ async function chat(history) {
 
 function blobToDataUrl(blob) {
   return new Promise((resolve) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.readAsDataURL(blob); });
+}
+
+// Traduit et enrichit la demande en anglais détaillé : les modèles d'images rendent bien mieux ainsi.
+async function enhancePrompt(prompt, forEdit) {
+  if (!settings.enhancePrompts) return prompt;
+  const instruction = forEdit
+    ? 'Rewrite the user request as one precise English image-editing instruction for an AI photo editor. Say exactly what to change and that everything else (face, identity, pose, framing, lighting) must stay the same. Reply with the instruction only.'
+    : 'Rewrite the user request as one detailed English prompt for a high-end image generator: subject, setting, composition, lighting, lens or art style, mood, fine details, and quality words like "highly detailed, sharp focus". Keep the user\'s intent exactly; add nothing they did not ask for. At most 90 words. Reply with the prompt only.';
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 20000);
+  try {
+    const res = await fetch('https://text.pollinations.ai/openai', {
+      method: 'POST', signal: ctl.signal,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model: 'openai', messages: [{ role: 'system', content: instruction }, { role: 'user', content: prompt }] }),
+    });
+    if (!res.ok) return prompt;
+    const out = (await res.json()).choices?.[0]?.message?.content?.trim().replace(/^["']|["']$/g, '');
+    return out && out.length < 1500 ? out : prompt;
+  } catch {
+    return prompt;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function generateImage(prompt) {
@@ -532,7 +558,8 @@ async function send() {
     if (blocked) throw new Error(`Bloqué par tes paramètres (mot : « ${blocked} »)`);
     if (wantImage) {
       if (!settings.imagesEnabled) throw new Error('La génération d’images est désactivée dans tes paramètres.');
-      const image = source ? await editImage(text, source) : await generateImage(text);
+      const better = await enhancePrompt(text, !!source);
+      const image = source ? await editImage(better, source) : await generateImage(better);
       messages.push({ role: 'assistant', content: text, image, kind: 'image' });
     } else {
       // Les images ne sont pas renvoyées au modèle de texte.
