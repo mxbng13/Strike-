@@ -126,6 +126,7 @@
       <fieldset><legend>Images</legend>
         <label for="imageProvider">Fournisseur</label>
         <select id="imageProvider" name="imageProvider">
+          <option value="maison">Mon IA maison : 100 % sur ton téléphone, sans limite (simple)</option>
           <option value="hf">Gratuit haute qualité, sans clé (FLUX.2, Flux Kontext)</option>
           <option value="pollinations">Pollinations avec compte gratuit (meilleurs modèles gratuits)</option>
           <option value="gemini">Google Gemini (le plus beau, payant)</option>
@@ -180,15 +181,16 @@ const DEFAULTS = {
   enhancePrompts: true,
   textProvider: 'free', textBaseUrl: '', textApiKey: '', textModel: 'openai',
   temperature: 0.8, maxTokens: 2048, historyLength: 30,
-  imageProvider: 'hf', imageApiKey: '', geminiApiKey: '', pollinationsKey: '', imageModel: 'flux', imageAspect: '1:1', imageQuality: 'high',
+  imageProvider: 'maison', imageApiKey: '', geminiApiKey: '', pollinationsKey: '', imageModel: 'flux', imageAspect: '1:1', imageQuality: 'high',
 };
-const IMAGE_MODELS = { hf: '', pollinations: 'microsoft/mai-image-2.6', gemini: 'gemini-3-pro-image', openai: 'gpt-image-1', free: 'flux' };
+const IMAGE_MODELS = { maison: '', hf: '', pollinations: 'microsoft/mai-image-2.6', gemini: 'gemini-3-pro-image', openai: 'gpt-image-1', free: 'flux' };
 // Modèles Pollinations gratuits qui savent modifier une photo, du meilleur au plus économique.
 const EDIT_MODELS = ['black-forest-labs/flux.1-kontext-pro', 'openai/gpt-image-1-mini', 'microsoft/mai-image-2.6', 'black-forest-labs/flux.2-klein-4b'];
 const IMAGE_MODEL_HINTS = {
   gemini: 'gemini-3-pro-image (Nano Banana Pro, le plus beau) · gemini-nano-banana-2.1 · gemini-3.1-flash-image (plus rapides et moins chers)',
   openai: 'gpt-image-1',
   free: 'flux, turbo',
+  maison: 'Modèle entraîné pour toi. Il connaît 10 sujets : avion, voiture, oiseau, chat, cerf, chien, grenouille, cheval, bateau, camion. Pour modifier tes photos, il faut un autre fournisseur.',
   hf: 'Choisi automatiquement : FLUX.2 pour créer, Flux Kontext / Qwen pour modifier tes photos.',
   pollinations: 'microsoft/mai-image-2.6 (photoréaliste) · gpt-image-2 (le plus précis, consomme plus) · flux-klein · zimage (le plus économique, plus d’images par jour)',
 };
@@ -215,7 +217,13 @@ function write(key, value) { try { localStorage.setItem(key, JSON.stringify(valu
 let settings = { ...DEFAULTS, ...read('mon-ia-settings', {}) };
 // Anciens réglages sans clé : on passe au mode gratuit haute qualité.
 if (settings.imageProvider === 'free' || (settings.imageProvider === 'pollinations' && !settings.pollinationsKey)) {
-  settings.imageProvider = 'hf'; settings.imageModel = '';
+  settings.imageProvider = 'maison'; settings.imageModel = '';
+}
+// Une seule fois : on passe sur le modèle maison, sans quota.
+if (!settings.homeModelOffered) {
+  settings.homeModelOffered = true;
+  if (settings.imageProvider === 'hf') { settings.imageProvider = 'maison'; settings.imageModel = ''; }
+  write('mon-ia-settings', settings);
 }
 let messages = read('mon-ia-messages', []);
 let imageMode = false;
@@ -292,6 +300,113 @@ async function enhancePrompt(prompt, forEdit) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+// ——— Mon IA maison : petit modèle de diffusion entraîné de zéro, qui tourne dans le navigateur ———
+const HOME_CLASSES = [
+  ['avion', /avion|aéroplane|\bjet\b|airplane|plane/],
+  ['voiture', /voiture|bagnole|\bautos?\b|\bcars?\b/],
+  ['oiseau', /oiseau|piaf|bird/],
+  ['chat', /\bchats?\b|chaton|chatte|minou|\bcats?\b/],
+  ['cerf', /cerf|biche|renne|daim|deer/],
+  ['chien', /chien|chiot|toutou|\bdogs?\b/],
+  ['grenouille', /grenouille|crapaud|frog/],
+  ['cheval', /cheval|chevaux|poney|jument|horse/],
+  ['bateau', /bateau|navire|voilier|paquebot|\bships?\b|\bboats?\b/],
+  ['camion', /camion|poids lourd|\btrucks?\b/],
+];
+const HOME_NULL = HOME_CLASSES.length;
+const HOME_T = 1000;
+// Même calendrier de bruit que pendant l'entraînement (cosinus).
+const HOME_ALPHAS = (() => {
+  const f = (i) => Math.cos(((i / HOME_T) + 0.008) / 1.008 * Math.PI / 2) ** 2;
+  const out = new Float64Array(HOME_T);
+  let prod = 1;
+  for (let i = 0; i < HOME_T; i++) { prod *= 1 - Math.min(1 - f(i + 1) / f(i), 0.999); out[i] = prod; }
+  return out;
+})();
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const el = document.createElement('script');
+    el.src = src; el.onload = resolve; el.onerror = () => reject(new Error('Chargement impossible : vérifie ta connexion.'));
+    document.head.append(el);
+  });
+}
+
+let homeModel;
+function loadHomeModel() {
+  homeModel ??= (async () => {
+    const base = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
+    await loadScript(base + 'ort.wasm.min.js');
+    ort.env.wasm.numThreads = 1;
+    ort.env.wasm.wasmPaths = base;
+    return ort.InferenceSession.create('model.onnx');
+  })().catch((err) => { homeModel = null; throw err; });
+  return homeModel;
+}
+
+function randn(n) {
+  const out = new Float32Array(n);
+  for (let i = 0; i < n; i += 2) {
+    const u = 1 - Math.random(), v = Math.random();
+    const r = Math.sqrt(-2 * Math.log(u));
+    out[i] = r * Math.cos(2 * Math.PI * v);
+    if (i + 1 < n) out[i + 1] = r * Math.sin(2 * Math.PI * v);
+  }
+  return out;
+}
+
+async function generateHomeImage(prompt, onProgress) {
+  const text = prompt.toLowerCase();
+  const found = HOME_CLASSES.findIndex(([, re]) => re.test(text));
+  if (found < 0) {
+    throw new Error('Mon IA maison ne connaît pour l’instant que : ' + HOME_CLASSES.map(([n]) => n).join(', ') + '. Demande par exemple « un cheval ». On lui apprendra d’autres sujets ensuite.');
+  }
+  onProgress('Chargement de mon IA…');
+  const session = await loadHomeModel();
+  const count = 4, size = 3 * 32 * 32, steps = 25, guidance = 3;
+  let x = randn(count * size);
+  const labels = new BigInt64Array(count * 2);
+  for (let i = 0; i < count; i++) { labels[i] = BigInt(found); labels[count + i] = BigInt(HOME_NULL); }
+  const ts = Array.from({ length: steps }, (_, i) => Math.round((HOME_T - 1) * (1 - i / (steps - 1))));
+  for (let i = 0; i < steps; i++) {
+    const t = ts[i];
+    // Une passe avec le sujet et une sans : la différence « pousse » l'image vers le sujet demandé.
+    const xx = new Float32Array(count * 2 * size); xx.set(x); xx.set(x, count * size);
+    const out = await session.run({
+      x: new ort.Tensor('float32', xx, [count * 2, 3, 32, 32]),
+      t: new ort.Tensor('float32', new Float32Array(count * 2).fill(t), [count * 2]),
+      y: new ort.Tensor('int64', labels, [count * 2]),
+    });
+    const eps = out.eps.data;
+    const a = HOME_ALPHAS[t], aPrev = i + 1 < steps ? HOME_ALPHAS[ts[i + 1]] : 1;
+    const next = new Float32Array(count * size);
+    for (let j = 0; j < count * size; j++) {
+      const e = eps[count * size + j] + guidance * (eps[j] - eps[count * size + j]);
+      const x0 = Math.max(-1, Math.min(1, (x[j] - Math.sqrt(1 - a) * e) / Math.sqrt(a)));
+      next[j] = Math.sqrt(aPrev) * x0 + Math.sqrt(1 - aPrev) * e;
+    }
+    x = next;
+    onProgress(`Création… ${Math.round(((i + 1) / steps) * 100)} %`);
+    await new Promise((r) => setTimeout(r));
+  }
+  // 4 variantes 32×32, agrandies et rangées en 2×2.
+  const small = document.createElement('canvas'); small.width = small.height = 32;
+  const sctx = small.getContext('2d');
+  const big = document.createElement('canvas'); big.width = big.height = 512;
+  const ctx = big.getContext('2d');
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  for (let k = 0; k < count; k++) {
+    const img = sctx.createImageData(32, 32);
+    for (let p = 0; p < 1024; p++) {
+      for (let c = 0; c < 3; c++) img.data[p * 4 + c] = Math.round((x[k * size + c * 1024 + p] + 1) * 127.5);
+      img.data[p * 4 + 3] = 255;
+    }
+    sctx.putImageData(img, 0, 0);
+    ctx.drawImage(small, (k % 2) * 256, Math.floor(k / 2) * 256, 256, 256);
+  }
+  return big.toDataURL('image/png');
 }
 
 async function generateImage(prompt) {
@@ -558,8 +673,13 @@ async function send() {
     if (blocked) throw new Error(`Bloqué par tes paramètres (mot : « ${blocked} »)`);
     if (wantImage) {
       if (!settings.imagesEnabled) throw new Error('La génération d’images est désactivée dans tes paramètres.');
-      const better = await enhancePrompt(text, !!source);
-      const image = source ? await editImage(better, source) : await generateImage(better);
+      let image;
+      if (!source && settings.imageProvider === 'maison') {
+        image = await generateHomeImage(text, (msg) => { pending.textContent = msg; });
+      } else {
+        const better = await enhancePrompt(text, !!source);
+        image = source ? await editImage(better, source) : await generateImage(better);
+      }
       messages.push({ role: 'assistant', content: text, image, kind: 'image' });
     } else {
       // Les images ne sont pas renvoyées au modèle de texte.
