@@ -132,7 +132,7 @@
         </select>
         <div id="pollinationsKeyBox">
           <label for="pollinationsKey">Clé Pollinations</label><input id="pollinationsKey" name="pollinationsKey" type="password" autocomplete="off">
-          <p class="hint">Gratuit : connecte-toi avec GitHub sur <a href="https://enter.pollinations.ai" target="_blank" rel="noopener" style="color:inherit">enter.pollinations.ai</a>, crée une clé et colle-la ici. Tu as un quota d’images gratuit qui se recharge chaque jour.</p>
+          <p class="hint">Gratuit : connecte-toi avec GitHub sur <a href="https://enter.pollinations.ai" target="_blank" rel="noopener" style="color:inherit">enter.pollinations.ai</a>, crée une clé et colle-la ici. Tu as un quota d’images gratuit qui se recharge chaque jour. Cette clé sert aussi à modifier tes photos (📎).</p>
         </div>
         <div id="geminiKeyBox">
           <label for="geminiApiKey">Clé API Google Gemini</label><input id="geminiApiKey" name="geminiApiKey" type="password" autocomplete="off">
@@ -180,6 +180,8 @@ const DEFAULTS = {
   imageProvider: 'free', imageApiKey: '', geminiApiKey: '', pollinationsKey: '', imageModel: 'flux', imageAspect: '1:1', imageQuality: 'high',
 };
 const IMAGE_MODELS = { pollinations: 'microsoft/mai-image-2.6', gemini: 'gemini-3-pro-image', openai: 'gpt-image-1', free: 'flux' };
+// Modèles Pollinations gratuits qui savent modifier une photo, du meilleur au plus économique.
+const EDIT_MODELS = ['black-forest-labs/flux.1-kontext-pro', 'openai/gpt-image-1-mini', 'microsoft/mai-image-2.6', 'black-forest-labs/flux.2-klein-4b'];
 const IMAGE_MODEL_HINTS = {
   gemini: 'gemini-3-pro-image (Nano Banana Pro, le plus beau) · gemini-nano-banana-2.1 · gemini-3.1-flash-image (plus rapides et moins chers)',
   openai: 'gpt-image-1',
@@ -351,8 +353,7 @@ function loadPhoto(file) {
 async function editImage(prompt, source) {
   const s = settings;
   const [, mimeType, data] = source.match(/^data:([^;]+);base64,(.*)$/) || [];
-  if (s.imageProvider === 'gemini') {
-    if (!s.geminiApiKey) throw new Error('Ajoute ta clé API Google Gemini dans Paramètres.');
+  if (s.imageProvider === 'gemini' && s.geminiApiKey) {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(s.imageModel || IMAGE_MODELS.gemini)}:generateContent`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-goog-api-key': s.geminiApiKey },
@@ -372,8 +373,7 @@ async function editImage(prompt, source) {
     if (!img) throw new Error('Gemini n’a pas renvoyé d’image' + (json.promptFeedback?.blockReason ? ` (refusé par Google : ${json.promptFeedback.blockReason})` : '. Reformule ta demande.'));
     return `data:${img.mimeType || img.mime_type || 'image/png'};base64,${img.data}`;
   }
-  if (s.imageProvider === 'openai') {
-    if (!s.imageApiKey) throw new Error('Ajoute ta clé API OpenAI dans Paramètres.');
+  if (s.imageProvider === 'openai' && s.imageApiKey) {
     const body = new FormData();
     body.append('model', s.imageModel || IMAGE_MODELS.openai);
     body.append('prompt', prompt);
@@ -385,26 +385,28 @@ async function editImage(prompt, source) {
     const img = (await res.json()).data[0];
     return img.b64_json ? `data:image/png;base64,${img.b64_json}` : img.url;
   }
-  if (s.imageProvider === 'pollinations') {
-    if (!s.pollinationsKey) throw new Error('Ajoute ta clé Pollinations dans Paramètres (gratuite sur enter.pollinations.ai).');
-    const res = await fetch('https://gen.pollinations.ai/v1/images/edits', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${s.pollinationsKey}` },
-      body: JSON.stringify({
-        model: s.imageModel || IMAGE_MODELS.pollinations,
-        prompt,
-        image: [{ image_url: source }],
-        quality: s.imageQuality === 'standard' ? 'medium' : 'high',
-        response_format: 'b64_json',
-      }),
-    });
-    if (res.status === 401) throw new Error('Clé Pollinations refusée. Vérifie-la dans Paramètres.');
-    if (res.status === 402) throw new Error('Quota gratuit du jour épuisé pour ce modèle. Essaie un autre modèle ou reviens demain.');
-    if (!res.ok) throw new Error(`Pollinations (${res.status}) : ${await readError(res)}`);
-    const img = (await res.json()).data[0];
-    return img.b64_json ? `data:image/png;base64,${img.b64_json}` : img.url;
+  // Dès que ta clé Pollinations est enregistrée, elle sert à modifier les photos,
+  // quel que soit le fournisseur choisi pour créer les images.
+  if (s.pollinationsKey) {
+    // Tous les modèles ne savent pas modifier une photo : on prend le tien s'il sait, sinon des modèles de retouche.
+    const chosen = s.imageProvider === 'pollinations' && EDIT_MODELS.includes(s.imageModel) ? [s.imageModel] : [];
+    let lastError;
+    for (const model of [...new Set([...chosen, ...EDIT_MODELS])]) {
+      const res = await fetch('https://gen.pollinations.ai/v1/images/edits', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${s.pollinationsKey.trim()}` },
+        body: JSON.stringify({ model, prompt, image: [{ image_url: source }], quality: s.imageQuality === 'standard' ? 'medium' : 'high', response_format: 'b64_json' }),
+      });
+      if (res.status === 401) throw new Error('Clé Pollinations refusée. Vérifie-la dans Paramètres (elle commence par sk_).');
+      if (res.ok) {
+        const img = (await res.json()).data[0];
+        return img.b64_json ? `data:image/png;base64,${img.b64_json}` : img.url;
+      }
+      lastError = res.status === 402 ? 'quota gratuit du jour épuisé' : `${res.status} : ${await readError(res)}`;
+    }
+    throw new Error(`Pollinations n’a pas pu modifier la photo (${lastError}). Réessaie plus tard.`);
   }
-  throw new Error('Le service gratuit sans compte ne sait pas modifier les photos. Dans Paramètres → Images, choisis « Pollinations avec compte gratuit » (ou Gemini / OpenAI).');
+  throw new Error('Pour modifier une photo, il faut ta clé Pollinations (gratuite). Va dans Paramètres → Images, colle ta clé sk_… dans « Clé Pollinations » et appuie sur Enregistrer.');
 }
 
 let attachment = null;
@@ -518,7 +520,6 @@ function updateProviderFields() {
   const ip = form.imageProvider.value;
   $('#imageKeyBox').hidden = ip !== 'openai';
   $('#geminiKeyBox').hidden = ip !== 'gemini';
-  $('#pollinationsKeyBox').hidden = ip !== 'pollinations';
   $('#imageModelHint').textContent = IMAGE_MODEL_HINTS[ip];
 }
 
@@ -559,7 +560,10 @@ form.addEventListener('submit', (e) => {
     else if (el.type === 'number') next[el.name] = Number(el.value) || DEFAULTS[el.name];
     else next[el.name] = el.value.trim();
   }
+  // Une clé Pollinations collée alors que le fournisseur gratuit est choisi : on bascule dessus.
+  if (next.pollinationsKey && next.imageProvider === 'free') { next.imageProvider = 'pollinations'; next.imageModel = IMAGE_MODELS.pollinations; }
   settings = next;
+  fillForm();
   applyName();
   $('#saved').textContent = write('mon-ia-settings', settings) ? 'Enregistré ✔' : 'Impossible d’enregistrer sur cet appareil (navigation privée ?). Les réglages valent jusqu’à la fermeture.';
 });
