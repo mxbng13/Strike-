@@ -220,9 +220,10 @@ if (settings.imageProvider === 'free' || (settings.imageProvider === 'pollinatio
   settings.imageProvider = 'maison'; settings.imageModel = '';
 }
 // Une seule fois : on passe sur le modèle maison, sans quota.
-if (!settings.homeModelOffered) {
-  settings.homeModelOffered = true;
-  if (settings.imageProvider === 'hf') { settings.imageProvider = 'maison'; settings.imageModel = ''; }
+// Une seule fois : tout passe sur ton IA maison, entraînée de zéro, sans quota.
+if (!settings.homeModelOnly) {
+  settings.homeModelOnly = true;
+  settings.imageProvider = 'maison'; settings.imageModel = '';
   write('mon-ia-settings', settings);
 }
 let messages = read('mon-ia-messages', []);
@@ -674,7 +675,8 @@ async function send() {
     if (wantImage) {
       if (!settings.imagesEnabled) throw new Error('La génération d’images est désactivée dans tes paramètres.');
       let image;
-      if (!source && settings.imageProvider === 'maison') {
+      if (settings.imageProvider === 'maison') {
+        if (source) throw new Error('Ton IA maison ne sait pas encore modifier les photos : elle apprend d’abord à créer des images. On lui apprendra ça plus tard.');
         image = await generateHomeImage(text, (msg) => { pending.textContent = msg; });
       } else {
         const better = await enhancePrompt(text, !!source);
