@@ -107,15 +107,33 @@
       <fieldset><legend>Images</legend>
         <label for="imageProvider">Fournisseur</label>
         <select id="imageProvider" name="imageProvider">
-          <option value="free">Gratuit, sans clé (Pollinations)</option>
-          <option value="openai">OpenAI (gpt-image-1, dall-e-3)</option>
+          <option value="gemini">Google Gemini (le plus beau)</option>
+          <option value="openai">OpenAI (gpt-image-1)</option>
+          <option value="free">Gratuit, sans clé (Pollinations, qualité moyenne, 1 image / 45 s)</option>
         </select>
-        <div id="imageKeyBox"><label for="imageApiKey">Clé API OpenAI</label><input id="imageApiKey" name="imageApiKey" type="password" autocomplete="off"></div>
-        <div class="row">
-          <div><label for="imageModel">Modèle</label><input id="imageModel" name="imageModel"></div>
-          <div><label for="imageSize">Taille</label><input id="imageSize" name="imageSize" placeholder="1024x1024"></div>
+        <div id="geminiKeyBox">
+          <label for="geminiApiKey">Clé API Google Gemini</label><input id="geminiApiKey" name="geminiApiKey" type="password" autocomplete="off">
+          <p class="hint">À créer sur <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:inherit">aistudio.google.com/apikey</a>. Payant à l’image (quelques centimes), pas d’attente entre deux images.</p>
         </div>
-        <p class="hint">Gratuit : modèles flux, turbo… · OpenAI : gpt-image-1, dall-e-3</p>
+        <div id="imageKeyBox"><label for="imageApiKey">Clé API OpenAI</label><input id="imageApiKey" name="imageApiKey" type="password" autocomplete="off"></div>
+        <label for="imageModel">Modèle</label><input id="imageModel" name="imageModel">
+        <p class="hint" id="imageModelHint"></p>
+        <div class="row">
+          <div><label for="imageAspect">Format</label>
+            <select id="imageAspect" name="imageAspect">
+              <option value="1:1">Carré</option>
+              <option value="9:16">Téléphone</option>
+              <option value="3:4">Portrait</option>
+              <option value="4:3">Paysage</option>
+              <option value="16:9">Paysage large</option>
+            </select></div>
+          <div><label for="imageQuality">Qualité</label>
+            <select id="imageQuality" name="imageQuality">
+              <option value="standard">Standard (rapide)</option>
+              <option value="high">Haute (2K)</option>
+              <option value="max">Max (4K)</option>
+            </select></div>
+        </div>
       </fieldset>
 
       <button class="primary" style="width:100%">Enregistrer</button>
@@ -135,8 +153,17 @@ const DEFAULTS = {
   imagesEnabled: true,
   textProvider: 'free', textBaseUrl: '', textApiKey: '', textModel: 'openai',
   temperature: 0.8, maxTokens: 2048, historyLength: 30,
-  imageProvider: 'free', imageApiKey: '', imageModel: 'flux', imageSize: '1024x1024',
+  imageProvider: 'free', imageApiKey: '', geminiApiKey: '', imageModel: 'flux', imageAspect: '1:1', imageQuality: 'high',
 };
+const IMAGE_MODELS = { gemini: 'gemini-3-pro-image', openai: 'gpt-image-1', free: 'flux' };
+const IMAGE_MODEL_HINTS = {
+  gemini: 'gemini-3-pro-image (Nano Banana Pro, le plus beau) · gemini-nano-banana-2.1 · gemini-3.1-flash-image (plus rapides et moins chers)',
+  openai: 'gpt-image-1',
+  free: 'flux, turbo',
+};
+// Taille en pixels pour chaque format (OpenAI n'accepte que ces trois tailles).
+const OPENAI_SIZES = { '1:1': '1024x1024', '9:16': '1024x1536', '3:4': '1024x1536', '4:3': '1536x1024', '16:9': '1536x1024' };
+const FREE_SIZES = { '1:1': [1024, 1024], '9:16': [768, 1366], '3:4': [864, 1152], '4:3': [1152, 864], '16:9': [1366, 768] };
 const TEXT_URLS = {
   free: 'https://text.pollinations.ai/openai',
   openai: 'https://api.openai.com/v1/chat/completions',
@@ -210,11 +237,32 @@ function blobToDataUrl(blob) {
 
 async function generateImage(prompt) {
   const s = settings;
-  const [width, height] = (s.imageSize || '1024x1024').split('x').map(Number);
+  if (s.imageProvider === 'gemini') {
+    if (!s.geminiApiKey) throw new Error('Ajoute ta clé API Google Gemini dans Paramètres (ou choisis le fournisseur gratuit).');
+    const model = s.imageModel || IMAGE_MODELS.gemini;
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-goog-api-key': s.geminiApiKey },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseModalities: ['TEXT', 'IMAGE'],
+          imageConfig: { aspectRatio: s.imageAspect, imageSize: { standard: '1K', high: '2K', max: '4K' }[s.imageQuality] },
+        },
+      }),
+    });
+    if (!res.ok) throw new Error(`Gemini (${res.status}) : ${await readError(res)}`);
+    const parts = (await res.json()).candidates?.[0]?.content?.parts || [];
+    const img = parts.map((p) => p.inlineData || p.inline_data).filter(Boolean).pop();
+    if (!img) {
+      const text = parts.map((p) => p.text).filter(Boolean).join(' ');
+      throw new Error('Gemini n’a pas renvoyé d’image' + (text ? ` : ${text}` : '. Reformule ta demande.'));
+    }
+    return `data:${img.mimeType || img.mime_type || 'image/png'};base64,${img.data}`;
+  }
   if (s.imageProvider === 'openai') {
     if (!s.imageApiKey) throw new Error('Ajoute ta clé API OpenAI dans Paramètres (ou choisis le fournisseur gratuit).');
-    const body = { model: s.imageModel, prompt, size: s.imageSize, n: 1 };
-    if (s.imageModel.startsWith('dall-e')) body.response_format = 'b64_json';
+    const body = { model: s.imageModel || IMAGE_MODELS.openai, prompt, size: OPENAI_SIZES[s.imageAspect], n: 1, quality: s.imageQuality === 'standard' ? 'medium' : 'high' };
     const res = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${s.imageApiKey}` },
@@ -224,8 +272,12 @@ async function generateImage(prompt) {
     const img = (await res.json()).data[0];
     return img.b64_json ? `data:image/png;base64,${img.b64_json}` : img.url;
   }
-  const params = new URLSearchParams({ width, height, model: s.imageModel || 'flux', nologo: 'true', seed: Math.floor(Math.random() * 1e9) });
+  const [width, height] = FREE_SIZES[s.imageAspect] || FREE_SIZES['1:1'];
+  const params = new URLSearchParams({ width, height, model: s.imageModel || IMAGE_MODELS.free, nologo: 'true', enhance: 'true', seed: Math.floor(Math.random() * 1e9) });
   const res = await fetch(`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?${params}`);
+  if (res.status === 402 || res.status === 429) {
+    throw new Error('Le service gratuit limite à environ 1 image toutes les 45 secondes. Pour des images sans attente et de bien meilleure qualité, choisis Google Gemini dans Paramètres.');
+  }
   if (!res.ok) throw new Error(`Fournisseur (${res.status}) : ${await readError(res)}`);
   return blobToDataUrl(await res.blob());
 }
@@ -311,7 +363,10 @@ function updateProviderFields() {
   $('#textCustomUrl').hidden = tp !== 'custom';
   $('#textKeyBox').hidden = tp === 'free';
   $('#textModelHint').textContent = MODEL_HINTS[tp];
-  $('#imageKeyBox').hidden = form.imageProvider.value !== 'openai';
+  const ip = form.imageProvider.value;
+  $('#imageKeyBox').hidden = ip !== 'openai';
+  $('#geminiKeyBox').hidden = ip !== 'gemini';
+  $('#imageModelHint').textContent = IMAGE_MODEL_HINTS[ip];
 }
 
 function fillForm() {
@@ -335,7 +390,7 @@ form.textProvider.addEventListener('change', () => {
   updateProviderFields();
 });
 form.imageProvider.addEventListener('change', () => {
-  form.imageModel.value = form.imageProvider.value === 'openai' ? 'gpt-image-1' : 'flux';
+  form.imageModel.value = IMAGE_MODELS[form.imageProvider.value];
   updateProviderFields();
 });
 
