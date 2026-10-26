@@ -22,6 +22,11 @@
   .msg.user { align-self:flex-end; background:var(--me); }
   .msg.error { color:var(--err); }
   .msg img { display:block; max-width:100%; border-radius:10px; margin-top:6px; }
+  .msg .edit { margin-top:6px; font-size:13px; padding:6px 10px; }
+  #attach { display:flex; align-items:center; gap:10px; padding:8px max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); color:var(--muted); font-size:13px; }
+  #attach[hidden] { display:none; }
+  #attach img { width:56px; height:56px; object-fit:cover; border-radius:8px; border:1px solid var(--line); }
+  #attach span { flex:1; min-width:0; }
   .msg .hint { margin-top:4px; }
   .empty { margin:auto; text-align:center; color:var(--muted); max-width:300px; }
   form#composer { display:flex; gap:8px; padding:10px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px)); border-top:1px solid var(--line); }
@@ -61,9 +66,16 @@
 
 <div id="log"></div>
 
+<div id="attach" hidden>
+  <img id="attachImg" alt="Photo jointe">
+  <span>Photo jointe : écris ce que tu veux changer</span>
+  <button type="button" id="attachRemove" aria-label="Retirer la photo">✕</button>
+</div>
 <form id="composer">
+  <input type="file" id="fileInput" accept="image/*" hidden>
+  <button type="button" id="attachBtn" title="Ajouter une photo" aria-label="Ajouter une photo">📎</button>
   <button type="button" id="imgMode" title="Mode image" aria-label="Mode image">🖼️</button>
-  <textarea id="input" rows="1" placeholder="Écris ton message…"></textarea>
+  <textarea id="input" rows="1" placeholder="Message…"></textarea>
   <button class="primary" id="sendBtn">Envoyer</button>
 </form>
 
@@ -318,6 +330,91 @@ async function generateImage(prompt) {
   return blobToDataUrl(await res.blob());
 }
 
+// Réduit la photo (1536 px max) pour qu'elle passe vite et tienne dans la mémoire du téléphone.
+function loadPhoto(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, 1536 / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale); canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', 0.9));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Impossible de lire cette photo.')); };
+    img.src = url;
+  });
+}
+
+async function editImage(prompt, source) {
+  const s = settings;
+  const [, mimeType, data] = source.match(/^data:([^;]+);base64,(.*)$/) || [];
+  if (s.imageProvider === 'gemini') {
+    if (!s.geminiApiKey) throw new Error('Ajoute ta clé API Google Gemini dans Paramètres.');
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(s.imageModel || IMAGE_MODELS.gemini)}:generateContent`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-goog-api-key': s.geminiApiKey },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ inlineData: { mimeType, data } }, { text: prompt }] }],
+        generationConfig: { responseModalities: ['TEXT', 'IMAGE'], imageConfig: { imageSize: { standard: '1K', high: '2K', max: '4K' }[s.imageQuality] } },
+        ...(s.providerFilters === 'min' && {
+          safetySettings: ['HARM_CATEGORY_HARASSMENT', 'HARM_CATEGORY_HATE_SPEECH', 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'HARM_CATEGORY_DANGEROUS_CONTENT']
+            .map((category) => ({ category, threshold: 'BLOCK_NONE' })),
+        }),
+      }),
+    });
+    if (!res.ok) throw new Error(`Gemini (${res.status}) : ${await readError(res)}`);
+    const json = await res.json();
+    const parts = json.candidates?.[0]?.content?.parts || [];
+    const img = parts.map((p) => p.inlineData || p.inline_data).filter(Boolean).pop();
+    if (!img) throw new Error('Gemini n’a pas renvoyé d’image' + (json.promptFeedback?.blockReason ? ` (refusé par Google : ${json.promptFeedback.blockReason})` : '. Reformule ta demande.'));
+    return `data:${img.mimeType || img.mime_type || 'image/png'};base64,${img.data}`;
+  }
+  if (s.imageProvider === 'openai') {
+    if (!s.imageApiKey) throw new Error('Ajoute ta clé API OpenAI dans Paramètres.');
+    const body = new FormData();
+    body.append('model', s.imageModel || IMAGE_MODELS.openai);
+    body.append('prompt', prompt);
+    body.append('image', await (await fetch(source)).blob(), 'photo.jpg');
+    body.append('quality', s.imageQuality === 'standard' ? 'medium' : 'high');
+    if (s.providerFilters === 'min') body.append('moderation', 'low');
+    const res = await fetch('https://api.openai.com/v1/images/edits', { method: 'POST', headers: { authorization: `Bearer ${s.imageApiKey}` }, body });
+    if (!res.ok) throw new Error(`OpenAI (${res.status}) : ${await readError(res)}`);
+    const img = (await res.json()).data[0];
+    return img.b64_json ? `data:image/png;base64,${img.b64_json}` : img.url;
+  }
+  if (s.imageProvider === 'pollinations') {
+    if (!s.pollinationsKey) throw new Error('Ajoute ta clé Pollinations dans Paramètres (gratuite sur enter.pollinations.ai).');
+    const res = await fetch('https://gen.pollinations.ai/v1/images/edits', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${s.pollinationsKey}` },
+      body: JSON.stringify({
+        model: s.imageModel || IMAGE_MODELS.pollinations,
+        prompt,
+        image: [{ image_url: source }],
+        quality: s.imageQuality === 'standard' ? 'medium' : 'high',
+        response_format: 'b64_json',
+      }),
+    });
+    if (res.status === 401) throw new Error('Clé Pollinations refusée. Vérifie-la dans Paramètres.');
+    if (res.status === 402) throw new Error('Quota gratuit du jour épuisé pour ce modèle. Essaie un autre modèle ou reviens demain.');
+    if (!res.ok) throw new Error(`Pollinations (${res.status}) : ${await readError(res)}`);
+    const img = (await res.json()).data[0];
+    return img.b64_json ? `data:image/png;base64,${img.b64_json}` : img.url;
+  }
+  throw new Error('Le service gratuit sans compte ne sait pas modifier les photos. Dans Paramètres → Images, choisis « Pollinations avec compte gratuit » (ou Gemini / OpenAI).');
+}
+
+let attachment = null;
+function setAttachment(dataUrl) {
+  attachment = dataUrl;
+  $('#attach').hidden = !dataUrl;
+  if (dataUrl) { $('#attachImg').src = dataUrl; input.placeholder = 'Ex. : mets-moi sur une plage au coucher du soleil'; input.focus(); }
+  else input.placeholder = imageMode ? 'Décris l’image à créer…' : 'Message…';
+}
+
 function render(m) {
   log.querySelector('.empty')?.remove();
   const div = document.createElement('div');
@@ -329,6 +426,12 @@ function render(m) {
     const p = document.createElement('p');
     p.className = 'hint'; p.textContent = 'Appui long sur l’image pour l’enregistrer';
     div.append(img, p);
+    if (m.role === 'assistant') {
+      const edit = document.createElement('button');
+      edit.type = 'button'; edit.className = 'edit'; edit.textContent = 'Modifier cette image';
+      edit.addEventListener('click', () => setAttachment(m.image));
+      div.append(edit);
+    }
   }
   log.append(div);
   log.scrollTop = log.scrollHeight;
@@ -338,7 +441,7 @@ function render(m) {
 function renderAll() {
   log.innerHTML = '';
   if (!messages.length) {
-    log.innerHTML = '<p class="empty">Pose-moi une question, ou appuie sur 🖼️ pour créer une image.<br><br>Règle ma personnalité et mes limites dans <b>Paramètres</b>.</p>';
+    log.innerHTML = '<p class="empty">Pose-moi une question, ou appuie sur 🖼️ pour créer une image, ou sur 📎 pour modifier une de tes photos.<br><br>Règle ma personnalité et mes limites dans <b>Paramètres</b>.</p>';
   }
   messages.forEach(render);
 }
@@ -348,11 +451,14 @@ async function send() {
   if (!text) return;
   let wantImage = imageMode;
   if (text.startsWith('/image ')) { wantImage = true; text = text.slice(7).trim(); }
+  const source = attachment;
+  if (source) wantImage = true;
   input.value = '';
+  setAttachment(null);
 
-  const userMsg = { role: 'user', content: wantImage ? '🖼️ ' + text : text, kind: wantImage ? 'image' : undefined };
+  const userMsg = { role: 'user', content: wantImage ? '🖼️ ' + text : text, kind: wantImage ? 'image' : undefined, image: source || undefined };
   messages.push(userMsg); render(userMsg); store();
-  const pending = render({ role: 'assistant', content: wantImage ? 'Création de l’image…' : '…' });
+  const pending = render({ role: 'assistant', content: source ? 'Modification de la photo…' : wantImage ? 'Création de l’image…' : '…' });
   $('#sendBtn').disabled = true;
 
   try {
@@ -360,7 +466,8 @@ async function send() {
     if (blocked) throw new Error(`Bloqué par tes paramètres (mot : « ${blocked} »)`);
     if (wantImage) {
       if (!settings.imagesEnabled) throw new Error('La génération d’images est désactivée dans tes paramètres.');
-      messages.push({ role: 'assistant', content: text, image: await generateImage(text), kind: 'image' });
+      const image = source ? await editImage(text, source) : await generateImage(text);
+      messages.push({ role: 'assistant', content: text, image, kind: 'image' });
     } else {
       // Les images ne sont pas renvoyées au modèle de texte.
       const history = messages.filter((m) => !m.error && !m.kind);
@@ -373,12 +480,21 @@ async function send() {
   pending.remove(); render(messages[messages.length - 1]); store();
 }
 
+$('#attachBtn').addEventListener('click', () => $('#fileInput').click());
+$('#fileInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  try { setAttachment(await loadPhoto(file)); }
+  catch (err) { messages.push({ role: 'assistant', content: err.message, error: true }); render(messages[messages.length - 1]); }
+});
+$('#attachRemove').addEventListener('click', () => setAttachment(null));
 $('#composer').addEventListener('submit', (e) => { e.preventDefault(); send(); });
 input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !('ontouchstart' in window)) { e.preventDefault(); send(); } });
 $('#imgMode').addEventListener('click', () => {
   imageMode = !imageMode;
   $('#imgMode').classList.toggle('on', imageMode);
-  input.placeholder = imageMode ? 'Décris l’image à créer…' : 'Écris ton message…';
+  input.placeholder = imageMode ? 'Décris l’image à créer…' : 'Message…';
 });
 
 // Effacer : deuxième appui pour confirmer (les boîtes de dialogue ne sont pas fiables partout).
