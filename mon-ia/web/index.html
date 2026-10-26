@@ -82,6 +82,12 @@
         <label for="blockedWords">Mots bloqués (un par ligne) — refusés dans tes messages et tes prompts d’image</label>
         <textarea id="blockedWords" name="blockedWords" rows="3"></textarea>
         <label class="check"><input type="checkbox" id="imagesEnabled" name="imagesEnabled"> Génération d’images activée</label>
+        <label for="providerFilters">Filtres du fournisseur d’images (Gemini, OpenAI)</label>
+        <select id="providerFilters" name="providerFilters">
+          <option value="min">Au minimum autorisé</option>
+          <option value="default">Réglage par défaut du fournisseur</option>
+        </select>
+        <p class="hint">L’app n’ajoute aucune restriction à part tes mots bloqués. Google et OpenAI gardent un socle de règles qu’on ne peut pas désactiver.</p>
       </fieldset>
 
       <fieldset><legend>Modèle de texte</legend>
@@ -151,6 +157,7 @@ const DEFAULTS = {
   systemPrompt: 'Tu es mon assistant personnel. Réponds en français, directement et sans détour.',
   blockedWords: [],
   imagesEnabled: true,
+  providerFilters: 'min',
   textProvider: 'free', textBaseUrl: '', textApiKey: '', textModel: 'openai',
   temperature: 0.8, maxTokens: 2048, historyLength: 30,
   imageProvider: 'free', imageApiKey: '', geminiApiKey: '', imageModel: 'flux', imageAspect: '1:1', imageQuality: 'high',
@@ -249,12 +256,21 @@ async function generateImage(prompt) {
           responseModalities: ['TEXT', 'IMAGE'],
           imageConfig: { aspectRatio: s.imageAspect, imageSize: { standard: '1K', high: '2K', max: '4K' }[s.imageQuality] },
         },
+        // Filtres réglables de Google : au plus bas si tu l'as choisi dans Paramètres.
+        ...(s.providerFilters === 'min' && {
+          safetySettings: ['HARM_CATEGORY_HARASSMENT', 'HARM_CATEGORY_HATE_SPEECH', 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'HARM_CATEGORY_DANGEROUS_CONTENT']
+            .map((category) => ({ category, threshold: 'BLOCK_NONE' })),
+        }),
       }),
     });
     if (!res.ok) throw new Error(`Gemini (${res.status}) : ${await readError(res)}`);
-    const parts = (await res.json()).candidates?.[0]?.content?.parts || [];
+    const json = await res.json();
+    const candidate = json.candidates?.[0];
+    const parts = candidate?.content?.parts || [];
     const img = parts.map((p) => p.inlineData || p.inline_data).filter(Boolean).pop();
     if (!img) {
+      const reason = json.promptFeedback?.blockReason || candidate?.finishReason;
+      if (reason && reason !== 'STOP') throw new Error(`Google a refusé cette image (règle de Google, pas de ton app : ${reason}). Reformule ta demande.`);
       const text = parts.map((p) => p.text).filter(Boolean).join(' ');
       throw new Error('Gemini n’a pas renvoyé d’image' + (text ? ` : ${text}` : '. Reformule ta demande.'));
     }
@@ -263,6 +279,7 @@ async function generateImage(prompt) {
   if (s.imageProvider === 'openai') {
     if (!s.imageApiKey) throw new Error('Ajoute ta clé API OpenAI dans Paramètres (ou choisis le fournisseur gratuit).');
     const body = { model: s.imageModel || IMAGE_MODELS.openai, prompt, size: OPENAI_SIZES[s.imageAspect], n: 1, quality: s.imageQuality === 'standard' ? 'medium' : 'high' };
+    if (s.providerFilters === 'min') body.moderation = 'low';
     const res = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${s.imageApiKey}` },
