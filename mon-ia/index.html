@@ -260,7 +260,7 @@
       <div class="tools">
         <button type="button" class="tool" id="imgMode" aria-pressed="false"><svg><use href="#i-image"/></svg>Image</button>
         <button type="button" class="tool" id="attachBtn" aria-label="Ajouter une photo"><svg><use href="#i-clip"/></svg></button>
-        <button type="button" class="tool" id="hdToggle" aria-pressed="false" title="Moteur HD sur l’appareil" hidden>HD</button>
+        <button type="button" class="tool" id="hdToggle" aria-pressed="false" title="Moteur HD sur l’appareil (essai)">HD</button>
         <span class="spacer"></span>
         <button id="sendBtn" aria-label="Envoyer"><svg><use href="#i-send"/></svg></button>
       </div>
@@ -413,7 +413,7 @@
         <h3>Images</h3>
         <div class="field"><label for="imageProvider">Moteur d’images</label>
           <select id="imageProvider" name="imageProvider">
-            <option value="hd" hidden disabled>HD sur l’appareil : Stable Diffusion Turbo (iPhone récent, sans limite)</option>
+            <option value="hd">HD sur l’appareil (essai) : Stable Diffusion Turbo (iPhone récent, sans limite)</option>
             <option value="maison">Mon IA maison (sur ton téléphone, sans limite)</option>
             <option value="hf">Modèles gratuits en ligne (FLUX.2, avec quota)</option>
             <option value="pollinations">Pollinations avec clé</option>
@@ -1321,7 +1321,11 @@ async function send() {
       if (settings.imageProvider === 'hd') {
         if (source) throw new Error('Le moteur HD ne sait pas encore modifier les photos. Pour l’instant, il crée des images à partir de ta phrase.');
         await loadScript('hd.js');
-        image = (await MonIAHD.generate(text, { onStatus: setPending })).url;
+        try {
+          image = (await MonIAHD.generate(text, { onStatus: setPending })).url;
+        } catch (err) {
+          throw new Error('Moteur HD : ' + (err?.message || err) + '. Repasse sur ton IA maison avec le bouton HD.');
+        }
       } else if (settings.imageProvider === 'maison') {
         if (source) throw new Error('Ton IA maison ne sait pas encore modifier les photos : elle apprend d’abord à créer des images. On lui apprendra ça plus tard.');
         image = await generateHomeImage(text, setPending);
@@ -1556,9 +1560,9 @@ function fillForm() {
   updateProviderFields();
 }
 
-const STATUS = { hd: 'IA HD · sur l’appareil', maison: 'IA maison', hf: 'Moteur en ligne', pollinations: 'Images : Pollinations', gemini: 'Images : Google Gemini', openai: 'Images : OpenAI', free: 'Images : Pollinations' };
+const STATUS = { hd: 'IA HD (essai)', maison: 'IA maison', hf: 'Moteur en ligne', pollinations: 'Images : Pollinations', gemini: 'Images : Google Gemini', openai: 'Images : OpenAI', free: 'Images : Pollinations' };
 // Le moteur HD reste caché tant qu'il n'est pas validé sur téléphone.
-const HD_READY = false;
+const HD_READY = true;
 if (!HD_READY && settings.imageProvider === 'hd') settings.imageProvider = 'maison';
 function syncHdToggle() {
   const on = settings.imageProvider === 'hd';
