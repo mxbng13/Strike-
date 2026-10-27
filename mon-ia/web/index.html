@@ -476,6 +476,7 @@ const HOME_CLASSES = [
 // Les versions de ton IA maison. « active » est celle utilisée pour créer les images.
 const HOME_MODELS = {
   v1: { file: 'model.onnx', res: 32, nullId: 10, steps: 25 },
+  v1b: { file: 'model110.onnx', res: 32, nullId: 110, steps: 25, subjects: 'sujets110.json' },
   v2: { file: 'model64.onnx', res: 64, nullId: 1000, steps: 20, subjects: 'sujets.json' },
 };
 const HOME_ACTIVE = 'v1';
@@ -533,7 +534,7 @@ const plain = (t) => t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').re
 
 // Trouve le sujet demandé : le mot-clé le plus long présent dans la phrase gagne.
 function findSubject(prompt, version, subjects) {
-  if (version === 'v1') return HOME_CLASSES.findIndex(([, re]) => re.test(prompt.toLowerCase()));
+  if (!subjects) return HOME_CLASSES.findIndex(([, re]) => re.test(prompt.toLowerCase()));
   const text = ' ' + plain(prompt) + ' ';
   let best = -1, bestLen = 0;
   for (const [id, words] of subjects) {
@@ -564,7 +565,7 @@ async function generateHomeImage(prompt, onProgress) {
   const { session, subjects, gpu } = await loadHomeModel(version);
   const found = findSubject(prompt, version, subjects);
   if (found < 0) {
-    throw new Error(version === 'v1'
+    throw new Error(!subjects
       ? 'Mon IA maison ne connaît pour l’instant que : ' + HOME_CLASSES.map(([n]) => n).join(', ') + '. Demande par exemple « un cheval ».'
       : 'Je ne connais pas encore ce sujet. Essaie par exemple : un tigre, une montagne, une pizza, une guitare, un volcan, un phare, un pompier…');
   }
