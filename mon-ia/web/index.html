@@ -235,6 +235,7 @@
       <div class="tools">
         <button type="button" class="tool" id="imgMode" aria-pressed="false"><svg><use href="#i-image"/></svg>Image</button>
         <button type="button" class="tool" id="attachBtn" aria-label="Ajouter une photo"><svg><use href="#i-clip"/></svg></button>
+        <button type="button" class="tool" id="hdToggle" aria-pressed="false" title="Moteur HD sur l’appareil">HD</button>
         <span class="spacer"></span>
         <button id="sendBtn" aria-label="Envoyer"><svg><use href="#i-send"/></svg></button>
       </div>
@@ -355,6 +356,7 @@
         <h3>Images</h3>
         <div class="field"><label for="imageProvider">Moteur d’images</label>
           <select id="imageProvider" name="imageProvider">
+            <option value="hd">HD sur l’appareil : Stable Diffusion Turbo (iPhone récent, sans limite)</option>
             <option value="maison">Mon IA maison (sur ton téléphone, sans limite)</option>
             <option value="hf">Modèles gratuits en ligne (FLUX.2, avec quota)</option>
             <option value="pollinations">Pollinations avec clé</option>
@@ -433,13 +435,14 @@ const DEFAULTS = {
   temperature: 0.8, maxTokens: 2048, historyLength: 30,
   imageProvider: 'maison', imageApiKey: '', geminiApiKey: '', pollinationsKey: '', imageModel: 'flux', imageAspect: '1:1', imageQuality: 'high',
 };
-const IMAGE_MODELS = { maison: '', hf: '', pollinations: 'microsoft/mai-image-2.6', gemini: 'gemini-3-pro-image', openai: 'gpt-image-1', free: 'flux' };
+const IMAGE_MODELS = { hd: '', maison: '', hf: '', pollinations: 'microsoft/mai-image-2.6', gemini: 'gemini-3-pro-image', openai: 'gpt-image-1', free: 'flux' };
 // Modèles Pollinations gratuits qui savent modifier une photo, du meilleur au plus économique.
 const EDIT_MODELS = ['black-forest-labs/flux.1-kontext-pro', 'openai/gpt-image-1-mini', 'microsoft/mai-image-2.6', 'black-forest-labs/flux.2-klein-4b'];
 const IMAGE_MODEL_HINTS = {
   gemini: 'gemini-3-pro-image (Nano Banana Pro, le plus beau) · gemini-nano-banana-2.1 · gemini-3.1-flash-image (plus rapides et moins chers)',
   openai: 'gpt-image-1',
   free: 'flux, turbo',
+  hd: 'Modèle open source qui tourne sur ton téléphone : images 512 px, comprend les phrases. Premier lancement : téléchargement de ~2,5 Go en Wi-Fi.',
   maison: 'Modèle entraîné pour toi. Il connaît 10 sujets : avion, voiture, oiseau, chat, cerf, chien, grenouille, cheval, bateau, camion. Pour modifier tes photos, il faut un autre fournisseur.',
   hf: 'Choisi automatiquement : FLUX.2 pour créer, Flux Kontext / Qwen pour modifier tes photos.',
   pollinations: 'microsoft/mai-image-2.6 (photoréaliste) · gpt-image-2 (le plus précis, consomme plus) · flux-klein · zimage (le plus économique, plus d’images par jour)',
@@ -1210,7 +1213,11 @@ async function send() {
     if (wantImage) {
       if (!settings.imagesEnabled) throw new Error('La génération d’images est désactivée dans tes paramètres.');
       let image;
-      if (settings.imageProvider === 'maison') {
+      if (settings.imageProvider === 'hd') {
+        if (source) throw new Error('Le moteur HD ne sait pas encore modifier les photos. Pour l’instant, il crée des images à partir de ta phrase.');
+        await loadScript('hd.js');
+        image = (await MonIAHD.generate(text, { onStatus: setPending })).url;
+      } else if (settings.imageProvider === 'maison') {
         if (source) throw new Error('Ton IA maison ne sait pas encore modifier les photos : elle apprend d’abord à créer des images. On lui apprendra ça plus tard.');
         image = await generateHomeImage(text, setPending);
       } else {
@@ -1393,11 +1400,25 @@ function fillForm() {
   updateProviderFields();
 }
 
-const STATUS = { maison: 'IA maison', hf: 'Moteur en ligne', pollinations: 'Images : Pollinations', gemini: 'Images : Google Gemini', openai: 'Images : OpenAI', free: 'Images : Pollinations' };
+const STATUS = { hd: 'IA HD · sur l’appareil', maison: 'IA maison', hf: 'Moteur en ligne', pollinations: 'Images : Pollinations', gemini: 'Images : Google Gemini', openai: 'Images : OpenAI', free: 'Images : Pollinations' };
+function syncHdToggle() {
+  const on = settings.imageProvider === 'hd';
+  $('#hdToggle').classList.toggle('on', on);
+  $('#hdToggle').setAttribute('aria-pressed', String(on));
+}
+$('#hdToggle').addEventListener('click', () => {
+  settings.imageProvider = settings.imageProvider === 'hd' ? 'maison' : 'hd';
+  settings.imageModel = '';
+  write('mon-ia-settings', settings);
+  applyName();
+  if (!imageMode) setImageMode(true);
+});
+
 function applyName() {
   $('#title').textContent = settings.assistantName || 'Mon IA';
   document.title = settings.assistantName || 'Mon IA';
   $('#status').textContent = STATUS[settings.imageProvider] || '';
+  syncHdToggle();
 }
 
 form.textProvider.addEventListener('change', () => {
