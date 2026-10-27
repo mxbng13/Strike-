@@ -171,8 +171,8 @@ const CONTENT_CATEGORIES = deepFreeze({
     rules: {
       discussion: 'autorise',
       rechercheInfos: 'autorise',
-      creationImage: 'verification',
-      recherchePhotos: 'verification'
+      creationImage: 'autorise',
+      recherchePhotos: 'autorise'
     }
   },
 
@@ -186,8 +186,8 @@ const CONTENT_CATEGORIES = deepFreeze({
     rules: {
       discussion: 'autorise',
       rechercheInfos: 'autorise',
-      creationImage: 'verification',
-      recherchePhotos: 'verification'
+      creationImage: 'autorise',
+      recherchePhotos: 'autorise'
     }
   },
 
@@ -202,8 +202,8 @@ const CONTENT_CATEGORIES = deepFreeze({
     rules: {
       discussion: 'autorise',
       rechercheInfos: 'autorise',
-      creationImage: 'verification',
-      recherchePhotos: 'verification'
+      creationImage: 'autorise',
+      recherchePhotos: 'autorise'
     }
   },
 
@@ -217,8 +217,8 @@ const CONTENT_CATEGORIES = deepFreeze({
     rules: {
       discussion: 'autorise',
       rechercheInfos: 'autorise',
-      creationImage: 'verification',
-      recherchePhotos: 'verification'
+      creationImage: 'autorise',
+      recherchePhotos: 'autorise'
     }
   },
 
