@@ -52,6 +52,7 @@
   .tabs button, .tabs a { flex: 1; min-width: 0; text-decoration: none; height: 36px; border-radius: 10px; border: 1px solid transparent; background: none; color: var(--muted); font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
   .tabs [aria-selected="true"] { background: var(--surface); border-color: var(--line); color: var(--text); }
   .tabs svg { width: 16px; height: 16px; }
+  @media (max-width: 440px) { .tabs { gap: 2px; } .tabs button, .tabs a { font-size: 12px; gap: 4px; padding: 0 2px; } .tabs svg { display: none; } }
   #learn { position: fixed; inset: 0; z-index: 5; background: var(--bg); overflow-y: auto; padding-top: env(safe-area-inset-top, 0px); padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
   #learn[hidden] { display: none; }
   #learn .stack { display: flex; flex-direction: column; gap: 14px; padding-block: 18px; }
@@ -95,7 +96,8 @@
   .copy-row button { flex: none; height: 38px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); padding: 0 12px; font-weight: 600; font-size: 13px; }
   header .column { display: flex; align-items: center; gap: 12px; padding-block: 12px; }
   .mark { width: 32px; height: 32px; border-radius: 10px; flex: none; display: grid; place-items: center;
-          background: linear-gradient(140deg, var(--accent-strong), #9b7bff); color: #fff; }
+          background: #faf9f6 url(logo.png) center / 90% no-repeat; box-shadow: inset 0 0 0 1px rgba(0,0,0,.06); }
+  .mark svg { display: none; }
   .mark svg { width: 18px; height: 18px; stroke-width: 2; }
   .brand { flex: 1; min-width: 0; }
   .brand h1 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -156,6 +158,7 @@
   #input::placeholder { color: var(--faint); }
   .tools { display: flex; align-items: center; gap: 6px; }
   .tool { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); color: var(--muted); font-size: 13px; font-weight: 600; }
+  .tool[hidden] { display: none; }
   .tool.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
   .tool svg { width: 17px; height: 17px; }
   .spacer { flex: 1; }
