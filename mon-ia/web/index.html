@@ -222,11 +222,19 @@
       </section>
 
       <section class="section">
-        <h3>Limites</h3>
+        <h3>Restrictions : c’est toi qui décides</h3>
+        <div class="field"><label for="contentLevel">Niveau de filtre de l’app</label>
+          <select id="contentLevel" name="contentLevel">
+            <option value="aucun">Aucun filtre (seulement tes mots bloqués)</option>
+            <option value="modere">Modéré : pas de vulgarité ni de violence crue</option>
+            <option value="enfants">Adapté aux enfants</option>
+          </select></div>
         <div class="field"><label for="blockedWords">Mots bloqués, un par ligne</label>
           <textarea id="blockedWords" name="blockedWords" rows="3"></textarea>
-          <p class="hint">Refusés dans tes messages et tes demandes d’images. C’est la seule restriction ajoutée par l’app.</p></div>
+          <p class="hint">Refusés dans tes messages et tes demandes d’images.</p></div>
         <label class="check"><input type="checkbox" id="imagesEnabled" name="imagesEnabled"> Création d’images activée</label>
+        <label class="check"><input type="checkbox" id="chatEnabled" name="chatEnabled"> Discussion activée</label>
+        <p class="hint">Ces réglages sont les seules règles ajoutées par l’app. Ton IA d’images maison n’a aucun autre filtre. Les services en ligne (discussion gratuite, moteurs d’images en ligne) gardent leurs propres règles, que l’app ne peut pas enlever.</p>
       </section>
 
       <section class="section">
@@ -304,6 +312,8 @@ const DEFAULTS = {
   blockedWords: [],
   imagesEnabled: true,
   providerFilters: 'min',
+  contentLevel: 'aucun',
+  chatEnabled: true,
   enhancePrompts: true,
   textProvider: 'free', textBaseUrl: '', textApiKey: '', textModel: 'openai',
   temperature: 0.8, maxTokens: 2048, historyLength: 30,
@@ -375,6 +385,16 @@ function store() {
   }
 }
 
+// Consignes ajoutées selon le niveau de filtre choisi par l'utilisateur.
+const LEVEL_RULES = {
+  aucun: '',
+  modere: 'Reste correct : pas de vulgarité, pas de descriptions de violence crue.',
+  enfants: 'Ton interlocuteur peut être un enfant : réponds avec un contenu adapté aux enfants, sans violence, sans vulgarité, sans sujet pour adultes.',
+};
+function systemPrompt() {
+  return [settings.systemPrompt, LEVEL_RULES[settings.contentLevel] || ''].filter(Boolean).join('\n\n');
+}
+
 function findBlockedWord(text) {
   const lower = text.toLowerCase();
   return settings.blockedWords.find((w) => w && lower.includes(w.toLowerCase()));
@@ -393,7 +413,7 @@ async function chat(history) {
     const res = await fetch(TEXT_URLS.anthropic, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': s.textApiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: s.textModel, max_tokens: s.maxTokens, temperature: s.temperature, system: s.systemPrompt, messages: msgs }),
+      body: JSON.stringify({ model: s.textModel, max_tokens: s.maxTokens, temperature: s.temperature, system: systemPrompt(), messages: msgs }),
     });
     if (!res.ok) throw new Error(`Fournisseur (${res.status}) : ${await readError(res)}`);
     const json = await res.json();
@@ -405,7 +425,7 @@ async function chat(history) {
   const res = await fetch(url, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ model: s.textModel, temperature: s.temperature, max_tokens: s.maxTokens, messages: [{ role: 'system', content: s.systemPrompt }, ...msgs] }),
+    body: JSON.stringify({ model: s.textModel, temperature: s.temperature, max_tokens: s.maxTokens, messages: [{ role: 'system', content: systemPrompt() }, ...msgs] }),
   });
   if (!res.ok) throw new Error(`Fournisseur (${res.status}) : ${await readError(res)}`);
   const json = await res.json();
@@ -907,6 +927,7 @@ async function send() {
       }
       messages.push({ role: 'assistant', content: text, image, kind: 'image' });
     } else {
+      if (!settings.chatEnabled) throw new Error('La discussion est désactivée dans tes réglages.');
       // Les images ne sont pas renvoyées au modèle de texte.
       const history = messages.filter((m) => !m.error && !m.kind);
       messages.push({ role: 'assistant', content: await chat(history) });
