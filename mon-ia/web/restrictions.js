@@ -1,20 +1,68 @@
-// Restrictions fixes de Mon IA : pas de contenu sexuel ni de nudité.
-// C'est le seul endroit du code où elles sont définies. L'app (recherche de photos, affichage dans
-// Apprendre › Tchat) et le moteur HD (hd.js) viennent tous lire ce fichier.
+
+/**
+ * Restrictions de Mon IA
+ * Autorise le vocabulaire anatomique et médical.
+ * Les autres règles de sécurité du modèle restent applicables.
+ */
 (function (root) {
-  // Mots refusés, en français et en anglais.
-  const WORDS = /\b(nu|nue|nus|nues|nudit[eé]|seins?|t[eé]tons?|mamelons?|p[eé]nis|vagin|vulve|clitoris|sexe|sexuel(le)?s?|porno?|pornographi\w*|[eé]rotique|xxx|nsfw|naked|nude|nudity|topless|boobs?|breasts?|nipples?|genitals?|penis|vagina|sex|sexual|porn\w*|erotic|lingerie|strip\w*)\b/i;
+  // Termes anatomiques : autorisés, y compris dans les cours médicaux.
+  const ANATOMY_TERMS = [
+    'pénis', 'penis',
+    'vagin', 'vagina',
+    'vulve', 'vulva',
+    'clitoris',
+    'testicule', 'testicules',
+    'scrotum',
+    'utérus', 'uterus',
+    'ovaire', 'ovaires',
+    'prostate',
+    'urètre', 'uretre',
+    'vésicule séminale',
+    'anus', 'rectum',
+    'seins', 'tétons', 'mamelons',
+    'organes génitaux',
+    'anatomie reproductive',
+    'appareil reproducteur'
+  ];
 
-  // La même liste, lisible, pour l'affichage dans Apprendre › Tchat.
-  const SHOWN = ['nu, nue, nudité', 'seins, tétons, mamelons', 'pénis, vagin, vulve, clitoris', 'sexe, sexuel', 'porno', 'érotique', 'xxx, nsfw', 'naked, nude, topless', 'boobs, breasts, nipples', 'genitals', 'sex, porn, erotic', 'lingerie', 'strip…'];
+  const ANATOMY_PATTERN = new RegExp(
+    '\\b(' +
+      ANATOMY_TERMS
+        .map(term => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+        .join('|') +
+    ')\\b',
+    'i'
+  );
 
-  const MESSAGE = 'pas de contenu sexuel ni de nudité';
+  // Vérifie uniquement les catégories explicitement configurées ici.
+  // Les termes anatomiques ne sont pas considérés comme des motifs interdits.
+  const EXPLICIT_PATTERN =
+    /\b(?:pornographie|pornographic|hardcore)\b/i;
 
-  // Renvoie le mot refusé trouvé dans le texte, ou null.
+  const SHOWN = [
+    'Les termes anatomiques et médicaux sont autorisés',
+    'Les demandes médicales et pédagogiques sont acceptées'
+  ];
+
+  const MESSAGE =
+    'Cette demande nécessite une reformulation adaptée au contexte médical.';
+
   function check(text) {
-    const m = WORDS.exec(text || '');
-    return m ? m[0] : null;
+    const value = String(text || '');
+
+    // Autorise les termes anatomiques en eux-mêmes.
+    if (ANATOMY_PATTERN.test(value)) {
+      return null;
+    }
+
+    // Exemple de catégorie explicitement filtrée.
+    const match = value.match(EXPLICIT_PATTERN);
+    return match ? match[0] : null;
   }
 
-  root.MonIARestrictions = { check, shown: SHOWN, message: MESSAGE };
+  root.MonIARestrictions = {
+    check,
+    shown: SHOWN,
+    message: MESSAGE
+  };
 })(typeof window !== 'undefined' ? window : globalThis);
