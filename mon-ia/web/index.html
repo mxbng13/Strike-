@@ -7,6 +7,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <title>Mon IA</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Mon IA">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
 <style>
@@ -43,6 +48,18 @@
 
   /* Barre du haut */
   header { border-bottom: 1px solid var(--line); background: var(--bg); }
+  .tabs { display: flex; gap: 4px; padding-bottom: 10px; }
+  .tabs button { flex: 1; height: 36px; border-radius: 10px; border: 1px solid transparent; background: none; color: var(--muted); font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+  .tabs button[aria-selected="true"] { background: var(--surface); border-color: var(--line); color: var(--text); }
+  .tabs svg { width: 16px; height: 16px; }
+  #improve { position: fixed; inset: 0; z-index: 5; background: var(--bg); overflow-y: auto; padding-top: env(safe-area-inset-top, 0px); padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+  #improve[hidden] { display: none; }
+  #improve .stack { display: flex; flex-direction: column; gap: 14px; padding-block: 18px; }
+  #improve p { margin: 0; }
+  #improve ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+  .cta { display: flex; align-items: center; justify-content: center; gap: 8px; height: 46px; border-radius: 12px; background: var(--accent); color: var(--accent-ink); font-weight: 700; text-decoration: none; }
+  .copy-row { display: flex; gap: 8px; }
+  .copy-row button { flex: none; height: 38px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); padding: 0 12px; font-weight: 600; font-size: 13px; }
   header .column { display: flex; align-items: center; gap: 12px; padding-block: 12px; }
   .mark { width: 32px; height: 32px; border-radius: 10px; flex: none; display: grid; place-items: center;
           background: linear-gradient(140deg, var(--accent-strong), #9b7bff); color: #fff; }
@@ -125,7 +142,7 @@
   .section h3 { margin: 0; font: 500 11px/1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
   .field { display: flex; flex-direction: column; gap: 6px; }
   .field > label, .grid label { font-size: 13px; font-weight: 600; color: var(--text); }
-  input, select, #settings textarea { width: 100%; background: var(--raised); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font: 15px/1.4 var(--ui); }
+  input, select, #settings textarea, #improve textarea { width: 100%; background: var(--raised); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font: 15px/1.4 var(--ui); }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
   .grid > div { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
   .check { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; font-weight: 500; }
@@ -175,10 +192,15 @@
     <div class="mark"><svg><use href="#i-spark"/></svg></div>
     <div class="brand">
       <h1 id="title">Mon IA</h1>
-      <div class="status" id="status">IA maison · hors ligne</div>
+      <div class="status" id="status">IA maison</div>
     </div>
     <button class="icon-btn" id="clear" type="button" aria-label="Nouvelle conversation"><svg><use href="#i-plus"/></svg><span>Nouveau</span></button>
     <button class="icon-btn" id="openSettings" type="button" aria-label="Réglages"><svg><use href="#i-gear"/></svg></button>
+  </div>
+  <div class="column tabs" role="tablist">
+    <button type="button" role="tab" id="tabCreate" aria-selected="false"><svg><use href="#i-image"/></svg>Créer</button>
+    <button type="button" role="tab" id="tabChat" aria-selected="true"><svg><use href="#i-spark"/></svg>Discuter</button>
+    <button type="button" role="tab" id="tabImprove" aria-selected="false"><svg><use href="#i-edit"/></svg>Améliorer</button>
   </div>
 </header>
 
@@ -202,6 +224,39 @@
       </div>
     </form>
     <p class="fineprint">Les images sont créées par ton IA maison, directement sur ton téléphone.</p>
+  </div>
+</div>
+
+<div id="improve" hidden>
+  <div class="sheet-head gutter">
+    <div class="column">
+      <h2>Améliorer mon IA</h2>
+      <button class="icon-btn" id="closeImprove" type="button"><svg><use href="#i-x"/></svg><span>Fermer</span></button>
+    </div>
+  </div>
+  <div class="gutter">
+    <div class="column stack">
+      <section class="section">
+        <h3>Qui peut modifier ton IA</h3>
+        <p>Pour changer le code de ton IA, lui apprendre de nouveaux sujets ou améliorer ses images, il faut une IA de programmation. C’est Claude Code, celle qui a créé ton IA. Elle travaille directement sur ton projet GitHub et met tes changements en ligne.</p>
+      </section>
+      <section class="section">
+        <h3>Comment faire</h3>
+        <ol>
+          <li>Copie la demande ci-dessous et complète-la avec ce que tu veux.</li>
+          <li>Ouvre Claude Code et choisis ton projet <b>Strike-</b>.</li>
+          <li>Colle ta demande et envoie. Les changements arrivent ici quelques minutes après.</li>
+        </ol>
+        <div class="field"><label for="improveText">Ta demande</label>
+          <textarea id="improveText" rows="5">Dans mon projet Strike-, améliore « Mon IA » (dossier mon-ia/web, en ligne sur GitHub Pages) : </textarea></div>
+        <div class="copy-row"><button type="button" id="copyImprove">Copier la demande</button><p class="hint" id="copyNote" style="align-self:center"></p></div>
+        <a class="cta" href="https://claude.ai/code" target="_blank" rel="noopener"><svg><use href="#i-spark"/></svg>Ouvrir Claude Code</a>
+      </section>
+      <section class="section">
+        <h3>Idées</h3>
+        <p class="hint">« Apprends-lui de nouveaux sujets », « rends les images plus nettes », « ajoute un bouton pour partager une image », « change les couleurs de l’app »…</p>
+      </section>
+    </div>
   </div>
 </div>
 
@@ -952,11 +1007,23 @@ $('#attachRemove').addEventListener('click', () => setAttachment(null));
 input.addEventListener('input', () => { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 160) + 'px'; });
 $('#composer').addEventListener('submit', (e) => { e.preventDefault(); send(); });
 input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !('ontouchstart' in window)) { e.preventDefault(); send(); } });
-$('#imgMode').addEventListener('click', () => {
-  imageMode = !imageMode;
+function setImageMode(on) {
+  imageMode = on;
   $('#imgMode').classList.toggle('on', imageMode);
   $('#imgMode').setAttribute('aria-pressed', String(imageMode));
+  $('#tabCreate').setAttribute('aria-selected', String(imageMode));
+  $('#tabChat').setAttribute('aria-selected', String(!imageMode));
   input.placeholder = imageMode ? 'Décris l’image à créer…' : 'Écris un message…';
+}
+$('#imgMode').addEventListener('click', () => setImageMode(!imageMode));
+$('#tabCreate').addEventListener('click', () => { setImageMode(true); input.focus(); });
+$('#tabChat').addEventListener('click', () => { setImageMode(false); input.focus(); });
+$('#tabImprove').addEventListener('click', () => { $('#improve').hidden = false; });
+$('#closeImprove').addEventListener('click', () => { $('#improve').hidden = true; });
+$('#copyImprove').addEventListener('click', async () => {
+  const text = $('#improveText').value;
+  try { await navigator.clipboard.writeText(text); $('#copyNote').textContent = 'Copié.'; }
+  catch { $('#improveText').select(); $('#copyNote').textContent = 'Sélectionné : appuie sur Copier.'; }
 });
 
 // Effacer : deuxième appui pour confirmer (les boîtes de dialogue ne sont pas fiables partout).
@@ -994,7 +1061,7 @@ function fillForm() {
   updateProviderFields();
 }
 
-const STATUS = { maison: 'IA maison · hors ligne', hf: 'Images : modèles en ligne', pollinations: 'Images : Pollinations', gemini: 'Images : Google Gemini', openai: 'Images : OpenAI', free: 'Images : Pollinations' };
+const STATUS = { maison: 'IA maison', hf: 'Moteur en ligne', pollinations: 'Images : Pollinations', gemini: 'Images : Google Gemini', openai: 'Images : OpenAI', free: 'Images : Pollinations' };
 function applyName() {
   $('#title').textContent = settings.assistantName || 'Mon IA';
   document.title = settings.assistantName || 'Mon IA';
@@ -1033,6 +1100,7 @@ form.addEventListener('submit', (e) => {
 
 applyName();
 renderAll();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 
 // Code d'accès : seule une empreinte du code est dans la page. Une fois déverrouillé, cet appareil s'en souvient.
 const LOCK_SALT = 'mon-ia-mxbng13';
