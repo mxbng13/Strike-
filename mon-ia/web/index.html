@@ -112,6 +112,13 @@
   #improve[hidden] { display: none; }
   #improve .stack { display: flex; flex-direction: column; gap: 14px; padding-block: 18px; }
   #improve p { margin: 0; }
+  .self-log { display: flex; flex-direction: column; gap: 8px; }
+  .self-log:empty::before { content: 'Rien pour l’instant. Écris-lui ce que tu veux changer.'; color: var(--muted); font-size: 13px; }
+  .self-msg { padding: 10px 12px; border-radius: 12px; background: var(--raised); border: 1px solid var(--line); overflow-wrap: anywhere; white-space: pre-wrap; }
+  .self-msg.me { background: var(--user); border-color: transparent; align-self: flex-end; max-width: 85%; }
+  .self-msg.err { color: var(--danger); }
+  .self-msg ul { margin: 6px 0 0; padding-left: 18px; color: var(--muted); font-size: 13px; }
+  #improve .adder textarea { flex: 1; min-width: 0; resize: none; }
   #improve ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
   .cta { display: flex; align-items: center; justify-content: center; gap: 8px; height: 46px; border-radius: 12px; background: var(--accent); color: var(--accent-ink); font-weight: 700; text-decoration: none; }
   .copy-row { display: flex; gap: 8px; }
@@ -343,6 +350,7 @@
       <div class="seg" role="tablist">
         <button type="button" role="tab" id="learnTabImages" aria-selected="true">Images</button>
         <button type="button" role="tab" id="learnTabChat" aria-selected="false">Tchat</button>
+        <button type="button" role="tab" id="learnTabSelf" aria-selected="false">S’améliorer</button>
       </div>
       <div id="learnChat" class="stack" hidden>
         <section class="section">
@@ -417,8 +425,15 @@
   <div class="gutter">
     <div class="column stack">
       <section class="section">
-        <h3>Qui peut modifier ton IA</h3>
-        <p>Pour changer le code de ton IA, lui apprendre de nouveaux sujets ou améliorer ses images, il faut une IA de programmation. C’est Claude Code, celle qui a créé ton IA. Elle travaille directement sur ton projet GitHub et met tes changements en ligne.</p>
+        <h3>Dis-lui comment s’améliorer</h3>
+        <p class="hint">Elle change elle-même ses réglages, sans passer par Claude : sa personnalité, sa façon de répondre, ce qu’elle retient, les mots interdits ou autorisés, ses actions, son moteur d’images, les couleurs de l’app… Chaque changement s’annule d’un bouton.</p>
+        <div class="self-log" id="selfLog"></div>
+        <div class="adder"><textarea id="selfInput" rows="2" maxlength="1500" placeholder="Ex. : sois plus drôle et tutoie-moi, et mets l’app en vert"></textarea><button type="button" id="selfSend">Envoyer</button></div>
+        <div class="copy-row"><button type="button" class="ghost" id="selfUndo" disabled>Annuler le dernier changement</button><p class="hint" id="selfNote" style="align-self:center"></p></div>
+      </section>
+      <section class="section">
+        <h3>Pour les gros changements</h3>
+        <p>Changer le code, ajouter une fonction ou entraîner de nouveaux modèles demande une IA de programmation : Claude Code, celle qui a créé ton IA. Elle travaille sur ton projet GitHub et met les changements en ligne.</p>
       </section>
       <section class="section">
         <h3>Comment faire</h3>
@@ -725,14 +740,19 @@ async function readError(res) {
 }
 
 async function chat(history, extra = '') {
+  const msgs = history.slice(-settings.historyLength).map((m) => ({ role: m.role, content: m.content }));
+  return llm([systemPrompt(), extra].filter(Boolean).join('\n\n'), msgs);
+}
+
+// Appel au modèle de texte choisi dans Paramètres, avec ses propres consignes.
+async function llm(system, msgs) {
   const s = settings;
-  const msgs = history.slice(-s.historyLength).map((m) => ({ role: m.role, content: m.content }));
   if (s.textProvider !== 'free' && !s.textApiKey && s.textProvider !== 'custom') throw new Error('Ajoute ta clé API dans Paramètres (ou choisis le fournisseur gratuit).');
   if (s.textProvider === 'anthropic') {
     const res = await fetch(TEXT_URLS.anthropic, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': s.textApiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: s.textModel, max_tokens: s.maxTokens, temperature: s.temperature, system: [systemPrompt(), extra].filter(Boolean).join('\n\n'), messages: msgs }),
+      body: JSON.stringify({ model: s.textModel, max_tokens: s.maxTokens, temperature: s.temperature, system, messages: msgs }),
     });
     if (!res.ok) throw new Error(`Fournisseur (${res.status}) : ${await readError(res)}`);
     const json = await res.json();
@@ -744,7 +764,7 @@ async function chat(history, extra = '') {
   const res = await fetch(url, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ model: s.textModel, temperature: s.temperature, max_tokens: s.maxTokens, messages: [{ role: 'system', content: [systemPrompt(), extra].filter(Boolean).join('\n\n') }, ...msgs] }),
+    body: JSON.stringify({ model: s.textModel, temperature: s.temperature, max_tokens: s.maxTokens, messages: [{ role: 'system', content: system }, ...msgs] }),
   });
   if (!res.ok) throw new Error(`Fournisseur (${res.status}) : ${await readError(res)}`);
   const json = await res.json();
@@ -1702,6 +1722,7 @@ function showLearnTab(chat) {
 }
 $('#learnTabImages').addEventListener('click', () => showLearnTab(false));
 $('#learnTabChat').addEventListener('click', () => showLearnTab(true));
+$('#learnTabSelf').addEventListener('click', () => { $('#learn').hidden = true; $('#improve').hidden = false; renderSelfLog(); });
 
 function saveRules() { write('mon-ia-settings', settings); renderChatRules(); }
 
@@ -1818,6 +1839,128 @@ $('#learnStart').addEventListener('click', async () => {
   }
 });
 $('#closeImprove').addEventListener('click', () => { $('#improve').hidden = true; });
+
+// ——— Améliorer : elle modifie elle-même ses réglages à partir de ce que tu lui dis ———
+const SELF_FIELDS = ['assistantName', 'systemPrompt', 'contentLevel', 'temperature', 'maxTokens', 'historyLength', 'chatLessons', 'blockedWords', 'allowedWords', 'skills', 'imageProvider', 'enhancePrompts', 'customCss'];
+const SELF_LABELS = { assistantName: 'nom', systemPrompt: 'personnalité', contentLevel: 'niveau de filtre', temperature: 'créativité', maxTokens: 'longueur max des réponses', historyLength: 'mémoire de la discussion', chatLessons: 'ce qu’elle retient', blockedWords: 'mots interdits', allowedWords: 'mots autorisés', skills: 'actions', imageProvider: 'moteur d’images', enhancePrompts: 'amélioration des demandes', customCss: 'apparence' };
+let selfLog = read('mon-ia-ameliorer', []);
+let selfUndo = read('mon-ia-ameliorer-annuler', []);
+
+function selfState() { return Object.fromEntries(SELF_FIELDS.map((k) => [k, settings[k] ?? (k === 'customCss' ? '' : DEFAULTS[k])])); }
+
+// Garde seulement des valeurs valides : un mauvais réglage ne doit jamais casser l'app.
+function cleanChanges(c) {
+  const out = {}, list = (v) => Array.isArray(v) ? v.filter((w) => typeof w === 'string' && w.trim()).map((w) => w.trim().slice(0, 300)).slice(0, 200) : null;
+  if (!c || typeof c !== 'object') return out;
+  if (typeof c.assistantName === 'string' && c.assistantName.trim()) out.assistantName = c.assistantName.trim().slice(0, 40);
+  if (typeof c.systemPrompt === 'string' && c.systemPrompt.trim()) out.systemPrompt = c.systemPrompt.trim().slice(0, 4000);
+  if (['aucun', 'modere', 'enfants'].includes(c.contentLevel)) out.contentLevel = c.contentLevel;
+  if (Number.isFinite(c.temperature)) out.temperature = Math.min(2, Math.max(0, c.temperature));
+  if (Number.isFinite(c.maxTokens)) out.maxTokens = Math.round(Math.min(8000, Math.max(100, c.maxTokens)));
+  if (Number.isFinite(c.historyLength)) out.historyLength = Math.round(Math.min(100, Math.max(2, c.historyLength)));
+  for (const k of ['chatLessons', 'blockedWords', 'allowedWords']) { const v = list(c[k]); if (v) out[k] = v; }
+  if (c.skills && typeof c.skills === 'object') {
+    out.skills = structuredClone(settings.skills);
+    for (const key of Object.keys(DEFAULT_SKILLS)) {
+      const sk = c.skills[key];
+      if (!sk || typeof sk !== 'object') continue;
+      if (typeof sk.on === 'boolean') out.skills[key].on = sk.on;
+      const w = list(sk.words); if (w) out.skills[key].words = w.map((x) => x.toLowerCase().slice(0, 40));
+    }
+  }
+  if (['maison', 'hd'].includes(c.imageProvider)) out.imageProvider = c.imageProvider;
+  if (typeof c.enhancePrompts === 'boolean') out.enhancePrompts = c.enhancePrompts;
+  // Apparence : du CSS seulement, sans chargement extérieur.
+  if (typeof c.customCss === 'string') out.customCss = c.customCss.replace(/<[^>]*>?/g, '').replace(/@import[^;]*;?/gi, '').replace(/url\s*\([^)]*\)/gi, 'none').replace(/expression\s*\(/gi, '').slice(0, 6000);
+  // Rien ne change vraiment ? On l'enlève de la liste.
+  for (const k of Object.keys(out)) if (JSON.stringify(out[k]) === JSON.stringify(settings[k] ?? '')) delete out[k];
+  return out;
+}
+
+function applyCustomCss() {
+  let el = document.getElementById('customCss');
+  if (!el) { el = document.createElement('style'); el.id = 'customCss'; document.head.append(el); }
+  el.textContent = settings.customCss || '';
+}
+
+function renderSelfLog() {
+  const box = $('#selfLog'); box.innerHTML = '';
+  for (const m of selfLog.slice(-30)) {
+    const d = document.createElement('div');
+    d.className = 'self-msg' + (m.role === 'user' ? ' me' : '') + (m.error ? ' err' : '');
+    d.textContent = m.content;
+    if (m.changed?.length) {
+      const ul = document.createElement('ul');
+      for (const k of m.changed) { const li = document.createElement('li'); li.textContent = 'Modifié : ' + (SELF_LABELS[k] || k); ul.append(li); }
+      d.append(ul);
+    }
+    box.append(d);
+  }
+  $('#selfUndo').disabled = !selfUndo.length;
+}
+
+function saveSelf() {
+  selfLog = selfLog.slice(-60); selfUndo = selfUndo.slice(-20);
+  write('mon-ia-ameliorer', selfLog); write('mon-ia-ameliorer-annuler', selfUndo);
+  renderSelfLog();
+}
+
+const SELF_SYSTEM = `Tu es le module d'auto-amélioration de l'application « Mon IA ». L'utilisateur te dit comment l'IA doit s'améliorer et tu modifies toi-même ses réglages.
+Voici les réglages modifiables (JSON) :
+- assistantName : nom affiché.
+- systemPrompt : sa personnalité et ses consignes de discussion (texte complet, en français, à la 2e personne : « Tu es… »).
+- contentLevel : "aucun", "modere" ou "enfants".
+- temperature : 0 à 2 (créativité). maxTokens : 100 à 8000 (longueur max). historyLength : 2 à 100 (messages dont elle se souvient).
+- chatLessons : liste de choses à retenir sur l'utilisateur ou de règles.
+- blockedWords : mots qu'elle refuse. allowedWords : exceptions aux mots interdits.
+- skills : { photos: {on, words}, web: {on, words}, memory: {on, words} } — actions (chercher des photos, chercher des infos sur le web, retenir) et les mots qui les déclenchent en début de message.
+- imageProvider : "maison" (son IA d'images entraînée de zéro) ou "hd" (moteur HD sur le téléphone).
+- enhancePrompts : true/false.
+- customCss : CSS ajouté à l'app pour changer l'apparence. Variables disponibles : --bg, --surface, --raised, --line, --text, --muted, --accent, --accent-strong, --accent-ink, --user, --radius. Pour changer les couleurs dans les deux thèmes, écris par exemple « :root, :root[data-theme] { --accent: #1f9d63 !important; } » et précise aussi une version dans « @media (prefers-color-scheme: dark) » si besoin.
+Réponds UNIQUEMENT avec un objet JSON : {"reponse": "phrase courte en français qui explique ce que tu as changé", "modifs": { seulement les réglages à changer, avec leur NOUVELLE valeur complète (listes entières) }}.
+Si la demande ne peut pas se faire avec ces réglages (nouveau code, nouvelle fonction, entraîner des images), dis-le dans "reponse", propose ce qui s'en approche, et laisse "modifs" vide.`;
+
+async function selfImprove() {
+  const text = $('#selfInput').value.trim();
+  if (!text) return;
+  $('#selfInput').value = ''; $('#selfSend').disabled = true; $('#selfNote').textContent = 'Elle réfléchit…';
+  selfLog.push({ role: 'user', content: text }); saveSelf();
+  try {
+    const recent = selfLog.slice(-10).filter((m) => !m.error).map((m) => ({ role: m.role, content: m.content }));
+    recent[recent.length - 1] = { role: 'user', content: `Réglages actuels : ${JSON.stringify(selfState())}\n\nDemande : ${text}` };
+    const raw = await llm(SELF_SYSTEM, recent);
+    const json = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
+    let parsed;
+    try { parsed = JSON.parse(json); } catch { throw new Error('Je n’ai pas compris ma propre réponse. Reformule ta demande, ou essaie un autre modèle dans Paramètres.'); }
+    const changes = cleanChanges(parsed.modifs);
+    const keys = Object.keys(changes);
+    if (keys.length) {
+      selfUndo.push(Object.fromEntries(keys.map((k) => [k, structuredClone(settings[k] ?? '')])));
+      settings = { ...settings, ...changes };
+      write('mon-ia-settings', settings);
+      applyCustomCss(); applyName(); renderChatRules();
+    }
+    selfLog.push({ role: 'assistant', content: String(parsed.reponse || (keys.length ? 'C’est fait.' : 'Je n’ai rien changé.')).slice(0, 1500), changed: keys });
+  } catch (err) {
+    selfLog.push({ role: 'assistant', content: err.message === 'Failed to fetch' ? 'Impossible de joindre le modèle de texte. Vérifie ta connexion.' : err.message, error: true });
+  }
+  $('#selfSend').disabled = false; $('#selfNote').textContent = '';
+  saveSelf();
+}
+
+$('#selfSend').addEventListener('click', selfImprove);
+$('#selfInput').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !('ontouchstart' in window)) { e.preventDefault(); selfImprove(); } });
+$('#selfUndo').addEventListener('click', () => {
+  const prev = selfUndo.pop();
+  if (!prev) return;
+  settings = { ...settings, ...prev };
+  write('mon-ia-settings', settings);
+  applyCustomCss(); applyName(); renderChatRules();
+  selfLog.push({ role: 'assistant', content: 'Annulé : ' + Object.keys(prev).map((k) => SELF_LABELS[k] || k).join(', ') + ' remis comme avant.' });
+  saveSelf();
+});
+applyCustomCss();
+renderSelfLog();
 $('#copyImprove').addEventListener('click', async () => {
   const text = $('#improveText').value;
   try { await navigator.clipboard.writeText(text); $('#copyNote').textContent = 'Copié.'; }
