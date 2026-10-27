@@ -29,12 +29,18 @@ RES = 64
 URL = 'https://huggingface.co/datasets/benjamin-paine/imagenet-1k-64x64/resolve/main/data/train-0000{}-of-00005.parquet'
 
 
-def cosine_alphas_cumprod(steps=T, s=0.008):
+# Version 2 : calendrier cosinus décalé (log-SNR − 2·ln 2) pour le 64 px. Sans ce décalage, le bruit est trop
+# faible aux grandes échelles et le modèle rate les couleurs d'ensemble (teintes saturées de la version 1).
+SHIFT = float(os.environ.get('SHIFT', str(-2 * math.log(2))))
+
+
+def cosine_alphas_cumprod(steps=T, s=0.008, shift=SHIFT):
     x = torch.linspace(0, steps, steps + 1, dtype=torch.float64)
     f = torch.cos(((x / steps) + s) / (1 + s) * math.pi / 2) ** 2
     ac = f / f[0]
     betas = (1 - ac[1:] / ac[:-1]).clamp(max=0.999)
-    return torch.cumprod(1 - betas, 0).float()
+    ac = torch.cumprod(1 - betas, 0).clamp(1e-8, 1 - 1e-8)
+    return torch.sigmoid(torch.log(ac / (1 - ac)) + shift).float()
 
 
 ALPHAS_CUMPROD = cosine_alphas_cumprod()
@@ -84,7 +90,7 @@ class Attention(nn.Module):
 class UNet(nn.Module):
     """64 -> 32 -> 16 -> 8, attention à 16x16 et 8x8."""
 
-    def __init__(self, base=32, mults=(1, 2, 4, 6), emb_dim=256, attn_levels=(3,)):
+    def __init__(self, base=64, mults=(1, 2, 2, 4), emb_dim=256, attn_levels=(2, 3)):
         super().__init__()
         self.base = base
         self.time = nn.Sequential(nn.Linear(base, emb_dim), nn.SiLU(), nn.Linear(emb_dim, emb_dim))

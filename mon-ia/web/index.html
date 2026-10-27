@@ -765,9 +765,35 @@ const HOME_MODELS = {
   v2: { file: 'model64.onnx', res: 64, nullId: 1000, steps: 20, subjects: 'sujets.json' },
 };
 // Ordre d'essai : le premier modèle qui connaît le sujet demandé est utilisé.
+// Modèle qui comprend les phrases (texte → image, entraîné de zéro sur COCO). Actif quand son fichier est publié.
+HOME_MODELS.texte = { file: 'texte64.onnx', res: 64, text: true, vocab: 'texte64-vocab.json', nullId: 1, steps: 30, guidance: 3, shift: -2 * Math.LN2, heavy: true };
+let textModelReady;
+function textModelAvailable() {
+  textModelReady ??= fetch(HOME_MODELS.texte.vocab, { method: 'HEAD' }).then((r) => r.ok).catch(() => false);
+  return textModelReady;
+}
+let textVocab;
+async function textTokens(prompt) {
+  textVocab ??= fetch(HOME_MODELS.texte.vocab).then((r) => r.json()).then((v) => ({ ...v, index: new Map(v.words.map((w, i) => [w, i])) }));
+  const v = await textVocab;
+  const english = typeof translateForImage === 'function' ? await translateForImage(prompt) : prompt;
+  const ids = (english.toLowerCase().match(/[a-z]+/g) || []).map((w) => v.index.get(w) ?? v.unk).slice(0, v.max_len);
+  const known = ids.filter((id) => id !== v.unk).length;
+  while (ids.length < v.max_len) ids.push(v.pad);
+  return { ids, known, english };
+}
 const HOME_ORDER = ['v1grand', 'v1b'];
 const HOME_T = 1000;
 // Même calendrier de bruit que pendant l'entraînement (cosinus).
+// Calendrier de bruit d'un modèle : cosinus, éventuellement décalé (modèles 64 px version 2).
+const alphaCache = {};
+function alphasFor(cfg) {
+  if (!cfg.shift) return HOME_ALPHAS;
+  return (alphaCache[cfg.shift] ??= HOME_ALPHAS.map((a) => {
+    const c = Math.min(1 - 1e-8, Math.max(1e-8, a));
+    return 1 / (1 + Math.exp(-(Math.log(c / (1 - c)) + cfg.shift)));
+  }));
+}
 const HOME_ALPHAS = (() => {
   const f = (i) => Math.cos(((i / HOME_T) + 0.008) / 1.008 * Math.PI / 2) ** 2;
   const out = new Float64Array(HOME_T);
@@ -948,8 +974,21 @@ async function homeDenoise(version, labelId, x, count, { tStart = HOME_T - 1, st
   const { session } = await loadHomeModel(version);
   const res = cfg.res, size = 3 * res * res;
   steps ??= cfg.steps;
-  const labels = new BigInt64Array(count * 2);
-  for (let i = 0; i < count; i++) { labels[i] = BigInt(labelId); labels[count + i] = BigInt(cfg.nullId); }
+  const alphas = alphasFor(cfg);
+  // Modèle « phrases » : labelId = les numéros des mots ; sinon un numéro de sujet.
+  let cond;
+  if (cfg.text) {
+    const L = labelId.length, ids = new BigInt64Array(count * 2 * L);
+    for (let i = 0; i < count; i++) {
+      labelId.forEach((v, j) => { ids[i * L + j] = BigInt(v); });
+      ids[(count + i) * L] = BigInt(cfg.nullId); // description vide = un jeton <null>, le reste à 0
+    }
+    cond = { ids: new ort.Tensor('int64', ids, [count * 2, L]) };
+  } else {
+    const labels = new BigInt64Array(count * 2);
+    for (let i = 0; i < count; i++) { labels[i] = BigInt(labelId); labels[count + i] = BigInt(cfg.nullId); }
+    cond = { y: new ort.Tensor('int64', labels, [count * 2]) };
+  }
   const ts = Array.from({ length: steps }, (_, i) => Math.round(tStart * (1 - i / (steps - 1))));
   for (let i = 0; i < steps; i++) {
     const t = ts[i];
@@ -958,10 +997,10 @@ async function homeDenoise(version, labelId, x, count, { tStart = HOME_T - 1, st
     const out = await session.run({
       x: new ort.Tensor('float32', xx, [count * 2, 3, res, res]),
       t: new ort.Tensor('float32', new Float32Array(count * 2).fill(t), [count * 2]),
-      y: new ort.Tensor('int64', labels, [count * 2]),
+      ...cond,
     });
     const eps = await out.eps.getData();
-    const a = HOME_ALPHAS[t], aPrev = i + 1 < steps ? HOME_ALPHAS[ts[i + 1]] : 1;
+    const a = alphas[t], aPrev = i + 1 < steps ? alphas[ts[i + 1]] : 1;
     const next = new Float32Array(count * size);
     for (let j = 0; j < count * size; j++) {
       const e = eps[count * size + j] + guidance * (eps[j] - eps[count * size + j]);
@@ -1143,6 +1182,18 @@ async function generateHomeImage(prompt, onProgress) {
   const learnedName = findLearned(prompt);
   if (learnedName) return generateLearnedImage(learnedName, onProgress);
   onProgress('Chargement de mon IA…');
+  // Le modèle qui comprend les phrases, s'il est publié et connaît au moins un mot de la demande.
+  if (settings.homeTextModel !== false && await textModelAvailable()) {
+    const { ids, known } = await textTokens(prompt);
+    if (known > 0) {
+      const cfg = HOME_MODELS.texte;
+      const { gpu } = await loadHomeModel('texte');
+      const count = gpu ? 4 : 2;
+      const x = await homeDenoise('texte', ids, randn(count * 3 * cfg.res * cfg.res), count, { guidance: cfg.guidance, onStep: (f) => onProgress(`Création… ${Math.round(f * 100)} %`) });
+      diag.log({ etape: 'creationImage', statut: 'ok', detail: `modèle phrases, ${known} mots compris` });
+      return homeGridSharp(x, count, cfg.res);
+    }
+  }
   // Plusieurs sujets dont un décor : on assemble.
   const all = findAllSubjects(prompt, await subjectsFor('v1b'));
   const bg = all.find((h) => BACKGROUNDS.has(h.id));
