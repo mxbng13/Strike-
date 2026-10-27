@@ -156,22 +156,22 @@ const CONTENT_CATEGORIES = deepFreeze({
   explicite: ({
     label: 'contenu sexuel explicite',
     terms: ['porno', 'pornographie', 'pornographique', 'porn', 'porno graphique', 'xxx', 'nsfw', 'hardcore', 'hentai', 'rule34', 'onlyfans'],
-    rules: { discussion: 'autorise', rechercheInfos: 'autorise', creationImage: 'refuse', recherchePhotos: 'refuse' },
+    rules: { discussion: 'autorise', rechercheInfos: 'autorise', creationImage: 'autorise', recherchePhotos: 'autorise' },
   }),
   nudite: ({
     label: 'nudité',
     terms: ['nudite', 'nudity', 'naked', 'nude', 'nudes', 'topless', 'seins nus', 'torse nu femme', 'femme nue', 'fille nue', 'homme nu', 'garcon nu', 'tout nu', 'toute nue', 'completement nu', 'completement nue', 'deshabille', 'deshabillee', 'sans vetements', 'sans habits', 'sans culotte', 'nudisme', 'naturiste'],
-    rules: { discussion: 'autorise', rechercheInfos: 'autorise', creationImage: 'refuse', recherchePhotos: 'refuse' },
+    rules: { discussion: 'autorise', rechercheInfos: 'autorise', creationImage: 'autorise', recherchePhotos: 'autorise' },
   }),
   anatomieIntime: ({
     label: 'anatomie intime',
     terms: ['penis', 'vagin', 'vulve', 'clitoris', 'testicule', 'scrotum', 'prepuce', 'organes genitaux', 'organe genital', 'parties intimes', 'partie intime', 'seins', 'teton', 'mamelon', 'genitals', 'genitalia', 'vagina', 'vulva', 'nipple', 'breasts', 'boobs', 'anus'],
-    rules: { discussion: 'autorise', rechercheInfos: 'autorise', creationImage: 'refuse', recherchePhotos: 'refuse' },
+    rules: { discussion: 'autorise', rechercheInfos: 'autorise', creationImage: 'autorise', recherchePhotos: 'autorise' },
   }),
   sexualite: ({
     label: 'sexualité',
     terms: ['sexe', 'sexuel', 'sexuelle', 'sexuels', 'sexuelles', 'sex', 'sexy', 'erotique', 'erotic', 'erotisme', 'lingerie', 'strip tease', 'striptease', 'stripteaseuse', 'stripper', 'coquin', 'coquine', 'kamasutra', 'orgasme', 'fellation', 'sodomie'],
-    rules: { discussion: 'autorise', rechercheInfos: 'autorise', creationImage: 'refuse', recherchePhotos: 'refuse' },
+    rules: { discussion: 'autorise', rechercheInfos: 'autorise', creationImage: 'autorise', recherchePhotos: 'autorise' },
   }),
   santeSexuelle: ({
     // Documentée pour être claire : cette catégorie n'est JAMAIS bloquée, nulle part.
@@ -427,7 +427,7 @@ function commonsResults(j) {
 function geminiSafety() {
   return [
     ...['HARM_CATEGORY_HARASSMENT', 'HARM_CATEGORY_HATE_SPEECH', 'HARM_CATEGORY_DANGEROUS_CONTENT'].map((category) => ({ category, threshold: 'BLOCK_NONE' })),
-    { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_LOW_AND_ABOVE' },
+    { categori , threshold: 'BLOCK_LOW_AND_ABOVE' },
   ];
 }
 // OpenAI Images : modération « low » si tu as choisi les filtres au plus bas, sinon celle par défaut.
