@@ -600,7 +600,13 @@ function findSubject(prompt, version, subjects) {
       if (text.includes(' ' + k + ' ') || text.includes(' ' + k + 's ') || text.includes(' ' + k + 'x ')) { best = id; bestLen = k.length; }
     }
   }
-  return best;
+  if (best >= 0) return best;
+  // Sinon, le premier mot du nom suffit (« une guitare » trouve « guitare acoustique »).
+  for (const [id, words] of subjects) {
+    const head = plain(words[0]).split(' ')[0];
+    if (head.length >= 4 && (text.includes(' ' + head + ' ') || text.includes(' ' + head + 's ') || text.includes(' ' + head + 'x '))) return id;
+  }
+  return -1;
 }
 
 function randn(n) {
