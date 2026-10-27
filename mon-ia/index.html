@@ -69,7 +69,6 @@
   .chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 4px 4px 10px; border-radius: 999px; background: var(--raised); border: 1px solid var(--line); font-size: 13px; font-weight: 600; max-width: 100%; overflow-wrap: anywhere; }
   .chip button { border: 0; background: none; color: var(--muted); width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; }
   .chip svg { width: 14px; height: 14px; }
-  .chips.fixed .chip { padding: 4px 10px; color: var(--muted); border-style: dashed; }
   .rules:empty::before { content: 'Rien pour l’instant.'; color: var(--muted); font-size: 13px; }
   .rule { display: flex; align-items: flex-start; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); }
   .rule:first-child { border-top: 0; }
@@ -373,8 +372,7 @@
           <p class="hint">Si ton message contient un de ces mots, elle refuse de répondre. C’est la même liste que dans Paramètres.</p>
           <div class="chips" id="blockedChips"></div>
           <div class="adder"><input id="blockedInput" maxlength="60" placeholder="Un mot ou une expression"><button type="button" id="blockedAdd">Ajouter</button></div>
-          <p class="hint"><b>Règle fixe</b> (fichier restrictions.js)
-          <div class="chips fixed" id="fixedChips"></div>
+          <p class="hint"><b>Règle fixe</b> : voir le fichier restrictions.js.</p>
         </section>
         <section class="section">
           <h3>Mots autorisés</h3>
@@ -1779,7 +1777,6 @@ function renderChatRules() {
     row.append(t, del); lessons.append(row);
   });
   chipList($('#blockedChips'), settings.blockedWords, (i) => { settings.blockedWords = settings.blockedWords.filter((_, j) => j !== i); saveRules(); });
-  $('#fixedChips').replaceChildren(...(window.MonIARestrictions?.shown || []).map((w) => Object.assign(document.createElement('span'), { className: 'chip', textContent: w })));
   chipList($('#allowedChips'), settings.allowedWords, (i) => { settings.allowedWords = settings.allowedWords.filter((_, j) => j !== i); saveRules(); });
   const skills = $('#skillList'); skills.innerHTML = '';
   for (const [key, def] of Object.entries(DEFAULT_SKILLS)) {
