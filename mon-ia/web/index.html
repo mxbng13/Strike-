@@ -187,6 +187,11 @@
   .hint a { color: inherit; }
   details.section summary { cursor: pointer; font: 500 11px/1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
   details.section[open] summary { margin-bottom: 4px; }
+  .engines { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .engine { text-align: left; display: flex; flex-direction: column; gap: 4px; padding: 12px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--raised); color: var(--text); }
+  .engine b { font-size: 15px; }
+  .engine span { font-size: 12px; color: var(--muted); line-height: 1.4; }
+  .engine[aria-checked="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--raised)); }
   .save { height: 46px; border-radius: 12px; border: 0; background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 15px; }
 
   /* Écran de code */
@@ -411,9 +416,20 @@
 
       <section class="section">
         <h3>Images</h3>
-        <div class="field"><label for="imageProvider">Moteur d’images</label>
+        <div class="engines" role="radiogroup" aria-label="IA qui crée les images">
+          <button type="button" class="engine" data-engine="maison" role="radio">
+            <b>IA maison</b>
+            <span>Entraînée pour toi, de zéro. Images simples et floues, sujets connus seulement.</span>
+          </button>
+          <button type="button" class="engine" data-engine="hd" role="radio">
+            <b>IA HD</b>
+            <span>Belles photos 512 px, comprend les phrases. Gratuite, illimitée, sur ton iPhone. Téléchargement de 880 Mo la première fois.</span>
+          </button>
+        </div>
+        <p class="hint">Les deux sont gratuites, sans quota et tournent sur ton téléphone. Seule règle gardée : pas de contenu sexuel.</p>
+        <div class="field"><label for="imageProvider">Ou un autre moteur</label>
           <select id="imageProvider" name="imageProvider">
-            <option value="hd">HD sur l’appareil (essai) : Stable Diffusion Turbo (iPhone récent, sans limite)</option>
+            <option value="hd">IA HD sur l’appareil (essai)</option>
             <option value="maison">Mon IA maison (sur ton téléphone, sans limite)</option>
             <option value="hf">Modèles gratuits en ligne (FLUX.2, avec quota)</option>
             <option value="pollinations">Pollinations avec clé</option>
@@ -1545,9 +1561,20 @@ function updateProviderFields() {
   $('#textKeyBox').hidden = tp === 'free';
   $('#textModelHint').textContent = MODEL_HINTS[tp];
   const ip = form.imageProvider.value;
+  syncEngineCards();
   $('#imageKeyBox').hidden = ip !== 'openai';
   $('#geminiKeyBox').hidden = ip !== 'gemini';
   $('#imageModelHint').textContent = IMAGE_MODEL_HINTS[ip];
+}
+
+function syncEngineCards() {
+  for (const b of document.querySelectorAll('.engine')) b.setAttribute('aria-checked', String(form.imageProvider.value === b.dataset.engine));
+}
+for (const b of document.querySelectorAll('.engine')) {
+  b.addEventListener('click', () => {
+    form.imageProvider.value = b.dataset.engine;
+    form.imageProvider.dispatchEvent(new Event('change'));
+  });
 }
 
 function fillForm() {
