@@ -52,6 +52,21 @@
   .tabs button, .tabs a { flex: 1; min-width: 0; text-decoration: none; height: 36px; border-radius: 10px; border: 1px solid transparent; background: none; color: var(--muted); font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
   .tabs [aria-selected="true"] { background: var(--surface); border-color: var(--line); color: var(--text); }
   .tabs svg { width: 16px; height: 16px; }
+  #learn { position: fixed; inset: 0; z-index: 5; background: var(--bg); overflow-y: auto; padding-top: env(safe-area-inset-top, 0px); padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+  #learn[hidden] { display: none; }
+  #learn .stack { display: flex; flex-direction: column; gap: 14px; padding-block: 18px; }
+  #learn p { margin: 0; }
+  .pick { display: flex; align-items: center; justify-content: center; min-height: 72px; border: 1.5px dashed var(--line-strong); border-radius: 12px; background: var(--raised); color: var(--muted); font-weight: 600; cursor: pointer; text-align: center; padding: 8px; }
+  .thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; }
+  .thumbs img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; display: block; }
+  .progress { height: 8px; border-radius: 4px; background: var(--raised); overflow: hidden; }
+  .progress i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+  .learned { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .learned:first-child { border-top: 0; }
+  .learned img { width: 44px; height: 44px; border-radius: 8px; image-rendering: auto; flex: none; }
+  .learned .name { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+  .learned button { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 600; }
+  .ghost { height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); font-weight: 700; }
   #improve { position: fixed; inset: 0; z-index: 5; background: var(--bg); overflow-y: auto; padding-top: env(safe-area-inset-top, 0px); padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
   #improve[hidden] { display: none; }
   #improve .stack { display: flex; flex-direction: column; gap: 14px; padding-block: 18px; }
@@ -200,7 +215,7 @@
   <div class="column tabs" role="tablist">
     <button type="button" role="tab" id="tabCreate" aria-selected="false"><svg><use href="#i-image"/></svg>Créer</button>
     <button type="button" role="tab" id="tabChat" aria-selected="true"><svg><use href="#i-spark"/></svg>Discuter</button>
-    <a role="tab" id="tabLearn" href="https://claude.ai/artifact/5cqGK8Vo7JTTdBfak9GCDF" target="_blank" rel="noopener"><svg><use href="#i-plus"/></svg>Apprendre</a>
+    <button type="button" role="tab" id="tabLearn" aria-selected="false"><svg><use href="#i-plus"/></svg>Apprendre</button>
     <button type="button" role="tab" id="tabImprove" aria-selected="false"><svg><use href="#i-edit"/></svg>Améliorer</button>
   </div>
 </header>
@@ -225,6 +240,49 @@
       </div>
     </form>
     <p class="fineprint">Les images sont créées par ton IA maison, directement sur ton téléphone.</p>
+  </div>
+</div>
+
+<div id="learn" hidden>
+  <div class="sheet-head gutter">
+    <div class="column">
+      <h2>Apprendre un sujet</h2>
+      <button class="icon-btn" id="closeLearn" type="button"><svg><use href="#i-x"/></svg><span>Fermer</span></button>
+    </div>
+  </div>
+  <div class="gutter">
+    <div class="column stack">
+      <section class="section">
+        <h3>Nouveau sujet</h3>
+        <p class="hint">Ton IA apprend ici, directement sur ton téléphone, sans serveur. Ensuite, demande-lui ce sujet dans l’onglet Créer.</p>
+        <div class="field"><label for="learnName">Nom du sujet</label><input id="learnName" maxlength="40" placeholder="Ex. : mon vélo, coucher de soleil"></div>
+        <label class="pick" for="learnFiles" id="learnPick">Choisir des photos (20 minimum, 50 à 200 idéal)</label>
+        <input type="file" id="learnFiles" accept="image/*" multiple hidden>
+        <div class="thumbs" id="learnThumbs"></div>
+        <div class="field"><label for="learnLength">Durée d’apprentissage</label>
+          <select id="learnLength">
+            <option value="300">Rapide (environ 3 à 8 min)</option>
+            <option value="800" selected>Normal (environ 8 à 20 min)</option>
+            <option value="2000">Long, meilleur résultat (environ 20 à 50 min)</option>
+          </select></div>
+        <button class="save" id="learnStart" type="button" disabled>Apprendre</button>
+        <div id="learnRun" hidden>
+          <div class="progress"><i id="learnBar"></i></div>
+          <p class="hint" id="learnStatus" style="margin-top:8px"></p>
+          <button class="ghost" id="learnStop" type="button" style="width:100%;margin-top:10px">Arrêter</button>
+        </div>
+        <p class="hint">Laisse l’app ouverte et le téléphone branché pendant l’apprentissage. Évite les photos de vraies personnes.</p>
+      </section>
+      <section class="section">
+        <h3>Sujets appris</h3>
+        <div id="learnedList"><p class="hint">Aucun pour l’instant.</p></div>
+      </section>
+      <section class="section">
+        <h3>Apprentissage plus poussé</h3>
+        <p class="hint">Pour un résultat plus net, tu peux aussi envoyer tes photos pour le prochain gros entraînement.</p>
+        <a class="cta" href="https://claude.ai/artifact/5cqGK8Vo7JTTdBfak9GCDF" target="_blank" rel="noopener">Envoyer pour le gros entraînement</a>
+      </section>
+    </div>
   </div>
 </div>
 
@@ -631,7 +689,79 @@ async function subjectsFor(version) {
   return subjectLists[file];
 }
 
+// ——— Sujets appris sur l'appareil (TensorFlow.js) ———
+let tfReady;
+function loadTf() {
+  tfReady ??= (async () => {
+    await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js');
+    await loadScript('apprendre.js');
+    try { await tf.setBackend('webgl'); } catch { await tf.setBackend('cpu'); }
+    await tf.ready();
+  })().catch((err) => { tfReady = null; throw err; });
+  return tfReady;
+}
+let baseParams;
+async function loadLearnBase() {
+  await loadTf();
+  baseParams ??= await MonIAApprendre.loadBase('base.json', 'base.bin');
+  return baseParams;
+}
+let learnedNames = [];
+async function refreshLearnedNames() {
+  try { learnedNames = (await (window.MonIAApprendre ? MonIAApprendre.listSubjects() : listSubjectsLight())).map((r) => r.name); } catch { learnedNames = []; }
+}
+// Lecture légère (sans charger TensorFlow) des noms déjà appris.
+function listSubjectsLight() {
+  return new Promise((resolve) => {
+    const req = indexedDB.open('mon-ia-sujets', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('sujets', { keyPath: 'name' });
+    req.onerror = () => resolve([]);
+    req.onsuccess = () => {
+      try {
+        const r = req.result.transaction('sujets').objectStore('sujets').getAll();
+        r.onsuccess = () => resolve(r.result); r.onerror = () => resolve([]);
+      } catch { resolve([]); }
+    };
+  });
+}
+function findLearned(prompt) {
+  const text = ' ' + plain(prompt) + ' ';
+  return learnedNames.filter((n) => text.includes(' ' + plain(n) + ' ') || text.includes(' ' + plain(n) + 's ')).sort((a, b) => b.length - a.length)[0];
+}
+function gridFrom(arr) {
+  const count = arr.length;
+  const small = document.createElement('canvas'); small.width = small.height = 32;
+  const sctx = small.getContext('2d');
+  const big = document.createElement('canvas'); big.width = 512; big.height = count > 2 ? 512 : 256;
+  const ctx = big.getContext('2d');
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  arr.forEach((img, k) => {
+    const id = sctx.createImageData(32, 32);
+    for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) {
+      const o = (y * 32 + x) * 4; const px = img[y][x];
+      id.data[o] = px[0]; id.data[o + 1] = px[1]; id.data[o + 2] = px[2]; id.data[o + 3] = 255;
+    }
+    sctx.putImageData(id, 0, 0);
+    ctx.drawImage(small, (k % 2) * 256, Math.floor(k / 2) * 256, 256, 256);
+  });
+  return big.toDataURL('image/png');
+}
+async function generateLearnedImage(name, onProgress) {
+  onProgress('Chargement de ton sujet…');
+  await loadTf();
+  const s = await MonIAApprendre.loadSubject(name);
+  if (!s) throw new Error('Ce sujet n’est plus sur cet appareil.');
+  try {
+    const arr = await MonIAApprendre.sample(s.params, s.subject, { count: 4, steps: 25, onProgress: (f) => onProgress(`Création… ${Math.round(f * 100)} %`) });
+    return gridFrom(arr);
+  } finally {
+    Object.values(s.params).forEach((t) => t.dispose()); s.subject.dispose();
+  }
+}
+
 async function generateHomeImage(prompt, onProgress) {
+  const learnedName = findLearned(prompt);
+  if (learnedName) return generateLearnedImage(learnedName, onProgress);
   onProgress('Chargement de mon IA…');
   let version = null, found = -1;
   for (const v of HOME_ORDER) {
@@ -1038,6 +1168,102 @@ $('#imgMode').addEventListener('click', () => setImageMode(!imageMode));
 $('#tabCreate').addEventListener('click', () => { setImageMode(true); input.focus(); });
 $('#tabChat').addEventListener('click', () => { setImageMode(false); input.focus(); });
 $('#tabImprove').addEventListener('click', () => { $('#improve').hidden = false; });
+
+// ——— Écran « Apprendre » : entraînement sur l'appareil ———
+let learnPhotos = [];
+let learnCtl = null;
+function photoTo32(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const side = Math.min(img.width, img.height);
+      const c = document.createElement('canvas'); c.width = c.height = 32;
+      const ctx = c.getContext('2d');
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, 32, 32);
+      URL.revokeObjectURL(url);
+      resolve(ctx.getImageData(0, 0, 32, 32));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('photo illisible')); };
+    img.src = url;
+  });
+}
+function updateLearnButton() { $('#learnStart').disabled = !!learnCtl || learnPhotos.length < 20 || !$('#learnName').value.trim(); }
+async function renderLearnedList() {
+  const box = $('#learnedList');
+  const items = await listSubjectsLight();
+  learnedNames = items.map((r) => r.name);
+  box.innerHTML = '';
+  if (!items.length) { box.innerHTML = '<p class="hint">Aucun pour l’instant.</p>'; return; }
+  for (const r of items) {
+    const row = document.createElement('div'); row.className = 'learned';
+    const img = document.createElement('img'); img.alt = ''; if (r.preview) img.src = r.preview;
+    const name = document.createElement('div'); name.className = 'name'; name.textContent = r.name;
+    const meta = document.createElement('span'); meta.className = 'hint'; meta.textContent = `${r.photos || '?'} photos`;
+    const del = document.createElement('button'); del.type = 'button'; del.textContent = 'Supprimer';
+    del.addEventListener('click', async () => {
+      if (!del.dataset.armed) { del.dataset.armed = '1'; del.textContent = 'Sûr ?'; setTimeout(() => { delete del.dataset.armed; del.textContent = 'Supprimer'; }, 3000); return; }
+      await loadTf(); await MonIAApprendre.deleteSubject(r.name); renderLearnedList();
+    });
+    row.append(img, name, meta, del); box.append(row);
+  }
+}
+$('#tabLearn').addEventListener('click', () => { $('#learn').hidden = false; renderLearnedList(); });
+$('#closeLearn').addEventListener('click', () => { $('#learn').hidden = true; });
+$('#learnName').addEventListener('input', updateLearnButton);
+$('#learnFiles').addEventListener('change', async (e) => {
+  const files = [...e.target.files]; e.target.value = '';
+  $('#learnPick').textContent = 'Préparation des photos…';
+  learnPhotos = [];
+  const thumbs = $('#learnThumbs'); thumbs.innerHTML = '';
+  for (const f of files.slice(0, 400)) {
+    try {
+      learnPhotos.push(await photoTo32(f));
+      if (thumbs.childElementCount < 40) { const i = document.createElement('img'); i.src = URL.createObjectURL(f); i.alt = ''; thumbs.append(i); }
+    } catch { /* photo ignorée */ }
+  }
+  $('#learnPick').textContent = learnPhotos.length ? `${learnPhotos.length} photos prêtes (appuie pour changer)` : 'Choisir des photos (20 minimum, 50 à 200 idéal)';
+  if (learnPhotos.length && learnPhotos.length < 20) $('#learnPick').textContent += ' : il en faut au moins 20';
+  updateLearnButton();
+});
+$('#learnStop').addEventListener('click', () => learnCtl?.abort());
+$('#learnStart').addEventListener('click', async () => {
+  const name = $('#learnName').value.trim();
+  const steps = Number($('#learnLength').value);
+  learnCtl = new AbortController();
+  updateLearnButton();
+  $('#learnRun').hidden = false; $('#learnBar').style.width = '0';
+  const status = (t) => { $('#learnStatus').textContent = t; };
+  let wake = null;
+  try { wake = await navigator.wakeLock?.request('screen'); } catch { /* facultatif */ }
+  try {
+    status('Chargement du moteur d’apprentissage…');
+    const base = await loadLearnBase();
+    const t0 = Date.now();
+    const learned = await MonIAApprendre.learnSubject(base, learnPhotos, {
+      steps, batch: 8, signal: learnCtl.signal,
+      onProgress: (f, loss) => {
+        $('#learnBar').style.width = Math.round(f * 100) + '%';
+        const left = f > 0.02 ? Math.round(((Date.now() - t0) / f) * (1 - f) / 60000) : null;
+        status(`Apprentissage… ${Math.round(f * 100)} %` + (left !== null ? ` · encore ~${Math.max(left, 1)} min` : '') + (tf.getBackend() === 'cpu' ? ' (sans carte graphique : lent)' : ''));
+      },
+    });
+    status('Création d’un aperçu…');
+    const preview = gridFrom(await MonIAApprendre.sample(learned.params, learned.subject, { count: 1, steps: 20 }));
+    await MonIAApprendre.saveSubject(name, learned, { photos: learnPhotos.length, preview });
+    Object.values(learned.params).forEach((t) => t.dispose()); learned.subject.dispose();
+    status(learnCtl.signal.aborted ? `Arrêté avant la fin : « ${name} » est enregistré avec ce qu’il a déjà appris.` : `« ${name} » est appris. Demande-le dans l’onglet Créer.`);
+    $('#learnBar').style.width = '100%';
+    learnPhotos = []; $('#learnThumbs').innerHTML = ''; $('#learnPick').textContent = 'Choisir des photos (20 minimum, 50 à 200 idéal)'; $('#learnName').value = '';
+    renderLearnedList();
+  } catch (err) {
+    status('L’apprentissage a échoué : ' + (err?.message || err) + '. Réessaie avec moins de photos ou la durée « Rapide ».');
+  } finally {
+    wake?.release?.().catch(() => {});
+    learnCtl = null; updateLearnButton();
+  }
+});
 $('#closeImprove').addEventListener('click', () => { $('#improve').hidden = true; });
 $('#copyImprove').addEventListener('click', async () => {
   const text = $('#improveText').value;
@@ -1120,6 +1346,7 @@ form.addEventListener('submit', (e) => {
 applyName();
 renderAll();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+renderLearnedList().catch(() => {});
 
 // Code d'accès : seule une empreinte du code est dans la page. Une fois déverrouillé, cet appareil s'en souvient.
 const LOCK_SALT = 'mon-ia-mxbng13';
