@@ -192,7 +192,6 @@ const CONTENT_PATTERNS = Object.freeze(Object.fromEntries(Object.entries(CONTENT
   key,
   new RegExp('(?:^| )(' + cat.terms.map(normalizeText).sort((a, b) => b.length - a.length).join('|') + ')(?:s|x)?(?= |$)'),
 ])));
-
 // Décide si un texte est accepté pour un usage.
 // Renvoie { allowed, layer, category, label, message } ; ne garde jamais le texte lui-même.
 const contentCheck = Object.freeze(function contentCheck(surface, text) {
