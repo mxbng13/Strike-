@@ -537,7 +537,7 @@ const HOME_MODELS = {
   v2: { file: 'model64.onnx', res: 64, nullId: 1000, steps: 20, subjects: 'sujets.json' },
 };
 // Ordre d'essai : le premier modèle qui connaît le sujet demandé est utilisé.
-const HOME_ORDER = ['v1grand'];
+const HOME_ORDER = ['v1grand', 'v1b'];
 const HOME_T = 1000;
 // Même calendrier de bruit que pendant l'entraînement (cosinus).
 const HOME_ALPHAS = (() => {
@@ -639,7 +639,7 @@ async function generateHomeImage(prompt, onProgress) {
     if (found >= 0) { version = v; break; }
   }
   if (!version) {
-    throw new Error('Je ne connais pas encore ce sujet. Essaie par exemple : un cheval, un chien, un chat, un oiseau, une voiture, un bateau, un avion, un camion, un cerf, une grenouille.');
+    throw new Error('Je ne connais pas encore ce sujet. Essaie par exemple : un cheval, un chien, une voiture, un bateau, la mer, une forêt, une montagne, un tournesol, un château, un lion.');
   }
   const cfg = HOME_MODELS[version];
   const { session, gpu } = await loadHomeModel(version);
