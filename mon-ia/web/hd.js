@@ -61,6 +61,10 @@
         onStatus('Mise en route du modèle HD…');
         sessions[name] = await ort.InferenceSession.create(bytes, {
           executionProviders: ['webgpu'],
+          // Évite de garder plusieurs copies du modèle en mémoire (indispensable pour 1,7 Go).
+          enableMemPattern: false,
+          enableCpuMemArena: false,
+          extra: { session: { disable_prepacking: '1', use_device_allocator_for_initializers: '1', use_ort_model_bytes_directly: '1', use_ort_model_bytes_for_initializers: '1' } },
           freeDimensionOverrides: name === 'text'
             ? { batch_size: 1, sequence_length: 77 }
             : name === 'unet'
