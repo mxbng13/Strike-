@@ -26,38 +26,72 @@
     return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('chargement impossible : vérifie ta connexion')); document.head.append(s); });
   }
 
-  // Télécharge un fichier du modèle directement dans le cache (sans le garder en mémoire).
+  const PART = 32 * 1024 * 1024; // morceaux de 32 Mo : chaque écriture dans le cache reste petite
+  const partKey = (url, i) => url + '?morceau=' + i;
+  const infoKey = (url) => url + '?morceaux';
+
+  function quotaError(err) {
+    if (err?.name === 'QuotaExceededError' || /quota/i.test(err?.message || '')) {
+      return new Error('pas assez de place de stockage autorisée pour le modèle (880 Mo). Libère de l’espace sur ton iPhone et utilise l’app depuis l’écran d’accueil');
+    }
+    return err;
+  }
+
+  // Télécharge un fichier du modèle par morceaux dans le cache. Si l'app se ferme, on reprend au morceau suivant.
   async function ensureCached(name, onProgress) {
     const url = REPO + FILES[name];
     const cache = await caches.open(CACHE);
-    if (await cache.match(url)) { onProgress(1); return; }
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`téléchargement impossible (${res.status})`);
-    const total = Number(res.headers.get('content-length')) || SIZES[name] * 1e6;
-    let got = 0;
-    const counted = res.body.pipeThrough(new TransformStream({
-      transform(chunk, ctl) { got += chunk.length; onProgress(Math.min(got / total, 1)); ctl.enqueue(chunk); },
-    }));
-    try {
-      await cache.put(url, new Response(counted, { headers: { 'content-type': 'application/octet-stream' } }));
-    } catch (err) {
-      if (err?.name === 'QuotaExceededError' || /quota/i.test(err?.message || '')) {
-        throw new Error('pas assez de place de stockage autorisée pour le modèle (880 Mo). Libère de l’espace sur ton iPhone et utilise l’app depuis l’écran d’accueil');
+    if (await cache.match(url) || await cache.match(infoKey(url))) { onProgress(1); return; }
+    let total = 0;
+    for (let i = 0; ; i++) {
+      const start = i * PART;
+      if (total && start >= total) break;
+      if (!await cache.match(partKey(url, i))) {
+        const res = await fetch(url, { headers: { range: `bytes=${start}-${start + PART - 1}` } });
+        if (!res.ok) throw new Error(`téléchargement impossible (${res.status})`);
+        const blob = await res.blob();
+        if (res.status === 206) total = Number((res.headers.get('content-range') || '').split('/')[1]) || total;
+        else if (i === 0) { // le serveur ignore les morceaux : on garde le fichier entier
+          try { await cache.put(url, new Response(blob)); } catch (err) { throw quotaError(err); }
+          onProgress(1); return;
+        }
+        try { await cache.put(partKey(url, i), new Response(blob)); } catch (err) { throw quotaError(err); }
+      } else if (!total) {
+        const head = await fetch(url, { headers: { range: 'bytes=0-0' } });
+        total = Number((head.headers.get('content-range') || '').split('/')[1]) || SIZES[name] * 1e6;
       }
-      throw err;
+      onProgress(Math.min((start + PART) / (total || SIZES[name] * 1e6), 1));
     }
+    await cache.put(infoKey(url), new Response(JSON.stringify({ total, parts: Math.ceil(total / PART) })));
+  }
+
+  // Recolle les morceaux dans un seul bloc mémoire (un morceau à la fois, sans copie en plus).
+  async function readModel(name) {
+    const url = REPO + FILES[name];
+    const cache = await caches.open(CACHE);
+    const whole = await cache.match(url);
+    if (whole) return new Uint8Array(await whole.arrayBuffer());
+    const info = await cache.match(infoKey(url));
+    if (!info) throw new Error('modèle absent du cache : relance pour le retélécharger');
+    const { total, parts } = await info.json();
+    const bytes = new Uint8Array(total);
+    for (let i = 0; i < parts; i++) {
+      const part = await cache.match(partKey(url, i));
+      if (!part) { await cache.delete(infoKey(url)); throw new Error('un morceau du modèle manque : relance pour le retélécharger'); }
+      bytes.set(new Uint8Array(await part.arrayBuffer()), i * PART);
+    }
+    return bytes;
   }
 
   async function openSession(name) {
-    const cache = await caches.open(CACHE);
-    const res = await cache.match(REPO + FILES[name]);
-    if (!res) throw new Error('modèle absent du cache : relance pour le retélécharger');
-    let bytes = new Uint8Array(await res.arrayBuffer());
+    let bytes = await readModel(name);
     const session = await ort.InferenceSession.create(bytes, {
-      executionProviders: ['webgpu'],
+      // NCHW : évite que le moteur fasse une seconde copie retournée des poids.
+      executionProviders: [{ name: 'webgpu', preferredLayout: 'NCHW' }],
+      graphOptimizationLevel: 'basic',
       enableMemPattern: false,
       enableCpuMemArena: false,
-      extra: { session: { disable_prepacking: '1', use_device_allocator_for_initializers: '1', use_ort_model_bytes_directly: '1', use_ort_model_bytes_for_initializers: '1' } },
+      extra: { session: { disable_prepacking: '1', use_device_allocator_for_initializers: '1' } },
     });
     bytes = null;
     return session;
@@ -113,26 +147,30 @@
     return out;
   }
 
-  async function generate(prompt, { onStatus = () => {} } = {}) {
+  async function generate(prompt, { onStatus: show = () => {} } = {}) {
+    // Si la tentative d'avant a fait fermer l'app, on l'affiche pendant tout l'essai pour que tu puisses me le dire.
     const crashed = lastCrash();
-    if (crashed) onStatus(`La dernière tentative s’est arrêtée pendant : ${crashed}. Nouvel essai…`);
+    const onStatus = crashed ? (msg) => show(`${msg} (essai précédent arrêté pendant : ${crashed})`) : show;
     if (BLOCKED.test(prompt)) throw new Error('ce moteur ne crée pas de contenu sexuel ou de nudité');
     const { encode } = await prepare(onStatus);
+    note('traduction de la phrase');
     const english = await toEnglish(prompt);
     if (BLOCKED.test(english)) throw new Error('ce moteur ne crée pas de contenu sexuel ou de nudité');
     const ids = BigInt64Array.from(encode(english + ', high quality, detailed'), (v) => BigInt(v));
 
-    note('lecture de la phrase'); onStatus('Lecture de ta phrase…');
+    note('ouverture du modèle (texte)'); onStatus('Préparation du moteur HD (1/3)…');
     let s = await openSession('text');
+    note('lecture de la phrase'); onStatus('Lecture de ta phrase…');
     const { last_hidden_state } = await s.run({ input_ids: new ort.Tensor('int64', ids, [1, 77]) });
     const hidden = new Float32Array(await last_hidden_state.getData());
     await s.release(); s = null;
 
-    note('création de l’image (partie principale)'); onStatus('Création de l’image HD…');
     const n = 4 * 64 * 64;
     const latent = randn(n).map((v) => v * SIGMA);
     const scaled = latent.map((v) => v / Math.sqrt(SIGMA * SIGMA + 1));
+    note('ouverture du modèle (image, 632 Mo)'); onStatus('Préparation du moteur HD (2/3)…');
     s = await openSession('unet');
+    note('création de l’image (partie principale)'); onStatus('Création de l’image HD…');
     const { out_sample } = await s.run({
       sample: new ort.Tensor('float32', scaled, [1, 4, 64, 64]),
       timestep: new ort.Tensor('float32', Float32Array.from([999]), [1]),
@@ -143,7 +181,7 @@
     const x0 = new Float32Array(n);
     for (let i = 0; i < n; i++) x0[i] = latent[i] - SIGMA * eps[i];
 
-    note('finition de l’image'); onStatus('Finition de l’image…');
+    note('finition de l’image'); onStatus('Finition de l’image (3/3)…');
     s = await openSession('vae');
     const { image } = await s.run({ latent: new ort.Tensor('float32', x0, [1, 4, 64, 64]) });
     const px = await image.getData();
@@ -162,5 +200,10 @@
     return { url: canvas.toDataURL('image/jpeg', 0.92), english };
   }
 
-  root.MonIAHD = { generate, prepare, lastCrash };
+  // Une erreur affichée n'est pas un plantage : on efface alors le journal.
+  async function generateSafe(prompt, opts) {
+    try { return await generate(prompt, opts); } catch (err) { clearNote(); throw err; }
+  }
+
+  root.MonIAHD = { generate: generateSafe, prepare, lastCrash };
 })(window);
