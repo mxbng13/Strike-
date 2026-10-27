@@ -357,6 +357,12 @@ if (!settings.homeModelOnly) {
   settings.imageProvider = 'maison'; settings.imageModel = '';
   write('mon-ia-settings', settings);
 }
+// Lien direct vers un moteur : ?moteur=en-ligne (modèles gratuits en ligne) ou ?moteur=maison.
+{
+  const wanted = new URLSearchParams(location.search).get('moteur');
+  const engine = { 'en-ligne': 'hf', maison: 'maison' }[wanted];
+  if (engine) { settings.imageProvider = engine; settings.imageModel = ''; write('mon-ia-settings', settings); }
+}
 let messages = read('mon-ia-messages', []);
 let imageMode = false;
 
