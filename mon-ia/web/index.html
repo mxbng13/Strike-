@@ -532,10 +532,12 @@ const HOME_CLASSES = [
 // Les versions de ton IA maison. « active » est celle utilisée pour créer les images.
 const HOME_MODELS = {
   v1: { file: 'model.onnx', res: 32, nullId: 10, steps: 25 },
+  v1grand: { file: 'model-10-grand.onnx', res: 32, nullId: 10, steps: 20, heavy: true },
   v1b: { file: 'model110.onnx', res: 32, nullId: 110, steps: 25, subjects: 'sujets110.json' },
   v2: { file: 'model64.onnx', res: 64, nullId: 1000, steps: 20, subjects: 'sujets.json' },
 };
-const HOME_ACTIVE = 'v1';
+// Ordre d'essai : le premier modèle qui connaît le sujet demandé est utilisé.
+const HOME_ORDER = ['v1grand'];
 const HOME_T = 1000;
 // Même calendrier de bruit que pendant l'entraînement (cosinus).
 const HOME_ALPHAS = (() => {
@@ -620,19 +622,29 @@ function randn(n) {
   return out;
 }
 
+// Les mots-clés sont légers : on les charge pour choisir le modèle avant de charger le modèle lui-même.
+const subjectLists = {};
+async function subjectsFor(version) {
+  const file = HOME_MODELS[version].subjects;
+  if (!file) return null;
+  subjectLists[file] ??= fetch(file).then((r) => r.json());
+  return subjectLists[file];
+}
+
 async function generateHomeImage(prompt, onProgress) {
-  const version = HOME_ACTIVE;
-  const cfg = HOME_MODELS[version];
   onProgress('Chargement de mon IA…');
-  const { session, subjects, gpu } = await loadHomeModel(version);
-  const found = findSubject(prompt, version, subjects);
-  if (found < 0) {
-    throw new Error(!subjects
-      ? 'Mon IA maison ne connaît pour l’instant que : ' + HOME_CLASSES.map(([n]) => n).join(', ') + '. Demande par exemple « un cheval ».'
-      : 'Je ne connais pas encore ce sujet. Essaie par exemple : un tigre, une montagne, une pizza, une guitare, un volcan, un phare, un pompier…');
+  let version = null, found = -1;
+  for (const v of HOME_ORDER) {
+    found = findSubject(prompt, v, await subjectsFor(v));
+    if (found >= 0) { version = v; break; }
   }
+  if (!version) {
+    throw new Error('Je ne connais pas encore ce sujet. Essaie par exemple : un cheval, un chien, un chat, un oiseau, une voiture, un bateau, un avion, un camion, un cerf, une grenouille.');
+  }
+  const cfg = HOME_MODELS[version];
+  const { session, gpu } = await loadHomeModel(version);
   const res = cfg.res, size = 3 * res * res, steps = cfg.steps, guidance = 3;
-  const count = res === 32 || gpu ? 4 : 2;
+  const count = gpu || (res === 32 && !cfg.heavy) ? 4 : 2;
   let x = randn(count * size);
   const labels = new BigInt64Array(count * 2);
   for (let i = 0; i < count; i++) { labels[i] = BigInt(found); labels[count + i] = BigInt(cfg.nullId); }
