@@ -5,7 +5,7 @@
 //  - le modèle est écrit directement dans le cache en streaming, sans copie en mémoire ;
 //  - les trois parties sont chargées l'une après l'autre puis libérées.
 // Chaque étape est notée : si Safari ferme la page, la tentative suivante dit où ça s'est arrêté.
-/* global ort, ClipTokenizer */
+/* global ort, ClipTokenizer, contentCheck, translateForImage, diag */
 (function (root) {
   const REPO = root.MON_IA_HD_REPO || 'https://huggingface.co/skillsafeai/sdxs-512-dreamshaper-onnx-webgpu/resolve/main/';
   const FILES = { text: 'text_encoder.onnx', unet: 'unet.onnx', vae: 'vae_decoder.onnx' };
@@ -15,8 +15,11 @@
   const STEP_KEY = 'mon-ia-hd-etape';
   const ORT = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
 
-  // Les restrictions sont toutes dans restrictions.js.
-  const refused = (text) => root.MonIARestrictions?.check(text);
+  // Règles et traduction : comportement.js (§3 contentCheck, §6 translateForImage), chargé avant ce fichier.
+  function guard(text) {
+    const verdict = contentCheck('creationImage', text);
+    if (!verdict.allowed) { diag.log({ etape: 'moteur HD', couche: verdict.layer, categorie: verdict.category }); throw new Error(verdict.message); }
+  }
 
   function note(step) { try { localStorage.setItem(STEP_KEY, step); } catch { /* facultatif */ } }
   function lastCrash() { try { return localStorage.getItem(STEP_KEY); } catch { return null; } }
@@ -122,22 +125,6 @@
     return prepared;
   }
 
-  // Traduction en anglais (le modèle comprend mieux l'anglais) : service gratuit en ligne si dispo, sinon texte d'origine.
-  async function toEnglish(text) {
-    const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), 8000);
-    try {
-      const res = await fetch('https://text.pollinations.ai/openai', {
-        method: 'POST', signal: ctl.signal, headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ model: 'openai', messages: [
-          { role: 'system', content: 'Translate the user text to English for an image generator. Keep every detail. Reply with the translation only.' },
-          { role: 'user', content: text }] }),
-      });
-      const out = res.ok ? (await res.json()).choices?.[0]?.message?.content?.trim() : '';
-      return out && out.length < 600 ? out : text;
-    } catch { return text; } finally { clearTimeout(timer); }
-  }
-
   function randn(n) {
     const out = new Float32Array(n);
     for (let i = 0; i < n; i += 2) {
@@ -151,11 +138,11 @@
     // Si la tentative d'avant a fait fermer l'app, on l'affiche pendant tout l'essai pour que tu puisses me le dire.
     const crashed = lastCrash();
     const onStatus = crashed ? (msg) => show(`${msg} (essai précédent arrêté pendant : ${crashed})`) : show;
-    if (refused(prompt)) throw new Error('ce moteur refuse : ' + root.MonIARestrictions.message);
+    guard(prompt);
     const { encode } = await prepare(onStatus);
     note('traduction de la phrase');
-    const english = await toEnglish(prompt);
-    if (refused(english)) throw new Error('ce moteur refuse : ' + root.MonIARestrictions.message);
+    const english = await translateForImage(prompt);
+    guard(english);
     const ids = BigInt64Array.from(encode(english + ', high quality, detailed'), (v) => BigInt(v));
 
     note('ouverture du modèle (texte)'); onStatus('Préparation du moteur HD (1/3)…');
