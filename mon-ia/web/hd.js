@@ -1,14 +1,13 @@
-// Moteur « HD sur l'appareil » : Stable Diffusion Turbo (modèle open source, licence non commerciale de Stability AI)
-// qui tourne dans le navigateur avec la carte graphique du téléphone (WebGPU). Image 512×512 en une étape.
+// Moteur « HD sur l'appareil » : SDXS-512 DreamShaper (modèle open source, licence CreativeML Open RAIL++-M),
+// qui tourne dans le navigateur avec la carte graphique du téléphone (WebGPU). Image 512×512 en une étape, ~880 Mo.
 // Tout reste sur l'appareil : le modèle est téléchargé une fois puis gardé en cache.
 /* global ort */
 (function (root) {
-  const REPO = root.MON_IA_HD_REPO || 'https://huggingface.co/schmuell/sd-turbo-ort-web/resolve/main/';
-  const FILES = { text: 'text_encoder/model.onnx', unet: 'unet/model.onnx', vae: 'vae_decoder/model.onnx' };
-  const SIZES = { text: 681, unet: 1733, vae: 99 }; // Mo, pour la barre de progression
-  const CACHE = 'mon-ia-hd-v1';
-  const SIGMA = 14.6146; // bruit de départ de SD-Turbo (pas 999)
-  const VAE_SCALE = 0.18215;
+  const REPO = root.MON_IA_HD_REPO || 'https://huggingface.co/skillsafeai/sdxs-512-dreamshaper-onnx-webgpu/resolve/main/';
+  const FILES = { text: 'text_encoder.onnx', unet: 'unet.onnx', vae: 'vae_decoder.onnx' };
+  const SIZES = { text: 246, unet: 632, vae: 3 }; // Mo, pour la barre de progression
+  const CACHE = 'mon-ia-hd-v2';
+  const SIGMA = 14.614646911621094; // bruit de départ (pas 999)
 
   // Mots refusés avant même de créer l'image (contenu sexuel), en français et en anglais.
   const BLOCKED = /\b(nu|nue|nus|nues|nudit[eé]|seins?|t[eé]tons?|mamelons?|p[eé]nis|vagin|vulve|clitoris|sexe|sexuel(le)?s?|porno?|pornographi\w*|[eé]rotique|xxx|nsfw|naked|nude|nudity|topless|boobs?|breasts?|nipples?|genitals?|penis|vagina|sex|sexual|porn\w*|erotic|lingerie|strip\w*)\b/i;
@@ -39,10 +38,12 @@
   let ready = null;
   function load(onStatus = () => {}) {
     ready ??= (async () => {
+      // L'ancien modèle (2,5 Go) ne sert plus : on libère la place.
+      try { await caches.delete('mon-ia-hd-v1'); } catch { /* rien à libérer */ }
       const adapter = navigator.gpu && await navigator.gpu.requestAdapter().catch(() => null);
       if (!adapter) throw new Error('ce téléphone ou ce navigateur ne propose pas WebGPU (sur iPhone : iOS 26 et Safari)');
       // Le modèle calcule en demi-précision : sans cette fonction, inutile de télécharger 2,5 Go.
-      if (!adapter.features.has('shader-f16')) throw new Error('la carte graphique de cet appareil ne gère pas le calcul en demi-précision demandé par le modèle HD');
+      if (!adapter.features.has('shader-f16') && !root.MON_IA_HD_SKIP_F16) throw new Error('la carte graphique de cet appareil ne gère pas le calcul en demi-précision demandé par le modèle HD');
       const base = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
       if (!root.ort?.env?.webgpu) await new Promise((res, rej) => { const s = document.createElement('script'); s.src = base + 'ort.webgpu.min.js'; s.onload = res; s.onerror = () => rej(new Error('chargement du moteur impossible')); document.head.append(s); });
       ort.env.wasm.numThreads = 1;
@@ -57,7 +58,7 @@
       const totalMb = SIZES.text + SIZES.unet + SIZES.vae;
       let doneMb = 0;
       for (const name of ['text', 'unet', 'vae']) {
-        const bytes = await cachedModel(name, (f) => onStatus(`Téléchargement du modèle HD… ${Math.round(((doneMb + f * SIZES[name]) / totalMb) * 100)} % (une seule fois, ~2,5 Go)`));
+        const bytes = await cachedModel(name, (f) => onStatus(`Téléchargement du modèle HD… ${Math.round(((doneMb + f * SIZES[name]) / totalMb) * 100)} % (une seule fois, ~880 Mo)`));
         doneMb += SIZES[name];
         onStatus('Mise en route du modèle HD…');
         sessions[name] = await ort.InferenceSession.create(bytes, {
@@ -66,11 +67,6 @@
           enableMemPattern: false,
           enableCpuMemArena: false,
           extra: { session: { disable_prepacking: '1', use_device_allocator_for_initializers: '1', use_ort_model_bytes_directly: '1', use_ort_model_bytes_for_initializers: '1' } },
-          freeDimensionOverrides: name === 'text'
-            ? { batch_size: 1, sequence_length: 77 }
-            : name === 'unet'
-              ? { batch_size: 1, num_channels: 4, height: 64, width: 64, sequence_length: 77, steps: 1 }
-              : { batch_size: 1, num_channels_latent: 4, height_latent: 64, width_latent: 64 },
         });
       }
       return { tokenizer, translate, nsfw, sessions };
@@ -98,22 +94,22 @@
     if (BLOCKED.test(english)) throw new Error('ce moteur ne crée pas de contenu sexuel ou de nudité');
     onStatus('Création de l’image HD…');
     const ids = (await tokenizer(english + ', high quality, detailed', { padding: 'max_length', max_length: 77, truncation: true })).input_ids;
-    const idArr = Int32Array.from(Array.from(ids.data, Number));
-    const { last_hidden_state } = await sessions.text.run({ input_ids: new ort.Tensor('int32', idArr, [1, 77]) });
+    const idArr = BigInt64Array.from(Array.from(ids.data, (v) => BigInt(v)));
+    const { last_hidden_state } = await sessions.text.run({ input_ids: new ort.Tensor('int64', idArr, [1, 77]) });
     const n = 4 * 64 * 64;
     const latent = randn(n).map((v) => v * SIGMA);
     const scaled = latent.map((v) => v / Math.sqrt(SIGMA * SIGMA + 1));
     const { out_sample } = await sessions.unet.run({
       sample: new ort.Tensor('float32', scaled, [1, 4, 64, 64]),
-      timestep: new ort.Tensor('int64', BigInt64Array.from([999n]), [1]),
+      timestep: new ort.Tensor('float32', Float32Array.from([999]), [1]),
       encoder_hidden_states: last_hidden_state,
     });
     const eps = await out_sample.getData();
     const x0 = new Float32Array(n);
-    for (let i = 0; i < n; i++) x0[i] = (latent[i] - SIGMA * eps[i]) / VAE_SCALE;
+    for (let i = 0; i < n; i++) x0[i] = latent[i] - SIGMA * eps[i];
     onStatus('Finition de l’image…');
-    const { sample } = await sessions.vae.run({ latent_sample: new ort.Tensor('float32', x0, [1, 4, 64, 64]) });
-    const px = await sample.getData();
+    const { image } = await sessions.vae.run({ latent: new ort.Tensor('float32', x0, [1, 4, 64, 64]) });
+    const px = await image.getData();
     const canvas = document.createElement('canvas'); canvas.width = canvas.height = 512;
     const ctx = canvas.getContext('2d');
     const img = ctx.createImageData(512, 512);
