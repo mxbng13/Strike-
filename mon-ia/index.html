@@ -102,6 +102,11 @@
   .lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; padding-block: 14px; }
   .lib-grid button { border: 0; padding: 0; background: var(--raised); border-radius: 10px; overflow: hidden; aspect-ratio: 1; }
   .lib-grid img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .lib-grid button { position: relative; }
+  .lib-grid .star { position: absolute; top: 4px; right: 6px; color: #ffd24a; font-size: 16px; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+  .lib-filter { display: flex; gap: 6px; padding-top: 14px; }
+  .lib-filter button { flex: 1; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font-weight: 700; }
+  .lib-filter [aria-selected="true"] { color: var(--text); border-color: var(--accent); }
   #viewer { position: fixed; inset: 0; z-index: 8; background: rgba(0,0,0,.92); display: flex; flex-direction: column; justify-content: center; gap: 12px; padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px)); color: #fff; }
   #viewer img { max-width: 100%; max-height: 70vh; object-fit: contain; border-radius: 12px; align-self: center; }
   #viewer p { margin: 0; text-align: center; font-size: 14px; color: #c9cdd6; }
@@ -126,6 +131,8 @@
   .ext-head button { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 4px 8px; font-size: 12px; font-weight: 600; }
   .ext pre { margin: 0; max-height: 260px; overflow: auto; background: var(--raised); border: 1px solid var(--line); border-radius: 8px; padding: 8px; font: 12px/1.45 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
   .ext .err { color: var(--danger); font-size: 12px; }
+  .backup-row { display: flex; gap: 8px; }
+  .backup-row button { flex: 1; }
   .diag { display: flex; flex-direction: column; gap: 4px; max-height: 320px; overflow: auto; font: 12px/1.45 var(--mono); }
   .diag:empty::before { content: 'Rien pour l’instant.'; color: var(--muted); font: 13px var(--ui); }
   .diag div { padding: 6px 8px; border-radius: 8px; background: var(--raised); overflow-wrap: anywhere; }
@@ -336,15 +343,18 @@
       <button class="icon-btn" id="closeLibrary" type="button"><svg><use href="#i-x"/></svg><span>Fermer</span></button>
     </div>
   </div>
-  <div class="gutter"><div class="column"><div class="lib-grid" id="libGrid"></div><p class="hint" id="libEmpty" hidden>Aucune image pour l’instant. Les images que tu crées apparaîtront ici.</p></div></div>
+  <div class="gutter"><div class="column"><div class="lib-filter" role="tablist"><button type="button" id="libAll" aria-selected="true">Toutes</button><button type="button" id="libFav" aria-selected="false">★ Favoris</button></div><div class="lib-grid" id="libGrid"></div><p class="hint" id="libEmpty" hidden>Aucune image pour l’instant. Les images que tu crées apparaîtront ici.</p></div></div>
 </div>
 
 <div id="viewer" hidden>
   <img id="viewerImg" alt="">
   <p id="viewerCaption"></p>
   <div class="row">
+    <button type="button" id="viewerFav">☆ Favori</button>
+    <button type="button" id="viewerShare">Partager</button>
     <button type="button" id="viewerEdit">Modifier</button>
     <button type="button" id="viewerChat">Voir la conversation</button>
+    <button type="button" id="viewerDelete">Supprimer</button>
     <button type="button" id="viewerClose">Fermer</button>
   </div>
   <p>Appui long sur l’image pour l’enregistrer</p>
@@ -397,6 +407,7 @@
         <div class="field"><label for="learnName">Nom du sujet</label><input id="learnName" maxlength="40" placeholder="Ex. : mon vélo, coucher de soleil"></div>
         <label class="pick" for="learnFiles" id="learnPick">Choisir des photos (20 minimum, 50 à 200 idéal)</label>
         <input type="file" id="learnFiles" accept="image/*" multiple hidden>
+        <input type="file" id="backupFile" accept="application/json,.json" hidden>
         <div class="thumbs" id="learnThumbs"></div>
         <div class="field"><label for="learnLength">Durée d’apprentissage</label>
           <select id="learnLength">
@@ -415,6 +426,8 @@
       <section class="section">
         <h3>Sujets appris</h3>
         <div id="learnedList"><p class="hint">Aucun pour l’instant.</p></div>
+        <div class="copy-row backup-row"><button type="button" class="ghost" data-backup="export">Sauvegarder tout</button><button type="button" class="ghost" data-backup="import">Restaurer</button></div>
+        <p class="hint backup-note">La sauvegarde (sujets appris, conversations, réglages sans tes clés, modules) part dans un fichier : choisis « Enregistrer dans Fichiers ». Restaure-la si tu réinstalles l’app.</p>
       </section>
       <section class="section">
         <h3>Apprentissage plus poussé</h3>
@@ -510,6 +523,12 @@
       </section>
 
       <section class="section">
+        <h3>Sauvegarde</h3>
+        <div class="copy-row backup-row"><button type="button" class="ghost" data-backup="export">Sauvegarder tout</button><button type="button" class="ghost" data-backup="import">Restaurer</button></div>
+        <p class="hint backup-note">La sauvegarde (sujets appris, conversations, réglages sans tes clés, modules) part dans un fichier : choisis « Enregistrer dans Fichiers ». Restaure-la si tu réinstalles l’app.</p>
+      </section>
+
+      <section class="section">
         <h3>Diagnostic</h3>
         <p class="hint">Les dernières étapes de ton IA : qui a bloqué (tes réglages, la règle fixe, le modèle, un fournisseur, le réseau), le statut, le nombre de résultats. Ni tes messages ni tes clés ne sont enregistrés.</p>
         <div class="diag" id="diagList"></div>
@@ -529,6 +548,11 @@
           </button>
         </div>
         <p class="hint">Les deux sont gratuites, sans quota et tournent sur ton téléphone. Seule règle gardée : voir le fichier comportement.js (§3).</p>
+        <div class="field"><label for="homeSize">Taille des images de ton IA maison</label>
+          <select id="homeSize" name="homeSize">
+            <option value="512">512 px (rapide)</option>
+            <option value="1024">1024 px (plus net, environ 2 fois plus long)</option>
+          </select></div>
         <div class="field"><label for="imageProvider">Ou un autre moteur</label>
           <select id="imageProvider" name="imageProvider">
             <option value="hd">IA HD sur l’appareil (essai)</option>
@@ -611,6 +635,7 @@ const DEFAULTS = {
   enhancePrompts: true,
   textProvider: 'free', textBaseUrl: '', textApiKey: '', textModel: 'openai',
   temperature: 0.8, maxTokens: 2048, historyLength: 30,
+  homeSize: '512',
   imageProvider: 'maison', imageApiKey: '', geminiApiKey: '', pollinationsKey: '', imageModel: 'flux', imageAspect: '1:1', imageQuality: 'high',
 };
 const IMAGE_MODELS = { hd: '', maison: '', hf: '', pollinations: 'microsoft/mai-image-2.6', gemini: 'gemini-3-pro-image', openai: 'gpt-image-1', free: 'flux' };
@@ -960,25 +985,32 @@ async function loadUpscaler() {
 async function homeGridSharp(x, count, res) {
   const sr = await loadUpscaler();
   if (!sr) return homeGrid(x, count, res);
-  const size = 3 * res * res, px = res * res, big = res * 4;
-  const out = document.createElement('canvas'); out.width = 512; out.height = count > 2 ? 512 : 256;
+  // 512 px : un passage ×4 (cases de 256). 1024 px : deux passages ×4 (cases de 512), plus net mais plus lent.
+  const large = String(settings.homeSize) === '1024', cell = large ? 512 : 256;
+  const size = 3 * res * res;
+  const out = document.createElement('canvas'); out.width = cell * 2; out.height = count > 2 ? cell * 2 : cell;
   const ctx = out.getContext('2d'); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-  const tile = document.createElement('canvas'); tile.width = tile.height = big;
+  const tile = document.createElement('canvas');
   const tctx = tile.getContext('2d');
   for (let k = 0; k < count; k++) {
-    const inp = new Float32Array(size);
-    for (let j = 0; j < size; j++) inp[j] = (x[k * size + j] + 1) / 2;
-    const { y } = await sr.run({ x: new ort.Tensor('float32', inp, [1, 3, res, res]) });
-    const d = await y.getData(), bp = big * big;
-    const img = tctx.createImageData(big, big);
+    let side = res, d = new Float32Array(size);
+    for (let j = 0; j < size; j++) d[j] = (x[k * size + j] + 1) / 2;
+    for (let pass = 0; pass < (large ? 2 : 1); pass++) {
+      const { y } = await sr.run({ x: new ort.Tensor('float32', d, [1, 3, side, side]) });
+      d = await y.getData(); side *= 4;
+      await new Promise((r) => setTimeout(r));
+    }
+    const bp = side * side;
+    tile.width = tile.height = side;
+    const img = tctx.createImageData(side, side);
     for (let p = 0; p < bp; p++) {
       for (let c = 0; c < 3; c++) img.data[p * 4 + c] = Math.max(0, Math.min(255, Math.round(d[c * bp + p] * 255)));
       img.data[p * 4 + 3] = 255;
     }
     tctx.putImageData(img, 0, 0);
-    ctx.drawImage(tile, (k % 2) * 256, Math.floor(k / 2) * 256, 256, 256);
+    ctx.drawImage(tile, (k % 2) * cell, Math.floor(k / 2) * cell, cell, cell);
   }
-  return out.toDataURL('image/png');
+  return out.toDataURL(large ? 'image/jpeg' : 'image/png', 0.92);
 }
 
 // Les variantes, agrandies à 256 px et rangées côte à côte (2×2 ou 2×1).
@@ -1024,6 +1056,69 @@ function findAllSubjects(prompt, subjects) {
   return kept.sort((a, b) => a.at - b.at);
 }
 
+// Assemble décor + sujet pour chaque variante (images en -1..1, format [n, 3, res, res]).
+function composeLayers(bg, obj, count, res) {
+  const size = 3 * res * res, px = res * res, comp = new Float32Array(bg);
+  const scale = 0.62, side = res * scale, ox = (res - side) / 2, oy = res - side - 1;
+  for (let k = 0; k < count; k++) {
+    const O = (c, x, y) => obj[k * size + c * px + y * res + x];
+    // 1) Détourage : le fond du sujet = couleur moyenne de ses bords ; ce qui s'en éloigne est le sujet.
+    const edge = [0, 0, 0]; let n = 0;
+    for (let i = 0; i < res; i++) for (const [x, y] of [[i, 0], [i, res - 1], [0, i], [res - 1, i]]) { for (let c = 0; c < 3; c++) edge[c] += O(c, x, y); n++; }
+    edge.forEach((v, c) => { edge[c] = v / n; });
+    const raw = new Float32Array(px);
+    let maxd = 1e-6;
+    for (let y = 0; y < res; y++) for (let x = 0; x < res; x++) {
+      const d = Math.hypot(O(0, x, y) - edge[0], O(1, x, y) - edge[1], O(2, x, y) - edge[2]);
+      raw[y * res + x] = d; if (d > maxd) maxd = d;
+    }
+    // Masque doux = différence de couleur × forme ovale centrée, puis lissé (flou 3×3, deux passes).
+    let mask = new Float32Array(px);
+    for (let y = 0; y < res; y++) for (let x = 0; x < res; x++) {
+      const e = Math.hypot((x + 0.5) / res - 0.5, ((y + 0.5) / res - 0.5) * 0.9) / 0.5;
+      const oval = Math.max(0, Math.min(1, (1 - e) * 4));
+      mask[y * res + x] = Math.max(0, Math.min(1, (raw[y * res + x] / maxd - 0.1) * 3.2)) * oval;
+    }
+    for (let pass = 0; pass < 1; pass++) {
+      const out = new Float32Array(px);
+      for (let y = 0; y < res; y++) for (let x = 0; x < res; x++) {
+        let s = 0, w = 0;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const xx = x + dx, yy = y + dy;
+          if (xx >= 0 && yy >= 0 && xx < res && yy < res) { s += mask[yy * res + xx]; w++; }
+        }
+        out[y * res + x] = s / w;
+      }
+      mask = out;
+    }
+    // 2) Lumière : on rapproche les couleurs du sujet de l'ambiance du décor (20 %).
+    const mObj = [0, 0, 0], mBg = [0, 0, 0]; let wsum = 1e-6;
+    for (let p = 0; p < px; p++) { wsum += mask[p]; for (let c = 0; c < 3; c++) { mObj[c] += mask[p] * obj[k * size + c * px + p]; mBg[c] += bg[k * size + c * px + p] / px; } }
+    const shift = mObj.map((v, c) => (mBg[c] - v / wsum) * 0.2);
+    // 3) Lecture bilinéaire du sujet réduit, ombre douce sous lui, puis mélange.
+    const sample = (c, u, v) => {
+      const fx = Math.max(0, Math.min(res - 1, u * res - 0.5)), fy = Math.max(0, Math.min(res - 1, v * res - 0.5));
+      const x0 = Math.floor(fx), y0 = Math.floor(fy), x1 = Math.min(res - 1, x0 + 1), y1 = Math.min(res - 1, y0 + 1), tx = fx - x0, ty = fy - y0;
+      const get = (arr, x, y) => arr === mask ? mask[y * res + x] : O(c, x, y);
+      const arr = c < 0 ? mask : obj;
+      return (get(arr, x0, y0) * (1 - tx) + get(arr, x1, y0) * tx) * (1 - ty) + (get(arr, x0, y1) * (1 - tx) + get(arr, x1, y1) * tx) * ty;
+    };
+    for (let y = 0; y < res; y++) for (let x = 0; x < res; x++) {
+      const u = (x + 0.5 - ox) / side, v = (y + 0.5 - oy) / side;
+      // Ombre : ellipse sombre au pied du sujet.
+      const sh = Math.max(0, 1 - Math.hypot((u - 0.5) / 0.42, (v - 0.97) / 0.07)) * 0.35;
+      const inside = u >= 0 && u < 1 && v >= 0 && v < 1;
+      const m = inside ? sample(-1, u, v) : 0;
+      for (let c = 0; c < 3; c++) {
+        const i = k * size + c * px + y * res + x;
+        const back = bg[i] - sh * (bg[i] + 1);
+        comp[i] = inside ? m * Math.max(-1, Math.min(1, sample(c, u, v) + shift[c])) + (1 - m) * back : back;
+      }
+    }
+  }
+  return comp;
+}
+
 async function composeHomeImage(bgId, objId, onProgress) {
   const { gpu } = await loadHomeModel('v1b');
   const count = gpu ? 4 : 2, res = 32, size = 3 * res * res;
@@ -1033,22 +1128,8 @@ async function composeHomeImage(bgId, objId, onProgress) {
   const bg = await homeDenoise('v1b', bgId, randn(count * size), count, { onStep: (f) => onProgress(`Création du décor… ${Math.round(f * 100)} %`) });
   onProgress('Création du sujet…');
   const obj = await homeDenoise(objVersion, objId, randn(count * size), count, { onStep: (f) => onProgress(`Création du sujet… ${Math.round(f * 100)} %`) });
-  // Le sujet, réduit aux deux tiers, est posé en bas au centre avec des bords doux.
-  const scale = 0.66, side = res * scale, ox = (res - side) / 2, oy = res - side - 1;
-  const comp = new Float32Array(bg);
-  for (let k = 0; k < count; k++) {
-    for (let y = 0; y < res; y++) for (let x = 0; x < res; x++) {
-      const u = (x - ox) / side, v = (y - oy) / side;
-      if (u < 0 || u >= 1 || v < 0 || v >= 1) continue;
-      const d = Math.hypot(u - 0.5, (v - 0.5) * 0.9) / 0.5;
-      const m = Math.max(0, Math.min(1, (1 - d) * 4));
-      const sx = Math.min(res - 1, Math.floor(u * res)), sy = Math.min(res - 1, Math.floor(v * res));
-      for (let c = 0; c < 3; c++) {
-        const i = k * size + c * res * res;
-        comp[i + y * res + x] = m * obj[i + sy * res + sx] + (1 - m) * bg[i + y * res + x];
-      }
-    }
-  }
+  // Le sujet est détouré, harmonisé avec la lumière du décor, posé en bas au centre avec une ombre douce.
+  const comp = composeLayers(bg, obj, count, res);
   // Fusion : on rebrouille un peu l'assemblage puis on le débruite, ce qui harmonise lumière, couleurs et bords.
   onProgress('Fusion de l’image…');
   const tStart = 140, a = HOME_ALPHAS[tStart];
@@ -1354,9 +1435,12 @@ function render(m) {
       const edit = document.createElement('button');
       edit.type = 'button'; edit.innerHTML = ICON('edit') + 'Modifier';
       edit.addEventListener('click', () => setAttachment(m.image));
+      const share = document.createElement('button');
+      share.type = 'button'; share.innerHTML = ICON('send') + 'Partager';
+      share.addEventListener('click', () => shareImage(m.image, m.content));
       const hint = document.createElement('span');
       hint.textContent = 'Appui long sur l’image pour l’enregistrer';
-      actions.append(edit, hint);
+      actions.append(edit, share, hint);
       col.append(img, actions);
     }
     div.append(col);
@@ -1972,31 +2056,166 @@ $('#closeChats').addEventListener('click', () => { $('#chats').hidden = true; })
 
 // ——— Bibliothèque : toutes les images créées, toutes conversations confondues ———
 let viewing = null;
+// ——— Sauvegarde complète : sujets appris, conversations, réglages (sans clés), modules ———
+const SECRET_SETTINGS = ['textApiKey', 'imageApiKey', 'geminiApiKey', 'pollinationsKey'];
+function f32ToB64(arr) {
+  const bytes = new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength);
+  let out = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) out += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(out);
+}
+function b64ToF32(b64) {
+  const bin = atob(b64), bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Float32Array(bytes.buffer);
+}
+function subjectsDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('mon-ia-sujets', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('sujets', { keyPath: 'name' });
+    req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error);
+  });
+}
+
+async function exportBackup(button) {
+  const label = button.textContent; button.disabled = true; button.textContent = 'Préparation…';
+  try {
+    await saving;
+    const subjects = (await listSubjectsLight()).map((r) => ({
+      ...r,
+      subject: f32ToB64(Float32Array.from(r.subject)),
+      weights: Object.fromEntries(Object.entries(r.weights || {}).map(([k, v]) => [k, { shape: v.shape, data: f32ToB64(Float32Array.from(v.data)) }])),
+    }));
+    const cleanSettings = Object.fromEntries(Object.entries(settings).filter(([k]) => !SECRET_SETTINGS.includes(k)));
+    const backup = { app: 'mon-ia', version: 1, date: new Date().toISOString(), settings: cleanSettings, chats: await allChats(), subjects, modules: read(EXT_KEY, []) };
+    const name = 'mon-ia-sauvegarde-' + new Date().toISOString().slice(0, 10) + '.json';
+    const file = new File([JSON.stringify(backup)], name, { type: 'application/json' });
+    if (navigator.canShare?.({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: 'Sauvegarde Mon IA' }); } catch { /* annulé */ }
+    } else {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = name; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    }
+    diag.log({ etape: 'sauvegarde', statut: 'ok', resultats: subjects.length, detail: `${backup.chats.length} conversations, ${(file.size / 1e6).toFixed(1)} Mo` });
+  } catch (err) {
+    alert('Sauvegarde impossible : ' + (err?.message || err));
+  }
+  button.disabled = false; button.textContent = label;
+}
+
+async function importBackup(file) {
+  let data;
+  try { data = JSON.parse(await file.text()); } catch { return alert('Ce fichier n’est pas une sauvegarde de Mon IA.'); }
+  if (data?.app !== 'mon-ia') return alert('Ce fichier n’est pas une sauvegarde de Mon IA.');
+  const n = (data.subjects || []).length, c = (data.chats || []).length;
+  if (!confirm(`Restaurer ${n} sujet${n > 1 ? 's' : ''} appris, ${c} conversation${c > 1 ? 's' : ''}, tes réglages et tes modules ? Ce qui existe déjà avec le même nom est remplacé.`)) return;
+  try {
+    const db = await subjectsDb();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction('sujets', 'readwrite');
+      for (const r of data.subjects || []) {
+        tx.objectStore('sujets').put({ ...r, subject: b64ToF32(r.subject), weights: Object.fromEntries(Object.entries(r.weights).map(([k, v]) => [k, { shape: v.shape, data: b64ToF32(v.data) }])) });
+      }
+      tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+    });
+    if (c) await chatsTx('readwrite', (st) => { for (const chat of data.chats) st.put(chat); });
+    if (data.settings) {
+      const keep = Object.fromEntries(SECRET_SETTINGS.map((k) => [k, settings[k]]));
+      write('mon-ia-settings', { ...settings, ...data.settings, ...keep });
+    }
+    if (Array.isArray(data.modules)) {
+      const mods = read(EXT_KEY, []);
+      for (const m of data.modules) { const i = mods.findIndex((x) => x.id === m.id); if (i >= 0) mods[i] = m; else mods.push(m); }
+      write(EXT_KEY, mods);
+    }
+    alert('Sauvegarde restaurée. L’app va se recharger.');
+    location.reload();
+  } catch (err) {
+    alert('Restauration impossible : ' + (err?.message || err));
+  }
+}
+
+for (const b of document.querySelectorAll('[data-backup]')) {
+  b.addEventListener('click', () => (b.dataset.backup === 'export' ? exportBackup(b) : $('#backupFile').click()));
+}
+$('#backupFile').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) importBackup(f); });
+
+let libFavOnly = false;
 async function renderLibrary() {
   await saving;
   const items = [];
   for (const c of (await allChats()).sort((a, b) => b.updated - a.updated)) {
-    for (const m of [...c.messages].reverse()) if (m.role === 'assistant' && m.image) items.push({ chat: c.id, image: m.image, caption: m.content });
+    c.messages.forEach((m, idx) => { if (m.role === 'assistant' && m.image) items.push({ chat: c.id, idx, image: m.image, caption: m.content, fav: !!m.fav }); });
   }
+  items.reverse();
+  const shown = libFavOnly ? items.filter((it) => it.fav) : items;
   const grid = $('#libGrid'); grid.innerHTML = '';
-  $('#libEmpty').hidden = items.length > 0;
-  for (const it of items) {
+  $('#libEmpty').hidden = shown.length > 0;
+  $('#libEmpty').textContent = libFavOnly ? 'Aucun favori pour l’instant. Ouvre une image et touche ☆ Favori.' : 'Aucune image pour l’instant. Les images que tu crées apparaîtront ici.';
+  for (const it of shown) {
     const b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-label', it.caption);
     const img = document.createElement('img'); img.src = it.image; img.alt = it.caption; img.loading = 'lazy';
     b.append(img);
+    if (it.fav) { const st = document.createElement('span'); st.className = 'star'; st.textContent = '★'; b.append(st); }
     b.addEventListener('click', () => {
       viewing = it;
       $('#viewerImg').src = it.image; $('#viewerImg').alt = it.caption; $('#viewerCaption').textContent = it.caption;
+      $('#viewerFav').textContent = it.fav ? '★ Favori' : '☆ Favori';
       $('#viewer').hidden = false;
     });
     grid.append(b);
   }
 }
+
+// Modifie un message d'une conversation (la conversation ouverte ou une autre), puis enregistre.
+async function updateChatMessage(chatId, idx, change) {
+  if (chatId === currentChatId) {
+    change(messages, idx); store(); renderAll();
+  } else {
+    const chat = await chatsTx('readonly', (st) => st.get(chatId));
+    if (!chat) return;
+    change(chat.messages, idx);
+    await chatsTx('readwrite', (st) => st.put(chat));
+  }
+  await saving;
+}
+
+async function shareImage(dataUrl, caption) {
+  const blob = await (await fetch(dataUrl)).blob();
+  const file = new File([blob], 'mon-ia.' + (blob.type.includes('png') ? 'png' : 'jpg'), { type: blob.type });
+  if (navigator.canShare?.({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: caption }); } catch { /* partage annulé */ }
+  } else {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+}
+
 $('#tabLibrary').addEventListener('click', () => { $('#library').hidden = false; renderLibrary(); });
 $('#closeLibrary').addEventListener('click', () => { $('#library').hidden = true; });
+for (const [id, fav] of [['#libAll', false], ['#libFav', true]]) {
+  $(id).addEventListener('click', () => {
+    libFavOnly = fav;
+    $('#libAll').setAttribute('aria-selected', String(!fav)); $('#libFav').setAttribute('aria-selected', String(fav));
+    renderLibrary();
+  });
+}
 $('#viewerClose').addEventListener('click', () => { $('#viewer').hidden = true; });
 $('#viewerChat').addEventListener('click', async () => { await openChat(viewing.chat); $('#viewer').hidden = true; $('#library').hidden = true; });
 $('#viewerEdit').addEventListener('click', () => { setAttachment(viewing.image); $('#viewer').hidden = true; $('#library').hidden = true; setImageMode(true); });
+$('#viewerShare').addEventListener('click', () => shareImage(viewing.image, viewing.caption));
+$('#viewerFav').addEventListener('click', async () => {
+  viewing.fav = !viewing.fav;
+  $('#viewerFav').textContent = viewing.fav ? '★ Favori' : '☆ Favori';
+  await updateChatMessage(viewing.chat, viewing.idx, (list, i) => { if (list[i]) list[i].fav = viewing.fav; });
+  renderLibrary();
+});
+$('#viewerDelete').addEventListener('click', async () => {
+  if (!confirm('Supprimer cette image de ta bibliothèque et de sa conversation ?')) return;
+  await updateChatMessage(viewing.chat, viewing.idx, (list, i) => { if (list[i]?.image) list.splice(i, 1); });
+  $('#viewer').hidden = true;
+  renderLibrary();
+});
 
 function updateProviderFields() {
   const tp = form.textProvider.value;
