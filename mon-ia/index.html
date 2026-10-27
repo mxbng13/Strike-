@@ -126,6 +126,10 @@
   .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 10px; color: var(--faint); font-size: 12px; }
   .actions button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); font-size: 12px; font-weight: 600; color: var(--text); }
   .actions svg { width: 15px; height: 15px; }
+  .results { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; margin-top: 10px; }
+  .results a { display: block; aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: var(--raised); }
+  .results img { width: 100%; height: 100%; object-fit: cover; display: block; margin: 0; border-radius: 0; }
+  .actions a { color: var(--accent); font-weight: 600; text-decoration: none; }
   .typing { display: inline-flex; align-items: center; gap: 10px; color: var(--muted); }
   .dots { display: inline-flex; gap: 4px; }
   .dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); opacity: .4; }
@@ -1296,6 +1300,27 @@ function render(m) {
     if (m.pending) body.innerHTML = '<span class="typing"><span class="dots"><i></i><i></i><i></i></span><span class="label"></span></span>', body.querySelector('.label').textContent = m.content;
     else body.textContent = m.content;
     col.append(body);
+    if (m.kind === 'search' && m.results) {
+      const grid = document.createElement('div');
+      grid.className = 'results';
+      for (const r of m.results) {
+        const a = document.createElement('a');
+        a.href = r.url; a.target = '_blank'; a.rel = 'noopener';
+        const img = document.createElement('img');
+        img.src = r.thumb; img.alt = r.title || m.query; img.loading = 'lazy';
+        img.onerror = () => a.remove();
+        a.append(img); grid.append(a);
+      }
+      const actions = document.createElement('div');
+      actions.className = 'actions';
+      const g = document.createElement('a');
+      g.href = 'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(m.query);
+      g.target = '_blank'; g.rel = 'noopener'; g.textContent = 'Voir plus sur Google Images';
+      const hint = document.createElement('span');
+      hint.textContent = 'Touche une photo pour l’ouvrir en grand, puis appui long pour l’enregistrer';
+      actions.append(g, hint);
+      col.append(grid, actions);
+    }
     if (m.image) {
       const img = document.createElement('img');
       img.src = m.image; img.alt = m.content;
@@ -1328,7 +1353,7 @@ function renderAll() {
   if (!messages.length) {
     const w = document.createElement('div');
     w.className = 'welcome';
-    w.innerHTML = `<div class="mark">${ICON('spark')}</div><h2></h2><p>Discute avec moi, ou active <b>Image</b> pour que je crée des images avec ma propre IA, directement sur ton téléphone.</p><div class="cards"></div>`;
+    w.innerHTML = `<div class="mark">${ICON('spark')}</div><h2></h2><p>Discute avec moi, ou active <b>Image</b> pour que je crée des images avec ma propre IA, directement sur ton téléphone. Pour de vraies photos du web, écris par exemple « cherche des photos de tour Eiffel ».</p><div class="cards"></div>`;
     w.querySelector('h2').textContent = 'Que veux-tu créer ?';
     for (const [title, detail] of SUGGESTIONS) {
       const b = document.createElement('button');
@@ -1343,9 +1368,77 @@ function renderAll() {
   messages.forEach(render);
 }
 
+// ——— Recherche de vraies photos sur le web (banques d'images libres, sans clé) ———
+const SEARCH_RE = /^(?:\/web\s+|(?:cherche|recherche|trouve|r[ée]cup[èe]re|montre|envoie|envoi|donne)[-\s]*(?:moi\s+)?(?:sur\s+google\s+)?(?:des|une|un|les|quelques|de\s+vraies|des\s+vraies)?\s*(?:images?|photos?)\s+)(.+)$/i;
+const SEARCH_BLOCKED = /\b(nu|nue|nus|nues|nudit[eé]|seins?|t[eé]tons?|p[eé]nis|vagin|vulve|sexe|sexuel(le)?s?|porno?\w*|[eé]rotique|xxx|nsfw|naked|nude|topless|boobs?|breasts?|nipples?|genitals?|sex|porn\w*|erotic|lingerie|strip\w*)\b/i;
+
+function searchQuery(text) {
+  const m = SEARCH_RE.exec(text);
+  if (!m) return null;
+  return m[1].replace(/\s+(?:sur|depuis|avec)\s+(?:google|internet|le\s+web)\b.*$/i, '').replace(/^(?:de|d['’]|du|des|sur)\s*/i, '').trim() || null;
+}
+
+async function fetchJson(url, ms = 12000) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), ms);
+  try { const r = await fetch(url, { signal: ctl.signal }); return r.ok ? await r.json() : null; }
+  catch { return null; } finally { clearTimeout(timer); }
+}
+
+async function toEnglishQuery(q) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 6000);
+  try {
+    const res = await fetch('https://text.pollinations.ai/openai', {
+      method: 'POST', signal: ctl.signal, headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model: 'openai', messages: [
+        { role: 'system', content: 'Translate this image search query to English. Reply with the query only.' },
+        { role: 'user', content: q }] }),
+    });
+    const out = res.ok ? (await res.json()).choices?.[0]?.message?.content?.trim() : '';
+    return out && out.length < 200 ? out : q;
+  } catch { return q; } finally { clearTimeout(timer); }
+}
+
+async function searchWebImages(q) {
+  const en = await toEnglishQuery(q);
+  const commons = (query) => fetchJson('https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrlimit=12&prop=imageinfo&iiprop=url&iiurlwidth=480&format=json&origin=*&gsrsearch=' + encodeURIComponent('filetype:bitmap ' + query))
+    .then((j) => Object.values(j?.query?.pages || {}).sort((a, b) => a.index - b.index).map((p) => p.imageinfo?.[0] && { thumb: p.imageinfo[0].thumburl, url: p.imageinfo[0].url, title: p.title.replace(/^File:|\.\w+$/g, '') }).filter(Boolean));
+  const openverse = fetchJson('https://api.openverse.org/v1/images/?mature=false&page_size=12&q=' + encodeURIComponent(en))
+    .then((j) => (j?.results || []).map((r) => ({ thumb: r.thumbnail || r.url, url: r.url, title: r.title })));
+  const lists = await Promise.all([openverse, commons(en), en.toLowerCase() !== q.toLowerCase() ? commons(q) : Promise.resolve([])]);
+  const seen = new Set(), out = [];
+  for (let i = 0; out.length < 18 && i < 12; i++) {
+    for (const list of lists) {
+      const r = list[i];
+      if (r?.thumb && !seen.has(r.url)) { seen.add(r.url); out.push(r); }
+    }
+  }
+  return out;
+}
+
 async function send() {
   let text = input.value.trim();
   if (!text) return;
+  const query = !attachment && searchQuery(text);
+  if (query) {
+    input.value = ''; input.style.height = 'auto';
+    const userMsg = { role: 'user', content: text, kind: 'search' };
+    messages.push(userMsg); render(userMsg); store();
+    const pending = render({ role: 'assistant', pending: true, content: 'Recherche de photos sur le web…' });
+    $('#sendBtn').disabled = true;
+    const blocked = findBlockedWord(text) || (SEARCH_BLOCKED.exec(query) || [])[0];
+    if (blocked) messages.push({ role: 'assistant', content: `Recherche refusée (mot : « ${blocked} »).`, error: true });
+    else {
+      const results = await searchWebImages(query);
+      messages.push(results.length
+        ? { role: 'assistant', kind: 'search', query, results, content: `Voici des photos trouvées pour « ${query} ».` }
+        : { role: 'assistant', kind: 'search', query, results: [], content: `Je n’ai rien trouvé pour « ${query} » dans les banques d’images libres. Essaie le lien Google ci-dessous.` });
+    }
+    $('#sendBtn').disabled = false;
+    pending.remove(); render(messages[messages.length - 1]); store();
+    return;
+  }
   let wantImage = imageMode;
   if (text.startsWith('/image ')) { wantImage = true; text = text.slice(7).trim(); }
   const source = attachment;
