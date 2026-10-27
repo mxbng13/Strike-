@@ -15,8 +15,8 @@
   const STEP_KEY = 'mon-ia-hd-etape';
   const ORT = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
 
-  // Mots refusés (contenu sexuel), en français et en anglais.
-  const BLOCKED = /\b(nu|nue|nus|nues|nudit[eé]|seins?|t[eé]tons?|mamelons?|p[eé]nis|vagin|vulve|clitoris|sexe|sexuel(le)?s?|porno?|pornographi\w*|[eé]rotique|xxx|nsfw|naked|nude|nudity|topless|boobs?|breasts?|nipples?|genitals?|penis|vagina|sex|sexual|porn\w*|erotic|lingerie|strip\w*)\b/i;
+  // Les restrictions (contenu sexuel, nudité) sont toutes dans restrictions.js.
+  const refused = (text) => root.MonIARestrictions?.check(text);
 
   function note(step) { try { localStorage.setItem(STEP_KEY, step); } catch { /* facultatif */ } }
   function lastCrash() { try { return localStorage.getItem(STEP_KEY); } catch { return null; } }
@@ -151,11 +151,11 @@
     // Si la tentative d'avant a fait fermer l'app, on l'affiche pendant tout l'essai pour que tu puisses me le dire.
     const crashed = lastCrash();
     const onStatus = crashed ? (msg) => show(`${msg} (essai précédent arrêté pendant : ${crashed})`) : show;
-    if (BLOCKED.test(prompt)) throw new Error('ce moteur ne crée pas de contenu sexuel ou de nudité');
+    if (refused(prompt)) throw new Error('ce moteur refuse : ' + root.MonIARestrictions.message);
     const { encode } = await prepare(onStatus);
     note('traduction de la phrase');
     const english = await toEnglish(prompt);
-    if (BLOCKED.test(english)) throw new Error('ce moteur ne crée pas de contenu sexuel ou de nudité');
+    if (refused(english)) throw new Error('ce moteur refuse : ' + root.MonIARestrictions.message);
     const ids = BigInt64Array.from(encode(english + ', high quality, detailed'), (v) => BigInt(v));
 
     note('ouverture du modèle (texte)'); onStatus('Préparation du moteur HD (1/3)…');
