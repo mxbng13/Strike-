@@ -1186,6 +1186,14 @@ async function generateHomeImage(prompt, onProgress) {
   return homeGridSharp(x, count, cfg.res);
 }
 
+// Filtres de Google au plus bas, sauf les catégories gérées par restrictions.js.
+function geminiSafety() {
+  const own = window.MonIARestrictions?.geminiSafety?.() || [];
+  const ownCats = new Set(own.map((r) => r.category));
+  return ['HARM_CATEGORY_HARASSMENT', 'HARM_CATEGORY_HATE_SPEECH', 'HARM_CATEGORY_DANGEROUS_CONTENT']
+    .filter((c) => !ownCats.has(c)).map((category) => ({ category, threshold: 'BLOCK_NONE' })).concat(own);
+}
+
 async function generateImage(prompt) {
   const s = settings;
   if (s.imageProvider === 'gemini') {
@@ -1202,8 +1210,7 @@ async function generateImage(prompt) {
         },
         // Filtres réglables de Google : au plus bas si tu l'as choisi dans Paramètres.
         ...(s.providerFilters === 'min' && {
-          safetySettings: ['HARM_CATEGORY_HARASSMENT', 'HARM_CATEGORY_HATE_SPEECH', 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'HARM_CATEGORY_DANGEROUS_CONTENT']
-            .map((category) => ({ category, threshold: 'BLOCK_NONE' })),
+          safetySettings: geminiSafety(),
         }),
       }),
     });
@@ -1335,8 +1342,7 @@ async function editImage(prompt, source) {
         contents: [{ role: 'user', parts: [{ inlineData: { mimeType, data } }, { text: prompt }] }],
         generationConfig: { responseModalities: ['TEXT', 'IMAGE'], imageConfig: { imageSize: { standard: '1K', high: '2K', max: '4K' }[s.imageQuality] } },
         ...(s.providerFilters === 'min' && {
-          safetySettings: ['HARM_CATEGORY_HARASSMENT', 'HARM_CATEGORY_HATE_SPEECH', 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'HARM_CATEGORY_DANGEROUS_CONTENT']
-            .map((category) => ({ category, threshold: 'BLOCK_NONE' })),
+          safetySettings: geminiSafety(),
         }),
       }),
     });

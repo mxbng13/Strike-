@@ -16,5 +16,10 @@
     return m ? m[0] : null;
   }
 
-  root.MonIARestrictions = { check, shown: SHOWN, message: MESSAGE };
+  // Filtres de Google Gemini (moteur en ligne) : la catégorie contenu sexuel reste bloquée.
+  function geminiSafety() {
+    return [{ category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_LOW_AND_ABOVE' }];
+  }
+
+  root.MonIARestrictions = { check, shown: SHOWN, message: MESSAGE, geminiSafety };
 })(typeof window !== 'undefined' ? window : globalThis);
