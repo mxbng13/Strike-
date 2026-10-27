@@ -49,8 +49,8 @@
   /* Barre du haut */
   header { border-bottom: 1px solid var(--line); background: var(--bg); }
   .tabs { display: flex; gap: 4px; padding-bottom: 10px; }
-  .tabs button { flex: 1; height: 36px; border-radius: 10px; border: 1px solid transparent; background: none; color: var(--muted); font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
-  .tabs button[aria-selected="true"] { background: var(--surface); border-color: var(--line); color: var(--text); }
+  .tabs button, .tabs a { flex: 1; min-width: 0; text-decoration: none; height: 36px; border-radius: 10px; border: 1px solid transparent; background: none; color: var(--muted); font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+  .tabs [aria-selected="true"] { background: var(--surface); border-color: var(--line); color: var(--text); }
   .tabs svg { width: 16px; height: 16px; }
   #improve { position: fixed; inset: 0; z-index: 5; background: var(--bg); overflow-y: auto; padding-top: env(safe-area-inset-top, 0px); padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
   #improve[hidden] { display: none; }
@@ -200,6 +200,7 @@
   <div class="column tabs" role="tablist">
     <button type="button" role="tab" id="tabCreate" aria-selected="false"><svg><use href="#i-image"/></svg>Créer</button>
     <button type="button" role="tab" id="tabChat" aria-selected="true"><svg><use href="#i-spark"/></svg>Discuter</button>
+    <a role="tab" id="tabLearn" href="https://claude.ai/artifact/5cqGK8Vo7JTTdBfak9GCDF" target="_blank" rel="noopener"><svg><use href="#i-plus"/></svg>Apprendre</a>
     <button type="button" role="tab" id="tabImprove" aria-selected="false"><svg><use href="#i-edit"/></svg>Améliorer</button>
   </div>
 </header>
