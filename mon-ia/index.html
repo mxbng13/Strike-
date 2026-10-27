@@ -119,6 +119,15 @@
   .self-msg.err { color: var(--danger); }
   .self-msg ul { margin: 6px 0 0; padding-left: 18px; color: var(--muted); font-size: 13px; }
   #improve .adder textarea { flex: 1; min-width: 0; resize: none; }
+  .ext { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .ext:first-child { border-top: 0; }
+  .ext-head { display: flex; align-items: center; gap: 8px; }
+  .ext-head b { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .ext-head input { width: 20px; height: 20px; accent-color: var(--accent); flex: none; }
+  .ext-head button { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 4px 8px; font-size: 12px; font-weight: 600; }
+  .ext pre { margin: 0; max-height: 260px; overflow: auto; background: var(--raised); border: 1px solid var(--line); border-radius: 8px; padding: 8px; font: 12px/1.45 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .ext .err { color: var(--danger); font-size: 12px; }
+  #extList:empty::before { content: 'Aucun module pour l’instant.'; color: var(--muted); font-size: 13px; }
   #improve ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
   .cta { display: flex; align-items: center; justify-content: center; gap: 8px; height: 46px; border-radius: 12px; background: var(--accent); color: var(--accent-ink); font-weight: 700; text-decoration: none; }
   .copy-row { display: flex; gap: 8px; }
@@ -430,6 +439,16 @@
         <div class="self-log" id="selfLog"></div>
         <div class="adder"><textarea id="selfInput" rows="2" maxlength="1500" placeholder="Ex. : sois plus drôle et tutoie-moi, et mets l’app en vert"></textarea><button type="button" id="selfSend">Envoyer</button></div>
         <div class="copy-row"><button type="button" class="ghost" id="selfUndo" disabled>Annuler le dernier changement</button><p class="hint" id="selfNote" style="align-self:center"></p></div>
+      </section>
+      <section class="section">
+        <h3>Code : elle se programme elle-même</h3>
+        <p class="hint">Demande-lui une nouvelle fonction ou un changement dans l’app : elle écrit le code, le teste, corrige ses erreurs et l’ajoute tout de suite. Chaque module s’active, se désactive ou se supprime ici. Les modules restent sur ce téléphone.</p>
+        <div class="self-log" id="codeLog"></div>
+        <div class="adder"><textarea id="codeInput" rows="2" maxlength="3000" placeholder="Ex. : ajoute un bouton pour copier les réponses, ou un compteur de messages en haut"></textarea><button type="button" id="codeSend">Coder</button></div>
+        <p class="hint" id="codeNote"></p>
+        <h3 style="margin-top:6px">Modules installés</h3>
+        <div id="extList"></div>
+        <p class="hint">Si un module casse l’app, ouvre le lien avec <b>?sans-modules</b> à la fin : l’app démarre sans eux et tu peux les retirer.</p>
       </section>
       <section class="section">
         <h3>Pour les gros changements</h3>
@@ -761,14 +780,19 @@ async function llm(system, msgs) {
   const url = s.textProvider === 'custom' ? s.textBaseUrl.replace(/\/+$/, '') + '/chat/completions' : TEXT_URLS[s.textProvider];
   const headers = { 'content-type': 'application/json' };
   if (s.textApiKey && s.textProvider !== 'free') headers.authorization = `Bearer ${s.textApiKey}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ model: s.textModel, temperature: s.temperature, max_tokens: s.maxTokens, messages: [{ role: 'system', content: system }, ...msgs] }),
-  });
-  if (!res.ok) throw new Error(`Fournisseur (${res.status}) : ${await readError(res)}`);
-  const json = await res.json();
-  return json.choices[0].message.content;
+  const body = JSON.stringify({ model: s.textModel, temperature: s.temperature, max_tokens: s.maxTokens, messages: [{ role: 'system', content: system }, ...msgs] });
+  // Le service gratuit limite à une réponse toutes les 30 s : on attend et on réessaie tout seul.
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url, { method: 'POST', headers, body });
+    if (res.ok) return (await res.json()).choices[0].message.content;
+    const err = await readError(res);
+    if (attempt < 3 && (res.status === 429 || (res.status === 402 && /retry after/i.test(err)))) {
+      const wait = Math.min(35, Number((/retry after (\d+)/i.exec(err) || [])[1]) || 30);
+      await new Promise((r) => setTimeout(r, (wait + 1) * 1000));
+      continue;
+    }
+    throw new Error(`Fournisseur (${res.status}) : ${err}`);
+  }
 }
 
 function blobToDataUrl(blob) {
@@ -1961,6 +1985,171 @@ $('#selfUndo').addEventListener('click', () => {
 });
 applyCustomCss();
 renderSelfLog();
+
+// ——— Code : elle écrit elle-même des modules (JavaScript + CSS) qui s'ajoutent à l'app ———
+// Les règles de restrictions.js ne peuvent pas être remplacées par un module.
+if (window.MonIARestrictions) Object.defineProperty(window, 'MonIARestrictions', { value: Object.freeze(window.MonIARestrictions), writable: false, configurable: false });
+const EXT_KEY = 'mon-ia-modules', EXT_BOOT = 'mon-ia-modules-demarrage';
+let extensions = read(EXT_KEY, []);
+let codeLog = read('mon-ia-code-log', []);
+const FORBIDDEN_CODE = /MonIARestrictions|restrictions\.js|MonIAHD|hd\.js|SEARCH_BLOCKED|LOCK_HASH|mon-ia-unlocked/;
+
+function saveExtensions() { write(EXT_KEY, extensions); renderExtensions(); }
+
+// Lance un module. Renvoie l'erreur éventuelle (le module est alors désactivé).
+function runExtension(ext) {
+  document.getElementById('ext-css-' + ext.id)?.remove();
+  if (ext.css) { const st = document.createElement('style'); st.id = 'ext-css-' + ext.id; st.textContent = ext.css.replace(/@import[^;]*;?/gi, ''); document.head.append(st); }
+  if (!ext.code) return null;
+  try { new Function(ext.code)(); return null; } catch (err) { return err; }
+}
+
+function runExtensions() {
+  if (/[?&]sans-modules\b/.test(location.search)) { $('#codeNote').textContent = 'Démarrage sans modules (?sans-modules).'; return; }
+  // Si l'app s'est arrêtée pendant le lancement des modules la dernière fois, on les coupe.
+  if (read(EXT_BOOT, false)) {
+    extensions.forEach((e) => { e.on = false; }); write(EXT_KEY, extensions);
+    write(EXT_BOOT, false);
+    codeLog.push({ role: 'assistant', error: true, content: 'Un module a bloqué l’app au dernier démarrage : je les ai tous désactivés. Réactive-les un par un dans Améliorer › Code.' });
+    write('mon-ia-code-log', codeLog);
+    return;
+  }
+  write(EXT_BOOT, true);
+  for (const ext of extensions.filter((e) => e.on)) {
+    const err = runExtension(ext);
+    if (err) { ext.on = false; ext.error = String(err.message || err); }
+  }
+  write(EXT_BOOT, false);
+  write(EXT_KEY, extensions);
+}
+
+function renderExtensions() {
+  const box = $('#extList'); box.innerHTML = '';
+  for (const ext of extensions) {
+    const row = document.createElement('div'); row.className = 'ext';
+    const head = document.createElement('div'); head.className = 'ext-head';
+    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = ext.on; cb.setAttribute('aria-label', 'Activer ' + ext.name);
+    cb.addEventListener('change', () => {
+      ext.on = cb.checked; ext.error = '';
+      if (ext.on) { const err = runExtension(ext); if (err) { ext.on = false; ext.error = String(err.message || err); } saveExtensions(); }
+      else { saveExtensions(); $('#codeNote').textContent = 'Désactivé. Ferme et rouvre l’app pour qu’il disparaisse complètement.'; }
+    });
+    const name = document.createElement('b'); name.textContent = ext.name;
+    const view = document.createElement('button'); view.type = 'button'; view.textContent = 'Code';
+    const del = document.createElement('button'); del.type = 'button'; del.textContent = 'Supprimer';
+    del.addEventListener('click', () => { if (confirm(`Supprimer le module « ${ext.name} » ?`)) { extensions = extensions.filter((e) => e !== ext); document.getElementById('ext-css-' + ext.id)?.remove(); saveExtensions(); $('#codeNote').textContent = 'Supprimé. Ferme et rouvre l’app pour qu’il disparaisse complètement.'; } });
+    head.append(cb, name, view, del);
+    const pre = document.createElement('pre'); pre.hidden = true; pre.textContent = (ext.code || '') + (ext.css ? '\n\n/* CSS */\n' + ext.css : '');
+    view.addEventListener('click', () => { pre.hidden = !pre.hidden; });
+    row.append(head);
+    if (ext.error) { const e = document.createElement('div'); e.className = 'err'; e.textContent = 'Erreur : ' + ext.error; row.append(e); }
+    row.append(pre); box.append(row);
+  }
+}
+
+function renderCodeLog() {
+  const box = $('#codeLog'); box.innerHTML = '';
+  for (const m of codeLog.slice(-20)) {
+    const d = document.createElement('div');
+    d.className = 'self-msg' + (m.role === 'user' ? ' me' : '') + (m.error ? ' err' : '');
+    d.textContent = m.content;
+    box.append(d);
+  }
+}
+
+// Ce que le modèle sait de l'app pour écrire son code.
+function appMap() {
+  const ids = [...document.querySelectorAll('[id]')].filter((e) => !e.closest('svg') && !e.id.startsWith('ext-')).slice(0, 160)
+    .map((e) => `#${e.id} <${e.tagName.toLowerCase()}>${(e.getAttribute('aria-label') || (e.children.length ? '' : e.textContent) || '').trim().slice(0, 30)}`);
+  return ids.join('\n');
+}
+
+const CODE_SYSTEM = `Tu es le module de programmation de l'application web « Mon IA » (une seule page HTML, JavaScript sans framework, sur iPhone). Tu écris du code qui s'ajoute à l'app pour faire ce que l'utilisateur demande, comme un développeur.
+Ton code est un « module » : du JavaScript exécuté dans la page avec new Function(code)() au démarrage de l'app (et tout de suite après sa création), plus du CSS optionnel.
+Ce qui est disponible dans la page (variables globales) :
+- $(sélecteur) = document.querySelector ; ICON(nom) renvoie un <svg> (spark, plus, gear, image, clip, send, x, list, grid, trash, edit).
+- settings : réglages (assistantName, systemPrompt, imageProvider…) ; write('mon-ia-settings', settings) pour les enregistrer. read(clé, défaut) / write(clé, valeur) : stockage local JSON.
+- messages : la discussion en cours, tableau de {role: 'user'|'assistant', content, image?, kind?} ; render(m) affiche un message dans #thread et le renvoie ; store() enregistre ; renderAll() réaffiche tout.
+- send() envoie le texte de #input. Les fonctions globales (send, render, chat…) peuvent être enveloppées : const ancien = send; send = async function () { …; return ancien(); };
+- llm(consignes, [{role, content}]) → Promise<string> : appelle le modèle de texte. chat(historique) → réponse avec la personnalité de l'IA.
+- generateHomeImage(phrase, progression) → Promise<URL d'image> ; searchWebImages(q) → [{thumb, url, title}] ; webInfo(q) → [{title, url, text}].
+- setImageMode(true/false), newChat(), openChat(id).
+- Variables CSS : --bg, --surface, --raised, --line, --text, --muted, --accent, --accent-ink, --user, --radius, --ui (police).
+Éléments de la page (id) :
+{{MAP}}
+Règles :
+- Code autonome, robuste, qui ne casse rien d'autre ; vérifie que les éléments existent ; pas de bibliothèque externe (sauf import dynamique depuis https://cdn.jsdelivr.net si vraiment nécessaire).
+- N'utilise jamais MonIARestrictions, restrictions.js, MonIAHD, hd.js ni le code d'accès : ces parties ne se modifient pas.
+- Textes visibles en français.
+- renderAll() vide #thread puis réaffiche les messages : un élément permanent doit être placé hors de #thread (par exemple juste avant #thread, ou dans le <header>).
+- Pour l'apparence, préfère le bloc CSS. Si tu changes le fond, adapte aussi les couleurs de texte (--text, --muted) pour que tout reste lisible.
+- Le module peut être relancé : évite les doublons (vérifie si ton élément existe déjà par son id).
+- Pour modifier un module existant, renvoie son code complet mis à jour.
+Réponds EXACTEMENT dans ce format :
+NOM: nom court du module
+MODULE: id du module modifié, ou nouveau
+EXPLICATION: une ou deux phrases pour l'utilisateur
+\`\`\`js
+le code
+\`\`\`
+\`\`\`css
+le CSS (facultatif)
+\`\`\``;
+
+function parseCode(raw) {
+  const field = (k) => (new RegExp('^\\s*' + k + '\\s*:\\s*(.+)$', 'mi').exec(raw) || [])[1]?.trim();
+  const block = (lang) => (new RegExp('```' + lang + '\\s*\\n([\\s\\S]*?)```', 'i').exec(raw) || [])[1]?.trim() || '';
+  return { name: field('NOM') || 'Module', target: field('MODULE') || 'nouveau', explain: field('EXPLICATION') || '', code: block('(?:js|javascript)'), css: block('css') };
+}
+
+async function codeRequest() {
+  const text = $('#codeInput').value.trim();
+  if (!text) return;
+  $('#codeInput').value = ''; $('#codeSend').disabled = true;
+  codeLog.push({ role: 'user', content: text }); write('mon-ia-code-log', codeLog); renderCodeLog();
+  const existing = extensions.map((e) => `Module ${e.id} « ${e.name} » (${e.on ? 'actif' : 'désactivé'}) :\n\`\`\`js\n${e.code}\n\`\`\`` + (e.css ? `\n\`\`\`css\n${e.css}\n\`\`\`` : '')).join('\n\n');
+  const system = CODE_SYSTEM.replace('{{MAP}}', appMap());
+  const convo = [{ role: 'user', content: (existing ? 'Modules déjà installés :\n' + existing + '\n\n' : '') + 'Demande : ' + text }];
+  try {
+    let result = null;
+    // Comme un développeur : elle écrit, teste, et corrige jusqu'à 3 fois si ça plante.
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      $('#codeNote').textContent = attempt === 1 ? 'Elle écrit le code…' : `Elle corrige son code (essai ${attempt})…`;
+      const raw = await llm(system, convo);
+      const out = parseCode(raw);
+      if (!out.code && !out.css) { result = { explainOnly: raw.replace(/```[\s\S]*?```/g, '').trim().slice(0, 1200) }; break; }
+      if (FORBIDDEN_CODE.test(out.code + out.css)) { result = { refused: true }; break; }
+      const old = extensions.find((e) => e.id === out.target);
+      const ext = { id: old?.id || 'm' + Date.now().toString(36), name: out.name.slice(0, 60), code: out.code, css: out.css, on: true, created: old?.created || Date.now(), error: '' };
+      let err = null;
+      try { new Function(ext.code); } catch (e) { err = e; }
+      if (!err) err = runExtension(ext);
+      if (!err) { result = { ext, old, explain: out.explain }; break; }
+      convo.push({ role: 'assistant', content: raw }, { role: 'user', content: `Ton code a produit cette erreur : ${err.message || err}. Corrige-le et renvoie le module complet dans le même format.` });
+      if (attempt === 3) result = { failed: String(err.message || err) };
+    }
+    if (result.ext) {
+      if (result.old) Object.assign(result.old, result.ext); else extensions.push(result.ext);
+      saveExtensions();
+      codeLog.push({ role: 'assistant', content: `${result.old ? 'Module modifié' : 'Module ajouté'} : « ${result.ext.name} ». ${result.explain}` });
+    } else if (result.refused) {
+      codeLog.push({ role: 'assistant', error: true, content: 'Je ne modifie pas les règles fixes (restrictions.js), le moteur HD ni le code d’accès.' });
+    } else if (result.failed) {
+      codeLog.push({ role: 'assistant', error: true, content: `Je n’ai pas réussi à écrire un code qui marche (dernière erreur : ${result.failed}). Reformule ou découpe ta demande en plus petit.` });
+    } else {
+      codeLog.push({ role: 'assistant', content: result.explainOnly || 'Je n’ai rien changé.' });
+    }
+  } catch (err) {
+    codeLog.push({ role: 'assistant', error: true, content: err.message === 'Failed to fetch' ? 'Impossible de joindre le modèle de texte. Vérifie ta connexion.' : err.message });
+  }
+  codeLog = codeLog.slice(-40); write('mon-ia-code-log', codeLog);
+  $('#codeSend').disabled = false; $('#codeNote').textContent = '';
+  renderCodeLog();
+}
+$('#codeSend').addEventListener('click', codeRequest);
+$('#codeInput').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !('ontouchstart' in window)) { e.preventDefault(); codeRequest(); } });
+renderExtensions();
+renderCodeLog();
 $('#copyImprove').addEventListener('click', async () => {
   const text = $('#improveText').value;
   try { await navigator.clipboard.writeText(text); $('#copyNote').textContent = 'Copié.'; }
@@ -2121,6 +2310,7 @@ form.addEventListener('submit', (e) => {
 applyName();
 renderAll();
 initChats().catch(() => renderAll());
+runExtensions();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 renderLearnedList().catch(() => {});
 
