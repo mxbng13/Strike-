@@ -15,7 +15,7 @@
   const STEP_KEY = 'mon-ia-hd-etape';
   const ORT = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
 
-  // Les restrictions (contenu sexuel, nudité) sont toutes dans restrictions.js.
+  // Les restrictions sont toutes dans restrictions.js.
   const refused = (text) => root.MonIARestrictions?.check(text);
 
   function note(step) { try { localStorage.setItem(STEP_KEY, step); } catch { /* facultatif */ } }
