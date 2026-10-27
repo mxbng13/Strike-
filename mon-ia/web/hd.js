@@ -39,9 +39,10 @@
   let ready = null;
   function load(onStatus = () => {}) {
     ready ??= (async () => {
-      if (!navigator.gpu || !(await navigator.gpu.requestAdapter().catch(() => null))) {
-        throw new Error('ce téléphone ou ce navigateur ne propose pas WebGPU (sur iPhone : iOS 26 et Safari)');
-      }
+      const adapter = navigator.gpu && await navigator.gpu.requestAdapter().catch(() => null);
+      if (!adapter) throw new Error('ce téléphone ou ce navigateur ne propose pas WebGPU (sur iPhone : iOS 26 et Safari)');
+      // Le modèle calcule en demi-précision : sans cette fonction, inutile de télécharger 2,5 Go.
+      if (!adapter.features.has('shader-f16')) throw new Error('la carte graphique de cet appareil ne gère pas le calcul en demi-précision demandé par le modèle HD');
       const base = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
       if (!root.ort?.env?.webgpu) await new Promise((res, rej) => { const s = document.createElement('script'); s.src = base + 'ort.webgpu.min.js'; s.onload = res; s.onerror = () => rej(new Error('chargement du moteur impossible')); document.head.append(s); });
       ort.env.wasm.numThreads = 1;
