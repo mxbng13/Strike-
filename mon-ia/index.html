@@ -356,7 +356,7 @@
           <p class="hint">Si ton message contient un de ces mots, elle refuse de répondre. C’est la même liste que dans Paramètres.</p>
           <div class="chips" id="blockedChips"></div>
           <div class="adder"><input id="blockedInput" maxlength="60" placeholder="Un mot ou une expression"><button type="button" id="blockedAdd">Ajouter</button></div>
-          <p class="hint"><b>Règle fixe, non modifiable :</b> pas de contenu sexuel ni de nudité. Ces mots sont toujours refusés pour les images HD et la recherche de photos, même s’ils sont dans les mots autorisés :</p>
+          <p class="hint"><b>Règle fixe</b> (fichier restrictions.js) : pas de contenu sexuel ni de nudité. Ces mots sont toujours refusés pour les images HD et la recherche de photos, même s’ils sont dans les mots autorisés :</p>
           <div class="chips fixed" id="fixedChips"></div>
         </section>
         <section class="section">
@@ -485,7 +485,7 @@
             <span>Belles photos 512 px, comprend les phrases. Gratuite, illimitée, sur ton iPhone. Téléchargement de 880 Mo la première fois.</span>
           </button>
         </div>
-        <p class="hint">Les deux sont gratuites, sans quota et tournent sur ton téléphone. Seule règle gardée : pas de contenu sexuel.</p>
+        <p class="hint">Les deux sont gratuites, sans quota et tournent sur ton téléphone. Seule règle gardée : pas de contenu sexuel (fichier restrictions.js).</p>
         <div class="field"><label for="imageProvider">Ou un autre moteur</label>
           <select id="imageProvider" name="imageProvider">
             <option value="hd">IA HD sur l’appareil (essai)</option>
@@ -550,6 +550,7 @@
   </div>
 </div>
 
+<script src="restrictions.js"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const log = $('#log'), thread = $('#thread'), input = $('#input'), form = $('#settingsForm');
@@ -1455,9 +1456,6 @@ function renderAll() {
 }
 
 // ——— Recherche de vraies photos sur le web (banques d'images libres, sans clé) ———
-// Règle fixe : affichée dans Apprendre › Tchat, mais pas modifiable.
-const FIXED_BLOCKED_SHOWN = ['nu, nue, nudité', 'seins, tétons', 'pénis, vagin, vulve', 'sexe, sexuel', 'porno', 'érotique', 'xxx, nsfw', 'naked, nude, topless', 'boobs, breasts, nipples', 'genitals', 'sex, porn, erotic', 'lingerie', 'strip…'];
-const SEARCH_BLOCKED = /\b(nu|nue|nus|nues|nudit[eé]|seins?|t[eé]tons?|p[eé]nis|vagin|vulve|sexe|sexuel(le)?s?|porno?\w*|[eé]rotique|xxx|nsfw|naked|nude|topless|boobs?|breasts?|nipples?|genitals?|sex|porn\w*|erotic|lingerie|strip\w*)\b/i;
 
 function searchQuery(text) {
   if (text.startsWith('/web ')) return text.slice(5).trim() || null;
@@ -1569,7 +1567,7 @@ async function send() {
     messages.push(userMsg); render(userMsg); store();
     const pending = render({ role: 'assistant', pending: true, content: 'Recherche de photos sur le web…' });
     $('#sendBtn').disabled = true;
-    const blocked = findBlockedWord(text) || (SEARCH_BLOCKED.exec(query) || [])[0];
+    const blocked = findBlockedWord(text) || window.MonIARestrictions?.check(query);
     if (blocked) messages.push({ role: 'assistant', content: `Recherche refusée (mot : « ${blocked} »).`, error: true });
     else {
       const results = await searchWebImages(query);
@@ -1730,7 +1728,7 @@ function renderChatRules() {
     row.append(t, del); lessons.append(row);
   });
   chipList($('#blockedChips'), settings.blockedWords, (i) => { settings.blockedWords = settings.blockedWords.filter((_, j) => j !== i); saveRules(); });
-  $('#fixedChips').replaceChildren(...FIXED_BLOCKED_SHOWN.map((w) => Object.assign(document.createElement('span'), { className: 'chip', textContent: w })));
+  $('#fixedChips').replaceChildren(...(window.MonIARestrictions?.shown || []).map((w) => Object.assign(document.createElement('span'), { className: 'chip', textContent: w })));
   chipList($('#allowedChips'), settings.allowedWords, (i) => { settings.allowedWords = settings.allowedWords.filter((_, j) => j !== i); saveRules(); });
   const skills = $('#skillList'); skills.innerHTML = '';
   for (const [key, def] of Object.entries(DEFAULT_SKILLS)) {
