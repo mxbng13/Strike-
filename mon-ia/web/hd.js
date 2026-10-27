@@ -1,77 +1,107 @@
 // Moteur « HD sur l'appareil » : SDXS-512 DreamShaper (modèle open source, licence CreativeML Open RAIL++-M),
 // qui tourne dans le navigateur avec la carte graphique du téléphone (WebGPU). Image 512×512 en une étape, ~880 Mo.
-// Tout reste sur l'appareil : le modèle est téléchargé une fois puis gardé en cache.
-/* global ort */
+// Pensé pour la mémoire limitée de Safari sur iPhone :
+//  - un seul moteur de calcul (pas de bibliothèque en plus, découpeur de texte maison) ;
+//  - le modèle est écrit directement dans le cache en streaming, sans copie en mémoire ;
+//  - les trois parties sont chargées l'une après l'autre puis libérées.
+// Chaque étape est notée : si Safari ferme la page, la tentative suivante dit où ça s'est arrêté.
+/* global ort, ClipTokenizer */
 (function (root) {
   const REPO = root.MON_IA_HD_REPO || 'https://huggingface.co/skillsafeai/sdxs-512-dreamshaper-onnx-webgpu/resolve/main/';
   const FILES = { text: 'text_encoder.onnx', unet: 'unet.onnx', vae: 'vae_decoder.onnx' };
-  const SIZES = { text: 246, unet: 632, vae: 3 }; // Mo, pour la barre de progression
+  const SIZES = { text: 246, unet: 632, vae: 3 }; // Mo
   const CACHE = 'mon-ia-hd-v2';
   const SIGMA = 14.614646911621094; // bruit de départ (pas 999)
+  const STEP_KEY = 'mon-ia-hd-etape';
+  const ORT = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
 
-  // Mots refusés avant même de créer l'image (contenu sexuel), en français et en anglais.
+  // Mots refusés (contenu sexuel), en français et en anglais.
   const BLOCKED = /\b(nu|nue|nus|nues|nudit[eé]|seins?|t[eé]tons?|mamelons?|p[eé]nis|vagin|vulve|clitoris|sexe|sexuel(le)?s?|porno?|pornographi\w*|[eé]rotique|xxx|nsfw|naked|nude|nudity|topless|boobs?|breasts?|nipples?|genitals?|penis|vagina|sex|sexual|porn\w*|erotic|lingerie|strip\w*)\b/i;
 
-  async function cachedModel(name, onProgress) {
+  function note(step) { try { localStorage.setItem(STEP_KEY, step); } catch { /* facultatif */ } }
+  function lastCrash() { try { return localStorage.getItem(STEP_KEY); } catch { return null; } }
+  function clearNote() { try { localStorage.removeItem(STEP_KEY); } catch { /* facultatif */ } }
+
+  function loadScript(src) {
+    return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('chargement impossible : vérifie ta connexion')); document.head.append(s); });
+  }
+
+  // Télécharge un fichier du modèle directement dans le cache (sans le garder en mémoire).
+  async function ensureCached(name, onProgress) {
     const url = REPO + FILES[name];
-    let cache = null;
-    try { cache = await caches.open(CACHE); } catch { /* cache indisponible : on télécharge à chaque fois */ }
-    const hit = cache && await cache.match(url);
-    if (hit) { onProgress(1); return new Uint8Array(await hit.arrayBuffer()); }
+    const cache = await caches.open(CACHE);
+    if (await cache.match(url)) { onProgress(1); return; }
     const res = await fetch(url);
     if (!res.ok) throw new Error(`téléchargement impossible (${res.status})`);
     const total = Number(res.headers.get('content-length')) || SIZES[name] * 1e6;
-    const reader = res.body.getReader();
-    const buf = new Uint8Array(total);
     let got = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buf.set(value, got); got += value.length;
-      onProgress(Math.min(got / total, 1));
+    const counted = res.body.pipeThrough(new TransformStream({
+      transform(chunk, ctl) { got += chunk.length; onProgress(Math.min(got / total, 1)); ctl.enqueue(chunk); },
+    }));
+    try {
+      await cache.put(url, new Response(counted, { headers: { 'content-type': 'application/octet-stream' } }));
+    } catch (err) {
+      if (err?.name === 'QuotaExceededError' || /quota/i.test(err?.message || '')) {
+        throw new Error('pas assez de place de stockage autorisée pour le modèle (880 Mo). Libère de l’espace sur ton iPhone et utilise l’app depuis l’écran d’accueil');
+      }
+      throw err;
     }
-    const data = got === total ? buf : buf.slice(0, got);
-    if (cache) { try { await cache.put(url, new Response(data)); } catch { /* plus de place : pas grave */ } }
-    return data;
   }
 
-  let ready = null;
-  function load(onStatus = () => {}) {
-    ready ??= (async () => {
-      // L'ancien modèle (2,5 Go) ne sert plus : on libère la place.
-      try { await caches.delete('mon-ia-hd-v1'); } catch { /* rien à libérer */ }
+  async function openSession(name) {
+    const cache = await caches.open(CACHE);
+    const res = await cache.match(REPO + FILES[name]);
+    if (!res) throw new Error('modèle absent du cache : relance pour le retélécharger');
+    let bytes = new Uint8Array(await res.arrayBuffer());
+    const session = await ort.InferenceSession.create(bytes, {
+      executionProviders: ['webgpu'],
+      enableMemPattern: false,
+      enableCpuMemArena: false,
+      extra: { session: { disable_prepacking: '1', use_device_allocator_for_initializers: '1', use_ort_model_bytes_directly: '1', use_ort_model_bytes_for_initializers: '1' } },
+    });
+    bytes = null;
+    return session;
+  }
+
+  let prepared = null;
+  function prepare(onStatus = () => {}) {
+    prepared ??= (async () => {
       const adapter = navigator.gpu && await navigator.gpu.requestAdapter().catch(() => null);
       if (!adapter) throw new Error('ce téléphone ou ce navigateur ne propose pas WebGPU (sur iPhone : iOS 26 et Safari)');
-      // Le modèle calcule en demi-précision : sans cette fonction, inutile de télécharger 2,5 Go.
       if (!adapter.features.has('shader-f16') && !root.MON_IA_HD_SKIP_F16) throw new Error('la carte graphique de cet appareil ne gère pas le calcul en demi-précision demandé par le modèle HD');
-      const base = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
-      if (!root.ort?.env?.webgpu) await new Promise((res, rej) => { const s = document.createElement('script'); s.src = base + 'ort.webgpu.min.js'; s.onload = res; s.onerror = () => rej(new Error('chargement du moteur impossible')); document.head.append(s); });
+      try { await caches.delete('mon-ia-hd-v1'); } catch { /* ancien modèle */ }
+      try { await navigator.storage?.persist?.(); } catch { /* demande facultative de stockage durable */ }
+      if (!root.ort?.env?.webgpu) await loadScript(ORT + 'ort.webgpu.min.js');
       ort.env.wasm.numThreads = 1;
-      ort.env.wasm.wasmPaths = base;
-      const T = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2');
-      onStatus('Préparation du vocabulaire…');
-      const tokenizer = await T.AutoTokenizer.from_pretrained('Xenova/clip-vit-base-patch16');
-      onStatus('Préparation de la traduction…');
-      const translate = await T.pipeline('translation', 'Xenova/opus-mt-fr-en', { dtype: 'q8' }).catch(() => null);
-      const nsfw = await T.pipeline('image-classification', 'AdamCodd/vit-base-nsfw-detector', { dtype: 'q8' }).catch(() => null);
-      const sessions = {};
+      ort.env.wasm.wasmPaths = ORT;
+      if (!root.ClipTokenizer) await loadScript('clip-tokenizer.js');
+      const encode = await ClipTokenizer.load(REPO + 'tokenizer/vocab.json', REPO + 'tokenizer/merges.txt');
       const totalMb = SIZES.text + SIZES.unet + SIZES.vae;
       let doneMb = 0;
       for (const name of ['text', 'unet', 'vae']) {
-        const bytes = await cachedModel(name, (f) => onStatus(`Téléchargement du modèle HD… ${Math.round(((doneMb + f * SIZES[name]) / totalMb) * 100)} % (une seule fois, ~880 Mo)`));
+        note('téléchargement du modèle (' + name + ')');
+        await ensureCached(name, (f) => onStatus(`Téléchargement du modèle HD… ${Math.round(((doneMb + f * SIZES[name]) / totalMb) * 100)} % (une seule fois, ~880 Mo)`));
         doneMb += SIZES[name];
-        onStatus('Mise en route du modèle HD…');
-        sessions[name] = await ort.InferenceSession.create(bytes, {
-          executionProviders: ['webgpu'],
-          // Évite de garder plusieurs copies du modèle en mémoire (indispensable pour 1,7 Go).
-          enableMemPattern: false,
-          enableCpuMemArena: false,
-          extra: { session: { disable_prepacking: '1', use_device_allocator_for_initializers: '1', use_ort_model_bytes_directly: '1', use_ort_model_bytes_for_initializers: '1' } },
-        });
       }
-      return { tokenizer, translate, nsfw, sessions };
-    })().catch((err) => { ready = null; throw err; });
-    return ready;
+      return { encode };
+    })().catch((err) => { prepared = null; throw err; });
+    return prepared;
+  }
+
+  // Traduction en anglais (le modèle comprend mieux l'anglais) : service gratuit en ligne si dispo, sinon texte d'origine.
+  async function toEnglish(text) {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 8000);
+    try {
+      const res = await fetch('https://text.pollinations.ai/openai', {
+        method: 'POST', signal: ctl.signal, headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ model: 'openai', messages: [
+          { role: 'system', content: 'Translate the user text to English for an image generator. Keep every detail. Reply with the translation only.' },
+          { role: 'user', content: text }] }),
+      });
+      const out = res.ok ? (await res.json()).choices?.[0]?.message?.content?.trim() : '';
+      return out && out.length < 600 ? out : text;
+    } catch { return text; } finally { clearTimeout(timer); }
   }
 
   function randn(n) {
@@ -83,33 +113,42 @@
     return out;
   }
 
-  // prompt en français ou en anglais -> image 512×512 (data URL JPEG)
   async function generate(prompt, { onStatus = () => {} } = {}) {
+    const crashed = lastCrash();
+    if (crashed) onStatus(`La dernière tentative s’est arrêtée pendant : ${crashed}. Nouvel essai…`);
     if (BLOCKED.test(prompt)) throw new Error('ce moteur ne crée pas de contenu sexuel ou de nudité');
-    const { tokenizer, translate, nsfw, sessions } = await load(onStatus);
-    let english = prompt;
-    if (translate && /[a-zà-ÿ]/i.test(prompt)) {
-      try { english = (await translate(prompt))[0].translation_text; } catch { /* on garde le texte d'origine */ }
-    }
+    const { encode } = await prepare(onStatus);
+    const english = await toEnglish(prompt);
     if (BLOCKED.test(english)) throw new Error('ce moteur ne crée pas de contenu sexuel ou de nudité');
-    onStatus('Création de l’image HD…');
-    const ids = (await tokenizer(english + ', high quality, detailed', { padding: 'max_length', max_length: 77, truncation: true })).input_ids;
-    const idArr = BigInt64Array.from(Array.from(ids.data, (v) => BigInt(v)));
-    const { last_hidden_state } = await sessions.text.run({ input_ids: new ort.Tensor('int64', idArr, [1, 77]) });
+    const ids = BigInt64Array.from(encode(english + ', high quality, detailed'), (v) => BigInt(v));
+
+    note('lecture de la phrase'); onStatus('Lecture de ta phrase…');
+    let s = await openSession('text');
+    const { last_hidden_state } = await s.run({ input_ids: new ort.Tensor('int64', ids, [1, 77]) });
+    const hidden = new Float32Array(await last_hidden_state.getData());
+    await s.release(); s = null;
+
+    note('création de l’image (partie principale)'); onStatus('Création de l’image HD…');
     const n = 4 * 64 * 64;
     const latent = randn(n).map((v) => v * SIGMA);
     const scaled = latent.map((v) => v / Math.sqrt(SIGMA * SIGMA + 1));
-    const { out_sample } = await sessions.unet.run({
+    s = await openSession('unet');
+    const { out_sample } = await s.run({
       sample: new ort.Tensor('float32', scaled, [1, 4, 64, 64]),
       timestep: new ort.Tensor('float32', Float32Array.from([999]), [1]),
-      encoder_hidden_states: last_hidden_state,
+      encoder_hidden_states: new ort.Tensor('float32', hidden, [1, 77, 768]),
     });
     const eps = await out_sample.getData();
+    await s.release(); s = null;
     const x0 = new Float32Array(n);
     for (let i = 0; i < n; i++) x0[i] = latent[i] - SIGMA * eps[i];
-    onStatus('Finition de l’image…');
-    const { image } = await sessions.vae.run({ latent: new ort.Tensor('float32', x0, [1, 4, 64, 64]) });
+
+    note('finition de l’image'); onStatus('Finition de l’image…');
+    s = await openSession('vae');
+    const { image } = await s.run({ latent: new ort.Tensor('float32', x0, [1, 4, 64, 64]) });
     const px = await image.getData();
+    await s.release(); s = null;
+
     const canvas = document.createElement('canvas'); canvas.width = canvas.height = 512;
     const ctx = canvas.getContext('2d');
     const img = ctx.createImageData(512, 512);
@@ -119,15 +158,9 @@
       img.data[p * 4 + 3] = 255;
     }
     ctx.putImageData(img, 0, 0);
-    const url = canvas.toDataURL('image/jpeg', 0.92);
-    // Vérification de l'image elle-même (contenu sexuel).
-    if (nsfw) {
-      const scores = await nsfw(url).catch(() => null);
-      const bad = scores?.find((s) => s.label === 'nsfw');
-      if (bad && bad.score > 0.6) throw new Error('image bloquée : contenu sexuel détecté');
-    }
-    return { url, english };
+    clearNote();
+    return { url: canvas.toDataURL('image/jpeg', 0.92), english };
   }
 
-  root.MonIAHD = { load, generate };
+  root.MonIAHD = { generate, prepare, lastCrash };
 })(window);
