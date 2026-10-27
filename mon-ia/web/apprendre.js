@@ -97,7 +97,7 @@
 
   // ——— Apprentissage d'un nouveau sujet ———
   // photos : liste d'ImageData/HTMLCanvasElement 32×32 ; onProgress(fraction, perte)
-  async function learnSubject(base, photos, { steps = 600, batch = 8, lr = 2e-4, onProgress = () => {}, signal } = {}) {
+  async function learnSubject(base, photos, { steps = 600, batch = 8, lr = 1e-4, onProgress = () => {}, signal } = {}) {
     // photos : ImageData 32×32 (RVBA) -> [n, 32, 32, 3] dans [-1, 1]
     const data = tf.tidy(() => tf.stack(photos.map((p) => {
       const rgba = tf.tensor(Float32Array.from(p.data), [p.height, p.width, 4]);
@@ -127,6 +127,11 @@
       }, true);
       last = (await loss.data())[0];
       loss.dispose();
+      if (!Number.isFinite(last)) {
+        data.dispose(); opt.dispose();
+        Object.values(P).forEach((v) => v.dispose()); subject.dispose();
+        throw new Error('les calculs se sont déréglés sur ce téléphone (rien n’a été enregistré)');
+      }
       if (s % 5 === 0) { onProgress((s + 1) / steps, last); await tf.nextFrame(); }
     }
     data.dispose(); opt.dispose();
@@ -156,6 +161,8 @@
       onProgress((i + 1) / steps);
       await tf.nextFrame();
     }
+    const broken = (await tf.any(tf.isNaN(x)).data())[0];
+    if (broken) { x.dispose(); nullVec.dispose(); throw new Error('ce sujet est abîmé : supprime-le dans Apprendre puis réapprends-le'); }
     const pixels = tf.tidy(() => tf.clipByValue(tf.mul(tf.add(x, 1), 127.5), 0, 255).toInt());
     const arr = await pixels.array();
     x.dispose(); pixels.dispose(); nullVec.dispose();
