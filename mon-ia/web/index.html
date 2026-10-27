@@ -1456,8 +1456,8 @@ function renderAll() {
 
 // ——— Recherche de vraies photos sur le web (banques d'images libres, sans clé) ———
 // Règle fixe : affichée dans Apprendre › Tchat, mais pas modifiable.
-const FIXED_BLOCKED_SHOWN = ['nu, nue, nudité', 'seins, tétons', 'pénis, vagin, vulve', 'sexe, sexuel', 'porno', 'érotique', 'xxx, nsfw', 'naked, nude, topless', 'boobs, breasts, nipples', 'genitals', 'sex, porn, erotic', 'lingerie', 'strip…'];
-const SEARCH_BLOCKED = /\b(nu|nue|nus|nues|nudit[eé]|seins?|t[eé]tons?|p[eé]nis|vagin|vulve|sexe|sexuel(le)?s?|porno?\w*|[eé]rotique|xxx|nsfw|naked|nude|topless|boobs?|breasts?|nipples?|genitals?|sex|porn\w*|erotic|lingerie|strip\w*)\b/i;
+const FIXED_BLOCKED_SHOWN = 
+const SEARCH_BLOCKED =
 
 function searchQuery(text) {
   if (text.startsWith('/web ')) return text.slice(5).trim() || null;
