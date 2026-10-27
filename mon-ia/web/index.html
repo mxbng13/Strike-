@@ -57,6 +57,27 @@
   #learn[hidden] { display: none; }
   #learn .stack { display: flex; flex-direction: column; gap: 14px; padding-block: 18px; }
   #learn p { margin: 0; }
+  #learn .stack .stack { padding-block: 0; }
+  .seg { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--raised); border: 1px solid var(--line); }
+  .seg button { flex: 1; height: 36px; border: 0; border-radius: 9px; background: none; color: var(--muted); font-weight: 700; }
+  .seg [aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
+  .adder { display: flex; gap: 8px; }
+  .adder input { flex: 1; min-width: 0; font: 16px var(--ui, inherit); color: var(--text); background: var(--raised); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; }
+  .adder button { flex: none; border: 0; border-radius: 10px; padding: 0 14px; background: var(--accent); color: var(--accent-ink, #fff); font-weight: 700; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips:empty::before { content: 'Aucun pour l’instant.'; color: var(--muted); font-size: 13px; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 4px 4px 10px; border-radius: 999px; background: var(--raised); border: 1px solid var(--line); font-size: 13px; font-weight: 600; max-width: 100%; overflow-wrap: anywhere; }
+  .chip button { border: 0; background: none; color: var(--muted); width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; }
+  .chip svg { width: 14px; height: 14px; }
+  .rules:empty::before { content: 'Rien pour l’instant.'; color: var(--muted); font-size: 13px; }
+  .rule { display: flex; align-items: flex-start; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); }
+  .rule:first-child { border-top: 0; }
+  .rule span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .rule button { flex: none; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 4px 8px; font-size: 12px; font-weight: 600; }
+  .skill { display: flex; flex-direction: column; gap: 8px; padding: 12px 0; border-top: 1px solid var(--line); }
+  .skill:first-child { border-top: 0; padding-top: 0; }
+  .skill label.toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-weight: 700; }
+  .skill input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--accent); flex: none; }
   .pick { display: flex; align-items: center; justify-content: center; min-height: 72px; border: 1.5px dashed var(--line-strong); border-radius: 12px; background: var(--raised); color: var(--muted); font-weight: 600; cursor: pointer; text-align: center; padding: 8px; }
   .thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; }
   .thumbs img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; display: block; }
@@ -312,12 +333,42 @@
 <div id="learn" hidden>
   <div class="sheet-head gutter">
     <div class="column">
-      <h2>Apprendre un sujet</h2>
+      <h2>Apprendre</h2>
       <button class="icon-btn" id="closeLearn" type="button"><svg><use href="#i-x"/></svg><span>Fermer</span></button>
     </div>
   </div>
   <div class="gutter">
     <div class="column stack">
+      <div class="seg" role="tablist">
+        <button type="button" role="tab" id="learnTabImages" aria-selected="true">Images</button>
+        <button type="button" role="tab" id="learnTabChat" aria-selected="false">Tchat</button>
+      </div>
+      <div id="learnChat" class="stack" hidden>
+        <section class="section">
+          <h3>Ce qu’elle doit retenir</h3>
+          <p class="hint">Elle s’en sert dans toutes vos discussions. Tu peux aussi lui écrire dans le tchat : « retiens que je m’appelle Maxime ».</p>
+          <div class="rules" id="lessonList"></div>
+          <div class="adder"><input id="lessonInput" maxlength="300" placeholder="Ex. : réponds toujours en 3 phrases maximum"><button type="button" id="lessonAdd">Ajouter</button></div>
+        </section>
+        <section class="section">
+          <h3>Mots interdits</h3>
+          <p class="hint">Si ton message contient un de ces mots, elle refuse de répondre. C’est la même liste que dans Paramètres.</p>
+          <div class="chips" id="blockedChips"></div>
+          <div class="adder"><input id="blockedInput" maxlength="60" placeholder="Un mot ou une expression"><button type="button" id="blockedAdd">Ajouter</button></div>
+        </section>
+        <section class="section">
+          <h3>Mots autorisés</h3>
+          <p class="hint">Exceptions : ces expressions passent même si elles contiennent un mot interdit. Ex. : tu interdis « arme » mais autorises « arme fatale ».</p>
+          <div class="chips" id="allowedChips"></div>
+          <div class="adder"><input id="allowedInput" maxlength="60" placeholder="Un mot ou une expression"><button type="button" id="allowedAdd">Ajouter</button></div>
+        </section>
+        <section class="section">
+          <h3>Ce qu’elle a le droit de faire</h3>
+          <p class="hint">Active une action et choisis les mots qui la déclenchent quand tu commences ton message par eux.</p>
+          <div id="skillList"></div>
+        </section>
+      </div>
+      <div id="learnImages" class="stack">
       <section class="section">
         <h3>Nouveau sujet</h3>
         <p class="hint">Ton IA apprend ici, directement sur ton téléphone, sans serveur. Ensuite, demande-lui ce sujet dans l’onglet Créer.</p>
@@ -348,6 +399,7 @@
         <p class="hint">Pour un résultat plus net, tu peux aussi envoyer tes photos pour le prochain gros entraînement.</p>
         <a class="cta" href="https://claude.ai/artifact/5cqGK8Vo7JTTdBfak9GCDF" target="_blank" rel="noopener">Envoyer pour le gros entraînement</a>
       </section>
+      </div>
     </div>
   </div>
 </div>
@@ -503,6 +555,8 @@ const DEFAULTS = {
   assistantName: 'Mon IA',
   systemPrompt: 'Tu es mon assistant personnel. Réponds en français, directement et sans détour.',
   blockedWords: [],
+  allowedWords: [],
+  chatLessons: [],
   imagesEnabled: true,
   providerFilters: 'min',
   contentLevel: 'aucun',
@@ -550,6 +604,13 @@ if (!read('mon-ia-reset-v1', false)) {
   write('mon-ia-reset-v1', true);
 }
 let settings = { ...DEFAULTS, ...read('mon-ia-settings', {}) };
+// Actions du tchat et mots qui les déclenchent (modifiables dans Apprendre › Tchat).
+const DEFAULT_SKILLS = {
+  photos: { on: true, title: 'Chercher des photos sur le web', example: 'cherche des photos de tour Eiffel', words: ['cherche', 'recherche', 'trouve', 'récupère', 'montre', 'envoie', 'envoi', 'donne'] },
+  web: { on: true, title: 'Chercher des infos sur le web', example: 'cherche sur google la taille de la tour Eiffel', words: ['cherche sur google', 'recherche sur google', 'google', 'cherche sur internet', 'recherche sur internet', 'regarde sur internet', 'cherche sur le web'] },
+  memory: { on: true, title: 'Retenir ce que je lui dis', example: 'retiens que je fais des études de médecine', words: ['retiens', 'souviens-toi', 'souviens toi', 'n’oublie pas', 'apprends que'] },
+};
+settings.skills = Object.fromEntries(Object.entries(DEFAULT_SKILLS).map(([k, d]) => [k, { on: settings.skills?.[k]?.on ?? d.on, words: settings.skills?.[k]?.words ?? d.words }]));
 // Anciens réglages sans clé : on passe au mode gratuit haute qualité.
 if (settings.imageProvider === 'free' || (settings.imageProvider === 'pollinations' && !settings.pollinationsKey)) {
   settings.imageProvider = 'maison'; settings.imageModel = '';
@@ -634,12 +695,24 @@ const LEVEL_RULES = {
   enfants: 'Ton interlocuteur peut être un enfant : réponds avec un contenu adapté aux enfants, sans violence, sans vulgarité, sans sujet pour adultes.',
 };
 function systemPrompt() {
-  return [settings.systemPrompt, LEVEL_RULES[settings.contentLevel] || ''].filter(Boolean).join('\n\n');
+  const lessons = settings.chatLessons.length ? 'Ce que ton utilisateur t’a appris (respecte-le toujours) :\n' + settings.chatLessons.map((l) => '- ' + l).join('\n') : '';
+  return [settings.systemPrompt, LEVEL_RULES[settings.contentLevel] || '', lessons].filter(Boolean).join('\n\n');
 }
 
+// Les mots autorisés sont retirés du texte avant de chercher les mots interdits.
 function findBlockedWord(text) {
-  const lower = text.toLowerCase();
+  let lower = text.toLowerCase();
+  for (const w of settings.allowedWords) if (w) lower = lower.split(w.toLowerCase()).join(' ');
   return settings.blockedWords.find((w) => w && lower.includes(w.toLowerCase()));
+}
+
+// Renvoie le reste du message s'il commence par un des mots déclencheurs de l'action.
+function skillRest(name, text) {
+  const sk = settings.skills[name];
+  if (!sk?.on) return null;
+  const lower = text.toLowerCase().replace(/’/g, "'");
+  const word = [...sk.words].sort((a, b) => b.length - a.length).find((w) => w && lower.startsWith(w.toLowerCase().replace(/’/g, "'")));
+  return word ? text.slice(word.length).trim() : null;
 }
 
 async function readError(res) {
@@ -647,7 +720,7 @@ async function readError(res) {
   try { const j = JSON.parse(body); return j.error?.message || j.error || j.message || body; } catch { return body.slice(0, 300); }
 }
 
-async function chat(history) {
+async function chat(history, extra = '') {
   const s = settings;
   const msgs = history.slice(-s.historyLength).map((m) => ({ role: m.role, content: m.content }));
   if (s.textProvider !== 'free' && !s.textApiKey && s.textProvider !== 'custom') throw new Error('Ajoute ta clé API dans Paramètres (ou choisis le fournisseur gratuit).');
@@ -655,7 +728,7 @@ async function chat(history) {
     const res = await fetch(TEXT_URLS.anthropic, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': s.textApiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: s.textModel, max_tokens: s.maxTokens, temperature: s.temperature, system: systemPrompt(), messages: msgs }),
+      body: JSON.stringify({ model: s.textModel, max_tokens: s.maxTokens, temperature: s.temperature, system: [systemPrompt(), extra].filter(Boolean).join('\n\n'), messages: msgs }),
     });
     if (!res.ok) throw new Error(`Fournisseur (${res.status}) : ${await readError(res)}`);
     const json = await res.json();
@@ -667,7 +740,7 @@ async function chat(history) {
   const res = await fetch(url, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ model: s.textModel, temperature: s.temperature, max_tokens: s.maxTokens, messages: [{ role: 'system', content: systemPrompt() }, ...msgs] }),
+    body: JSON.stringify({ model: s.textModel, temperature: s.temperature, max_tokens: s.maxTokens, messages: [{ role: 'system', content: [systemPrompt(), extra].filter(Boolean).join('\n\n') }, ...msgs] }),
   });
   if (!res.ok) throw new Error(`Fournisseur (${res.status}) : ${await readError(res)}`);
   const json = await res.json();
@@ -1300,6 +1373,16 @@ function render(m) {
     if (m.pending) body.innerHTML = '<span class="typing"><span class="dots"><i></i><i></i><i></i></span><span class="label"></span></span>', body.querySelector('.label').textContent = m.content;
     else body.textContent = m.content;
     col.append(body);
+    if (m.links?.length) {
+      const actions = document.createElement('div');
+      actions.className = 'actions';
+      for (const l of m.links) {
+        const a = document.createElement('a');
+        a.href = l.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = l.title;
+        actions.append(a);
+      }
+      col.append(actions);
+    }
     if (m.kind === 'search' && m.results) {
       const grid = document.createElement('div');
       grid.className = 'results';
@@ -1369,13 +1452,33 @@ function renderAll() {
 }
 
 // ——— Recherche de vraies photos sur le web (banques d'images libres, sans clé) ———
-const SEARCH_RE = /^(?:\/web\s+|(?:cherche|recherche|trouve|r[ée]cup[èe]re|montre|envoie|envoi|donne)[-\s]*(?:moi\s+)?(?:sur\s+google\s+)?(?:des|une|un|les|quelques|de\s+vraies|des\s+vraies)?\s*(?:images?|photos?)\s+)(.+)$/i;
 const SEARCH_BLOCKED = /\b(nu|nue|nus|nues|nudit[eé]|seins?|t[eé]tons?|p[eé]nis|vagin|vulve|sexe|sexuel(le)?s?|porno?\w*|[eé]rotique|xxx|nsfw|naked|nude|topless|boobs?|breasts?|nipples?|genitals?|sex|porn\w*|erotic|lingerie|strip\w*)\b/i;
 
 function searchQuery(text) {
-  const m = SEARCH_RE.exec(text);
+  if (text.startsWith('/web ')) return text.slice(5).trim() || null;
+  const rest = skillRest('photos', text);
+  if (rest === null) return null;
+  const m = /^(?:[-\s]*moi)?\s*(?:sur\s+(?:google|internet|le\s+web)\s+)?(?:des|une|un|les|quelques|de\s+vraies|des\s+vraies)?\s*(?:images?|photos?)\s+(.+)$/i.exec(rest);
   if (!m) return null;
   return m[1].replace(/\s+(?:sur|depuis|avec)\s+(?:google|internet|le\s+web)\b.*$/i, '').replace(/^(?:de|d['’]|du|des|sur)\s*/i, '').trim() || null;
+}
+
+function webQuery(text) {
+  const rest = skillRest('web', text);
+  return rest ? rest.replace(/^[-:,\s]*(?:moi\s+)?/i, '').trim() || null : null;
+}
+
+function memoryLesson(text) {
+  const rest = skillRest('memory', text);
+  if (!rest) return null;
+  const lesson = rest.replace(/^[-:,\s]*(?:bien\s+)?(?:que\s+|qu['’]\s*)?/i, '').trim();
+  return lesson ? lesson[0].toUpperCase() + lesson.slice(1) : null;
+}
+
+// Infos du web : résumés Wikipédia (gratuit, sans clé), donnés à l'IA pour qu'elle réponde avec.
+async function webInfo(q) {
+  const j = await fetchJson('https://fr.wikipedia.org/w/api.php?action=query&generator=search&gsrlimit=3&prop=extracts|info&inprop=url&exintro=1&explaintext=1&exchars=1500&format=json&origin=*&gsrsearch=' + encodeURIComponent(q));
+  return Object.values(j?.query?.pages || {}).sort((a, b) => a.index - b.index).filter((p) => p.extract).map((p) => ({ title: p.title, url: p.fullurl, text: p.extract }));
 }
 
 async function fetchJson(url, ms = 12000) {
@@ -1420,6 +1523,40 @@ async function searchWebImages(q) {
 async function send() {
   let text = input.value.trim();
   if (!text) return;
+  // Messages spéciaux : retenir, chercher des infos sur le web.
+  const lesson = !attachment && memoryLesson(text);
+  const wq = !attachment && !lesson && !searchQuery(text) && webQuery(text);
+  if (lesson || wq) {
+    input.value = ''; input.style.height = 'auto';
+    const userMsg = { role: 'user', content: text };
+    messages.push(userMsg); render(userMsg); store();
+    const pending = render({ role: 'assistant', pending: true, content: lesson ? 'Je retiens…' : 'Recherche sur le web…' });
+    $('#sendBtn').disabled = true;
+    try {
+      const blocked = findBlockedWord(text);
+      if (blocked) throw new Error(`Bloqué par tes paramètres (mot : « ${blocked} »)`);
+      if (lesson) {
+        settings.chatLessons = [...settings.chatLessons, lesson];
+        write('mon-ia-settings', settings);
+        messages.push({ role: 'assistant', content: `C’est noté : « ${lesson} ». Je m’en souviendrai dans toutes nos discussions. Tu peux le modifier dans Apprendre › Tchat.` });
+      } else {
+        if (!settings.chatEnabled) throw new Error('La discussion est désactivée dans tes réglages.');
+        const found = await webInfo(wq);
+        const extra = found.length
+          ? 'Voici des informations trouvées sur le web pour répondre :\n\n' + found.map((f) => `[${f.title}]\n${f.text}`).join('\n\n') + '\n\nRéponds à partir de ces informations, en français. Si elles ne suffisent pas, dis-le.'
+          : 'La recherche web n’a rien donné : réponds avec ce que tu sais et précise que tu n’as pas pu vérifier sur le web.';
+        const history = messages.filter((m) => !m.error && !m.kind);
+        const answer = await chat(history, extra);
+        const links = [...found.map((f) => ({ title: f.title, url: f.url })), { title: 'Voir sur Google', url: 'https://www.google.com/search?q=' + encodeURIComponent(wq) }];
+        messages.push({ role: 'assistant', content: answer, links });
+      }
+    } catch (err) {
+      messages.push({ role: 'assistant', content: err.message === 'Failed to fetch' ? 'Impossible de joindre le fournisseur. Vérifie ta connexion.' : err.message, error: true });
+    }
+    $('#sendBtn').disabled = false;
+    pending.remove(); render(messages[messages.length - 1]); store();
+    return;
+  }
   const query = !attachment && searchQuery(text);
   if (query) {
     input.value = ''; input.style.height = 'auto';
@@ -1552,7 +1689,76 @@ async function renderLearnedList() {
     row.append(img, name, meta, del); box.append(row);
   }
 }
-$('#tabLearn').addEventListener('click', () => { $('#learn').hidden = false; renderLearnedList(); });
+$('#tabLearn').addEventListener('click', () => { $('#learn').hidden = false; renderLearnedList(); renderChatRules(); });
+
+// ——— Apprendre › Tchat : ce qu'elle retient, mots interdits ou autorisés, actions permises ———
+function showLearnTab(chat) {
+  $('#learnTabImages').setAttribute('aria-selected', String(!chat));
+  $('#learnTabChat').setAttribute('aria-selected', String(chat));
+  $('#learnImages').hidden = chat; $('#learnChat').hidden = !chat;
+}
+$('#learnTabImages').addEventListener('click', () => showLearnTab(false));
+$('#learnTabChat').addEventListener('click', () => showLearnTab(true));
+
+function saveRules() { write('mon-ia-settings', settings); renderChatRules(); }
+
+function chipList(box, list, onRemove) {
+  box.innerHTML = '';
+  list.forEach((word, i) => {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.append(word);
+    const x = document.createElement('button');
+    x.type = 'button'; x.innerHTML = ICON('x'); x.setAttribute('aria-label', 'Retirer ' + word);
+    x.addEventListener('click', () => onRemove(i));
+    chip.append(x); box.append(chip);
+  });
+}
+
+function renderChatRules() {
+  const lessons = $('#lessonList'); lessons.innerHTML = '';
+  settings.chatLessons.forEach((l, i) => {
+    const row = document.createElement('div'); row.className = 'rule';
+    const t = document.createElement('span'); t.textContent = l;
+    const del = document.createElement('button'); del.type = 'button'; del.textContent = 'Oublier';
+    del.addEventListener('click', () => { settings.chatLessons = settings.chatLessons.filter((_, j) => j !== i); saveRules(); });
+    row.append(t, del); lessons.append(row);
+  });
+  chipList($('#blockedChips'), settings.blockedWords, (i) => { settings.blockedWords = settings.blockedWords.filter((_, j) => j !== i); saveRules(); });
+  chipList($('#allowedChips'), settings.allowedWords, (i) => { settings.allowedWords = settings.allowedWords.filter((_, j) => j !== i); saveRules(); });
+  const skills = $('#skillList'); skills.innerHTML = '';
+  for (const [key, def] of Object.entries(DEFAULT_SKILLS)) {
+    const sk = settings.skills[key];
+    const box = document.createElement('div'); box.className = 'skill';
+    const label = document.createElement('label'); label.className = 'toggle';
+    const name = document.createElement('span'); name.textContent = def.title;
+    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = sk.on;
+    cb.addEventListener('change', () => { sk.on = cb.checked; saveRules(); });
+    label.append(name, cb);
+    const hint = document.createElement('p'); hint.className = 'hint'; hint.textContent = `Exemple : « ${def.example} ». Mots déclencheurs :`;
+    const chips = document.createElement('div'); chips.className = 'chips';
+    chipList(chips, sk.words, (i) => { sk.words = sk.words.filter((_, j) => j !== i); saveRules(); });
+    const adder = document.createElement('div'); adder.className = 'adder';
+    const inp = document.createElement('input'); inp.maxLength = 40; inp.placeholder = 'Ajouter un mot déclencheur';
+    const add = document.createElement('button'); add.type = 'button'; add.textContent = 'Ajouter';
+    const doAdd = () => { const w = inp.value.trim().toLowerCase(); if (w && !sk.words.includes(w)) { sk.words = [...sk.words, w]; saveRules(); } else inp.value = ''; };
+    add.addEventListener('click', doAdd);
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); doAdd(); } });
+    adder.append(inp, add);
+    box.append(label, hint, chips, adder);
+    if (!sk.on) { chips.hidden = true; adder.hidden = true; hint.hidden = true; }
+    skills.append(box);
+  }
+}
+
+function bindAdder(inputSel, buttonSel, add) {
+  const go = () => { const v = $(inputSel).value.trim(); if (!v) return; add(v); $(inputSel).value = ''; saveRules(); };
+  $(buttonSel).addEventListener('click', go);
+  $(inputSel).addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); go(); } });
+}
+bindAdder('#lessonInput', '#lessonAdd', (v) => { settings.chatLessons = [...settings.chatLessons, v]; });
+bindAdder('#blockedInput', '#blockedAdd', (v) => { if (!settings.blockedWords.includes(v)) settings.blockedWords = [...settings.blockedWords, v]; });
+bindAdder('#allowedInput', '#allowedAdd', (v) => { if (!settings.allowedWords.includes(v)) settings.allowedWords = [...settings.allowedWords, v]; });
 $('#closeLearn').addEventListener('click', () => { $('#learn').hidden = true; });
 $('#learnName').addEventListener('input', updateLearnButton);
 $('#learnFiles').addEventListener('change', async (e) => {
