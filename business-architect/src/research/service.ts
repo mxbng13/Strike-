@@ -62,7 +62,8 @@ export async function runResearch(ctx: ResearchContext, providerId: string, q: R
   const jobId = job!.id;
 
   let lastErr: unknown;
-  for (let attempt = 1; attempt <= 2; attempt++) {
+  const MAX_ATTEMPTS = 3;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), TIMEOUT_MS);
     try {
@@ -139,8 +140,8 @@ export async function runResearch(ctx: ResearchContext, providerId: string, q: R
     } catch (e) {
       clearTimeout(timer);
       lastErr = e;
-      if (e instanceof ProviderHttpError && e.retryable && attempt < 2) {
-        await new Promise((r) => setTimeout(r, 800));
+      if (e instanceof ProviderHttpError && e.retryable && attempt < MAX_ATTEMPTS) {
+        await new Promise((r) => setTimeout(r, (e.status === 429 ? 2000 : 800) * attempt));
         continue;
       }
       break;

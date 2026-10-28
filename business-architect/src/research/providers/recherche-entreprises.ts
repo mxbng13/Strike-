@@ -28,10 +28,11 @@ export const rechercheEntreprises: ResearchProvider = {
   countries: ["FR"],
   availability: () => ({ ok: true }),
   async search(q: ResearchQuery, signal): Promise<ResearchResult> {
-    await pace("recherche-entreprises", 200);
+    await pace("recherche-entreprises", 400);
     const params = new URLSearchParams({ per_page: String(Math.min(q.limit ?? 5, 25)), etat_administratif: "A" });
     if (q.query) params.set("q", q.query);
     if (q.filters?.naf) params.set("activite_principale", q.filters.naf);
+    if (q.filters?.departement) params.set("departement", q.filters.departement);
     const url = `https://recherche-entreprises.api.gouv.fr/search?${params}`;
     const data = await getJson<Resp>("recherche-entreprises", url, signal);
     const items = data.results.map((r) => ({
@@ -49,7 +50,7 @@ export const rechercheEntreprises: ResearchProvider = {
       metadata: { siren: r.siren, naf: r.activite_principale ?? null },
     }));
     const lowerBound = data.total_results >= CAP;
-    const label = q.filters?.naf ? `code NAF ${q.filters.naf}` : `« ${q.query} »`;
+    const label = (q.filters?.naf ? `code NAF ${q.filters.naf}` : `« ${q.query} »`) + (q.filters?.departement ? ` (département ${q.filters.departement})` : "");
     return {
       items,
       totalAvailable: data.total_results,
