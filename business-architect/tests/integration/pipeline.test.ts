@@ -223,3 +223,25 @@ describe("autres scénarios obligatoires", () => {
     expect((await db().query.opportunityCandidates.findFirst({ where: eq(schema.opportunityCandidates.id, first) }))?.status).toBe("rejected");
   }, 180_000);
 });
+
+describe("concurrence", () => {
+  // Regression guard for the phase-completion race seen in the E2E run (timing-dependent: it may not
+  // reproduce on every execution; the fix is structural — run lock + post-commit reconcileRun).
+  it("des tâches parallèles d'une même phase la clôturent correctement", async () => {
+    setResearchFetch(fixtureFetch());
+    const { user, workspaceId } = await makeUser();
+    const { project } = await makeProfiledProject(user.id, workspaceId);
+    const runId = await startRun(project.id, user.id);
+    const { dispatchReady } = await import("@/orchestration/orchestrator");
+    // Drive sequentially until the design fan-out, then execute ready tasks concurrently.
+    for (let i = 0; i < 200; i++) {
+      await dispatchReady(runId);
+      const ready = await db().select().from(schema.agentTasks).where(and(eq(schema.agentTasks.orchestrationRunId, runId), inArray(schema.agentTasks.status, ["queued", "ready"])));
+      if (!ready.length) break;
+      await Promise.all(ready.map((t) => executeTask(t.id)));
+    }
+    expect((await db().query.orchestrationRuns.findFirst({ where: eq(schema.orchestrationRuns.id, runId) }))?.status).toBe("completed");
+    const design = await db().query.projectMilestones.findFirst({ where: and(eq(schema.projectMilestones.projectId, project.id), eq(schema.projectMilestones.phase, "design")) });
+    expect(design?.status).toBe("done");
+  }, 120_000);
+});

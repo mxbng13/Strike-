@@ -11,6 +11,8 @@ const config = [
     rules: {
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
       "no-console": ["warn", { allow: ["error", "warn"] }],
+      // French copy is full of apostrophes; JSX text is escaped by React anyway.
+      "react/no-unescaped-entities": "off",
     },
   },
 ];

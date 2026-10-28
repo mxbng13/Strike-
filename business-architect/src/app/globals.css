@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #eef4fc;
+  --color-brand-100: #cde2fb;
+  --color-brand-500: #2a78d6;
+  --color-brand-600: #256abf;
+  --color-brand-700: #1c5cab;
+  --color-ink: #1c1c1a;
+  --color-ink-2: #55544e;
+  --color-line: #e4e3de;
+  --color-surface: #fcfcfb;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+html { color-scheme: light; }
+body { background: var(--color-surface); color: var(--color-ink); }
+
+/* Rendered markdown deliverables */
+.prose-ba h1 { font-size: 1.5rem; font-weight: 700; margin: 0 0 1rem; }
+.prose-ba h2 { font-size: 1.15rem; font-weight: 650; margin: 1.75rem 0 .6rem; padding-bottom: .25rem; border-bottom: 1px solid var(--color-line); }
+.prose-ba h3 { font-size: 1rem; font-weight: 600; margin: 1.25rem 0 .4rem; }
+.prose-ba p { margin: .6rem 0; line-height: 1.65; }
+.prose-ba ul { list-style: disc; padding-left: 1.25rem; margin: .5rem 0; }
+.prose-ba ol { list-style: decimal; padding-left: 1.25rem; margin: .5rem 0; }
+.prose-ba li { margin: .2rem 0; }
+.prose-ba blockquote { border-left: 3px solid var(--color-brand-500); background: var(--color-brand-50); padding: .5rem .9rem; margin: .8rem 0; border-radius: .25rem; }
+.prose-ba table { width: 100%; border-collapse: collapse; font-size: .85rem; margin: .8rem 0; display: block; overflow-x: auto; }
+.prose-ba th, .prose-ba td { border: 1px solid var(--color-line); padding: .35rem .5rem; text-align: left; vertical-align: top; }
+.prose-ba th { background: #f3f2ee; font-weight: 600; }
+.prose-ba code { background: #f3f2ee; padding: 0 .25rem; border-radius: .2rem; font-size: .85em; }
+.prose-ba pre { background: #f3f2ee; padding: .75rem; border-radius: .4rem; overflow-x: auto; white-space: pre-wrap; font-size: .8rem; }
+.prose-ba a { color: var(--color-brand-600); text-decoration: underline; }

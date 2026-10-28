@@ -205,6 +205,8 @@ const AGENT_LABEL = (id: string) => id.replace(/_/g, " ");
 async function completeTask(task: TaskRow, runId: string, workspaceId: string, agentRunId: string, result: AgentResult, usage: { input: number; output: number; cost: number }) {
   const spec = ALL_SPECS[task.kind]!;
   await db().transaction(async (tx) => {
+    // Serialise completions of the same run: phase/run completion checks must see sibling tasks' commits.
+    await tx.execute(sql`SELECT id FROM orchestration_runs WHERE id = ${runId} FOR UPDATE`);
     // Guard against a concurrent duplicate completion.
     const cur = await tx.query.agentTasks.findFirst({ where: eq(schema.agentTasks.id, task.id) });
     if (!cur || cur.status !== "running") return;
@@ -223,7 +225,22 @@ async function completeTask(task: TaskRow, runId: string, workspaceId: string, a
     await updatePhaseCompletion(tx, task.projectId, runId, spec.phase);
     await maybeFinishRun(tx, task.projectId, runId);
   });
+  await reconcileRun(task.projectId, runId);
   await dispatchReady(runId);
+}
+
+/**
+ * Post-commit reconciliation: whichever completion commits last sees every
+ * sibling's committed state, so phase and run completion never depend on
+ * scheduling order between concurrent workers.
+ */
+export async function reconcileRun(projectId: string, runId: string): Promise<void> {
+  await db().transaction(async (tx) => {
+    await tx.execute(sql`SELECT id FROM orchestration_runs WHERE id = ${runId} FOR UPDATE`);
+    const latest = await latestByKind(runId, tx);
+    for (const phase of new Set([...latest.values()].map((t) => t.phase))) await updatePhaseCompletion(tx, projectId, runId, phase);
+    await maybeFinishRun(tx, projectId, runId);
+  });
 }
 
 async function applyControl(tx: Tx, task: TaskRow, runId: string, result: AgentResult) {

@@ -28,7 +28,7 @@ function copyHeuristic(c: Concept, brand: Brand, sales: Sales, spec: ProductSpec
   const must = spec?.features.filter((f) => f.priority === "must").slice(0, 3) ?? [];
   return {
     headline: brand.tagline.length <= 90 ? brand.tagline : `${brand.name} : ${c.segmentLabel}`.slice(0, 90),
-    subheadline: c.valueProposition.slice(0, 220),
+    subheadline: `Pour les ${c.segmentLabel} : ${c.solution.charAt(0).toLowerCase()}${c.solution.slice(1)}`.slice(0, 220),
     problemTitle: "Le problème",
     problemText: c.problem,
     solutionTitle: `Ce que ${brand.name} fait pour vous`,
