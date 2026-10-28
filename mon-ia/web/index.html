@@ -772,15 +772,40 @@ function textModelAvailable() {
   textModelReady ??= fetch(HOME_MODELS.texte.vocab, { method: 'HEAD' }).then((r) => r.ok).catch(() => false);
   return textModelReady;
 }
-let textVocab;
+let textVocab, frDict;
+// Traduction hors ligne français → anglais (texte64-fr.json), utilisée quand le service en ligne ne répond pas.
+const EN_ADJ = new Set('red blue green yellow black white gray brown pink purple golden silver colorful large big small tall long short old new young snowy grassy dark bright sunny cloudy wet dry empty full open clean dirty beautiful pretty hot cold'.split(' '));
+const EN_FUNC = new Set('a an the of and with in on at to by for from near under above behind some two three four several many'.split(' '));
+function frToEnglish(text, dict, index) {
+  let t = ' ' + text.toLowerCase().replace(/œ/g, 'oe').replace(/æ/g, 'ae').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z]+/g, ' ').trim() + ' ';
+  for (const [fr, en] of Object.entries(dict.expressions).sort((x, y) => y[0].length - x[0].length)) t = t.split(' ' + fr + ' ').join(' ' + en + ' ');
+  const out = [];
+  for (const w of t.trim().split(/\s+/).filter(Boolean)) {
+    const tr = dict.mots[w] ?? (/[sx]$/.test(w) ? dict.mots[w.slice(0, -1)] : undefined);
+    out.push(...(tr !== undefined ? tr : w).split(' ').filter(Boolean));
+  }
+  // En anglais l'adjectif se place avant le nom : « voiture rouge » → « red car ».
+  for (let i = 1; i < out.length; i++) {
+    if (EN_ADJ.has(out[i]) && !EN_ADJ.has(out[i - 1]) && !EN_FUNC.has(out[i - 1]) && index.has(out[i - 1])) [out[i - 1], out[i]] = [out[i], out[i - 1]];
+  }
+  return out.join(' ');
+}
 async function textTokens(prompt) {
   textVocab ??= fetch(HOME_MODELS.texte.vocab).then((r) => r.json()).then((v) => ({ ...v, index: new Map(v.words.map((w, i) => [w, i])) }));
-  const v = await textVocab;
-  const english = typeof translateForImage === 'function' ? await translateForImage(prompt) : prompt;
-  const ids = (english.toLowerCase().match(/[a-z]+/g) || []).map((w) => v.index.get(w) ?? v.unk).slice(0, v.max_len);
-  const known = ids.filter((id) => id !== v.unk).length;
-  while (ids.length < v.max_len) ids.push(v.pad);
-  return { ids, known, english };
+  frDict ??= fetch('texte64-fr.json').then((r) => r.json()).catch(() => ({ expressions: {}, mots: {} }));
+  const [v, dict] = await Promise.all([textVocab, frDict]);
+  const tokens = (english) => {
+    const ids = (english.toLowerCase().match(/[a-z]+/g) || []).map((w) => v.index.get(w) ?? v.unk).slice(0, v.max_len);
+    // Seuls les mots qui ont un sens comptent (« un », « le », « dans »… ne suffisent pas à décrire une image).
+    const known = (english.toLowerCase().match(/[a-z]+/g) || []).filter((w) => v.index.has(w) && !EN_FUNC.has(w) && !['is', 'are', 'that', 'this', 'there'].includes(w)).length;
+    return { ids, known, english };
+  };
+  // Deux traductions : en ligne (meilleure pour les longues phrases) et hors ligne ; on garde celle que le modèle comprend le mieux.
+  const offline = tokens(frToEnglish(prompt, dict, v.index));
+  const online = typeof translateForImage === 'function' ? tokens(await translateForImage(prompt)) : { known: -1 };
+  const best = online.known >= offline.known ? online : offline;
+  while (best.ids.length < v.max_len) best.ids.push(v.pad);
+  return best;
 }
 const HOME_ORDER = ['v1grand', 'v1b'];
 const HOME_T = 1000;

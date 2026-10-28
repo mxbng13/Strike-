@@ -330,6 +330,8 @@ def main():
     print(f'fin : {step} pas', flush=True)
     torch.save(ema.state_dict(), os.path.join(OUT, 'ema.pt'))
     save_grid(ddim_sample(ema, preview_ids, steps=40 if not SMOKE else 4), os.path.join(OUT, 'final.png'))
+    import subprocess, sys
+    subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', 'onnx', 'onnxscript'], check=False)  # absent sur Kaggle
     ema = ema.float().cpu().eval()
     x = torch.randn(2, 3, RES, RES)
     ids = torch.tensor([encode('a dog in a forest', vocab), [NULL] + [PAD] * (MAX_LEN - 1)])
