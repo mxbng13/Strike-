@@ -9,6 +9,7 @@ export default defineConfig({
     fileParallelism: false,
     projects: [
       { resolve: { alias }, test: { name: "unit", include: ["tests/unit/**/*.test.ts"], environment: "node" } },
+      { resolve: { alias }, test: { name: "live", include: ["tests/live/**/*.test.ts"], environment: "node", testTimeout: 30_000 } },
       {
         resolve: { alias },
         test: {
