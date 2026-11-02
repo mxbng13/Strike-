@@ -159,7 +159,7 @@ struct BackupSettings: View {
     @State private var pass = ""
     @State private var pass2 = ""
     @State private var progress: Double?
-    @State private var archive: URL?
+    @State private var archive: URLBox?
     @State private var result: String?
 
     var body: some View {
@@ -186,7 +186,7 @@ struct BackupSettings: View {
             }
         }
         .navigationTitle("Sauvegarde")
-        .sheet(item: Binding(get: { archive.map(URLBox.init) }, set: { if $0 == nil { finish(false) } })) { box in
+        .sheet(item: $archive, onDismiss: { finish(false) }) { box in
             DocumentExporter(url: box.url) { ok in finish(ok) }
         }
     }
@@ -198,7 +198,7 @@ struct BackupSettings: View {
         do {
             let url = try await BackupService.createBackup(library: library, passphrase: pass) { p in Task { @MainActor in progress = p } }
             session.suspendAutoLock()
-            archive = url
+            archive = URLBox(url: url)
         } catch {
             result = "Échec : \(error.localizedDescription)"
         }
@@ -206,7 +206,7 @@ struct BackupSettings: View {
     }
 
     func finish(_ ok: Bool) {
-        if let a = archive { SecureWorkspace.shared.remove(a) }
+        if let a = archive { SecureWorkspace.shared.remove(a.url) }
         if archive != nil { session.resumeAutoLock() }
         archive = nil
         if ok { result = "Sauvegarde enregistrée. Conservez la phrase secrète séparément."; pass = ""; pass2 = "" }

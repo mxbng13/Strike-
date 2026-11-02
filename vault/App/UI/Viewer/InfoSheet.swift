@@ -10,7 +10,7 @@ struct InfoSheet: View {
     let itemID: UUID
     @State private var caption = ""
     @State private var showMap = false
-    @State private var nearby: [MediaItem]?
+    @State private var nearby: NearbyBox?
     @State private var viewer: ViewerContext?
 
     var item: MediaItem? { library.state.items[itemID] }
@@ -98,7 +98,7 @@ struct InfoSheet: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("OK") { save(); dismiss() } } }
                 .onAppear { caption = item.caption }
-                .sheet(item: Binding(get: { nearby.map { NearbyBox(items: $0) } }, set: { if $0 == nil { nearby = nil } })) { box in
+                .sheet(item: $nearby) { box in
                     NavigationStack {
                         ScrollView {
                             MediaGrid(items: box.items, selection: .constant([]), selecting: false) { it in
@@ -127,7 +127,7 @@ struct InfoSheet: View {
     func findNearby(_ loc: GeoPoint) {
         var q = SearchQuery()
         q.near = (loc, 1.0)
-        nearby = SearchEngine.search(q, state: library.state, scope: session.scope)
+        nearby = NearbyBox(items: SearchEngine.search(q, state: library.state, scope: session.scope))
     }
 
     /// Restaure une version antérieure (ou l'original) en recalculant le rendu.

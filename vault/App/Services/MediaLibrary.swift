@@ -7,7 +7,8 @@ import ImageIO
 import UniformTypeIdentifiers
 import VaultCore
 
-struct ImportProgress: Equatable {
+struct ImportProgress: Equatable, Identifiable {
+    let id = UUID()
     var total: Int
     var done = 0
     var current = ""

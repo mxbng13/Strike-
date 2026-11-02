@@ -24,9 +24,8 @@ struct MainTabView: View {
         .alert("VAULT", isPresented: Binding(get: { library.errorMessage != nil }, set: { if !$0 { library.errorMessage = nil } })) {
             Button("OK", role: .cancel) {}
         } message: { Text(library.errorMessage ?? "") }
-        .sheet(item: Binding(get: { library.lastImportSummary.map(ImportSummaryBox.init) },
-                             set: { if $0 == nil { library.lastImportSummary = nil } })) { box in
-            ImportSummaryView(summary: box.summary).presentationDetents([.medium])
+        .sheet(item: $library.lastImportSummary) { summary in
+            ImportSummaryView(summary: summary).presentationDetents([.medium])
         }
         .task {
             if sync.enabled && CloudConfig.isAvailable { await sync.syncNow(library: library, keyManager: session.keyManager) }
@@ -54,11 +53,6 @@ struct MainTabView: View {
         case .settings: SettingsView()
         }
     }
-}
-
-struct ImportSummaryBox: Identifiable {
-    let id = UUID()
-    let summary: ImportProgress
 }
 
 struct ImportSummaryView: View {

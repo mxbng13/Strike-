@@ -209,7 +209,7 @@ struct ExportSheet: View {
             .sheet(isPresented: $sharing, onDismiss: {
                 ExportService.cleanup(urls); urls = []; session.resumeAutoLock(); dismiss()
             }) {
-                ShareSheet(items: urls)
+                ShareSheet(items: urls) { sharing = false }
             }
         }
         .presentationDetents([.medium, .large])
@@ -232,8 +232,11 @@ struct ExportSheet: View {
 
 struct ShareSheet: UIViewControllerRepresentable {
     let items: [Any]
+    var onComplete: () -> Void = {}
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
+        let vc = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        vc.completionWithItemsHandler = { _, _, _, _ in onComplete() }
+        return vc
     }
     func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
 }
