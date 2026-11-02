@@ -250,6 +250,37 @@ public struct TimelineLayout: Sendable, Equatable {
         return (c?.index, nil, 0, .none)
     }
 
+    public struct Interval: Sendable, Equatable {
+        public var start: Double
+        public var end: Double
+        public var primary: Int
+        public var secondary: Int?
+        public var transition: TransitionSegment?
+    }
+
+    /// Découpe la timeline en intervalles contigus (sans trou ni chevauchement) : un clip seul,
+    /// ou deux clips pendant une transition. Sert à générer les instructions de composition vidéo.
+    public func intervals() -> [Interval] {
+        var cuts = Set<Double>([0, duration])
+        for c in clips { cuts.insert(c.start); cuts.insert(c.end) }
+        for t in transitions { cuts.insert(t.start); cuts.insert(t.end) }
+        let sorted = cuts.filter { $0 >= 0 && $0 <= duration }.sorted()
+        var out: [Interval] = []
+        for (a, b) in zip(sorted, sorted.dropFirst()) where b - a > 1e-6 {
+            let mid = (a + b) / 2
+            let tr = transitions.first { mid >= $0.start && mid < $0.end }
+            let f = frame(at: mid)
+            guard let p = f.primary else { continue }
+            if var last = out.last, last.primary == p, last.secondary == f.secondary, last.transition == tr, abs(last.end - a) < 1e-9 {
+                last.end = b
+                out[out.count - 1] = last
+            } else {
+                out.append(Interval(start: a, end: b, primary: p, secondary: f.secondary, transition: tr))
+            }
+        }
+        return out
+    }
+
     /// Correspondance temps de sortie → temps dans la source d'un clip.
     public func sourceTime(clip index: Int, outputTime: Double, speed: Double) -> Double {
         guard let seg = clips.first(where: { $0.index == index }) else { return 0 }

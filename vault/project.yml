@@ -1,0 +1,99 @@
+# Projet Xcode généré par XcodeGen :  brew install xcodegen && xcodegen generate
+name: VAULT
+options:
+  bundleIdPrefix: com.vault
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    DEVELOPMENT_TEAM: ""            # ← votre Team ID Apple
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    VAULT_APP_GROUP: group.com.vault.app
+packages:
+  VaultCore:
+    path: VaultCore
+targets:
+  VAULT:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+    dependencies:
+      - package: VaultCore
+      - target: VAULTShare
+        embed: true
+    entitlements:
+      path: App/VAULT.entitlements
+      properties:
+        com.apple.developer.default-data-protection: NSFileProtectionComplete
+        com.apple.security.application-groups: [$(VAULT_APP_GROUP)]
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: VAULT
+        UILaunchScreen: { UIColorName: "", UIImageRespectsSafeAreaInsets: true }
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UIApplicationSupportsIndirectInputEvents: true
+        ITSAppUsesNonExemptEncryption: true
+        NSFaceIDUsageDescription: "VAULT utilise Face ID pour déverrouiller votre coffre sans saisir votre code."
+        NSCameraUsageDescription: "VAULT utilise l'appareil photo pour prendre des photos et vidéos directement dans le coffre, sans passer par la photothèque."
+        NSMicrophoneUsageDescription: "Le micro est utilisé pour enregistrer le son de vos vidéos."
+        NSPhotoLibraryUsageDescription: "VAULT peut supprimer de votre photothèque les éléments que vous venez de mettre à l'abri, si vous le demandez."
+        NSPhotoLibraryAddUsageDescription: "VAULT enregistre dans Photos uniquement les éléments que vous choisissez d'exporter."
+        VaultAppGroup: $(VAULT_APP_GROUP)
+        VaultCloudKitContainer: ""        # ex. iCloud.com.vault.app (voir docs/SYNC.md)
+        UIFileSharingEnabled: false
+        LSSupportsOpeningDocumentsInPlace: false
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Sauvegarde VAULT
+            LSHandlerRank: Owner
+            LSItemContentTypes: [com.vault.backup]
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.vault.backup
+            UTTypeDescription: Sauvegarde VAULT
+            UTTypeConformsTo: [public.data]
+            UTTypeTagSpecification: { public.filename-extension: [vaultbackup] }
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.vault.app
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+        ENABLE_PREVIEWS: YES
+  VAULTShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ShareExtension
+    dependencies:
+      - package: VaultCore
+    entitlements:
+      path: ShareExtension/VAULTShare.entitlements
+      properties:
+        com.apple.security.application-groups: [$(VAULT_APP_GROUP)]
+    info:
+      path: ShareExtension/Info.plist
+      properties:
+        CFBundleDisplayName: VAULT
+        VaultAppGroup: $(VAULT_APP_GROUP)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsImageWithMaxCount: 200
+              NSExtensionActivationSupportsMovieWithMaxCount: 50
+              NSExtensionActivationSupportsFileWithMaxCount: 200
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.vault.app.share
+schemes:
+  VAULT:
+    build:
+      targets:
+        VAULT: all
+    run:
+      config: Debug

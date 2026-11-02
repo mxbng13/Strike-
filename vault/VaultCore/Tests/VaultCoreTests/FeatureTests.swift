@@ -158,6 +158,13 @@ final class FeatureTests: XCTestCase {
         XCTAssertEqual(f.primary, 0); XCTAssertEqual(f.secondary, 1); XCTAssertEqual(f.progress, 0.5, accuracy: 1e-9)
         XCTAssertEqual(l.sourceTime(clip: 1, outputTime: 5.5, speed: 2), 1, accuracy: 1e-9)
 
+        let iv = l.intervals()
+        // Le clip 2 (2 s) est entièrement couvert par ses deux transitions d'1 s.
+        XCTAssertEqual(iv.map(\.start), [0, 5, 6, 7])
+        XCTAssertEqual(iv.map(\.end), [5, 6, 7, 9])
+        XCTAssertEqual(iv.map(\.secondary), [nil, 1, 2, nil])
+        XCTAssertEqual(iv.map(\.primary), [0, 0, 1, 2])
+
         XCTAssertTrue(p.split(at: 2.5))
         XCTAssertEqual(p.clips.count, 4)
         XCTAssertEqual(p.clips[0].sourceEnd, 4.5, accuracy: 1e-9)

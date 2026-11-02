@@ -306,7 +306,7 @@ public enum SearchEngine {
         if items.contains(where: \.isFavorite) { s.append("Favoris") }
         let colors = Dictionary(grouping: items.compactMap(\.dominantColor), by: { $0 }).sorted { $0.value.count > $1.value.count }
         s += colors.prefix(2).map { $0.key.frenchName.capitalized }
-        let labels = Dictionary(grouping: items.flatMap(\.labels), by: { $0 }).sorted { $0.value.count > $1.value.count }
+        let labels = Dictionary(grouping: items.flatMap(\.labels).filter { $0 != "_" }, by: { $0 }).sorted { $0.value.count > $1.value.count }
         s += labels.prefix(4).map { $0.key.replacingOccurrences(of: "_", with: " ") }
         return s
     }

@@ -1,0 +1,45 @@
+name: VAULT
+
+on:
+  push:
+    paths: ["vault/**", ".github/workflows/vault.yml"]
+  pull_request:
+    paths: ["vault/**"]
+  workflow_dispatch:
+
+jobs:
+  core-linux:
+    name: VaultCore (Linux, swift-crypto)
+    runs-on: ubuntu-latest
+    container: swift:6.0
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tests du cœur
+        working-directory: vault/VaultCore
+        run: swift test
+
+  ios:
+    name: App iOS (Xcode, simulateur)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Versions
+        run: xcodebuild -version && swift --version
+      - name: Tests du cœur (CryptoKit / CommonCrypto)
+        working-directory: vault/VaultCore
+        run: swift test
+      - name: Génération du projet
+        working-directory: vault
+        run: brew install xcodegen && xcodegen generate
+      - name: Compilation de l'app et de l'extension
+        working-directory: vault
+        run: |
+          set -o pipefail
+          xcodebuild -project VAULT.xcodeproj -scheme VAULT -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | tee build.log | grep -E "error:|warning: .*VAULT|BUILD (SUCCEEDED|FAILED)" || true
+          grep -q "BUILD SUCCEEDED" build.log
+      - name: Journal en cas d'échec
+        if: failure()
+        working-directory: vault
+        run: grep -E "error:" -A3 build.log | head -200 || true
