@@ -1,6 +1,6 @@
 // Garde l'app et ton IA maison en mémoire pour qu'elles marchent hors connexion.
 // Réponse immédiate depuis le cache, puis mise à jour en arrière-plan (les nouvelles versions arrivent au lancement suivant).
-const CACHE = 'mon-ia-v1';
+const CACHE = 'mon-ia-v2';
 const CACHEABLE = (url) => url.origin === location.origin || url.hostname === 'cdn.jsdelivr.net' || url.hostname.endsWith('fonts.gstatic.com') || url.hostname === 'fonts.googleapis.com';
 
 self.addEventListener('install', () => self.skipWaiting());

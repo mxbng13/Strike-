@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0c0e13">
+<meta name="theme-color" content="#0b1730">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <title>Mon IA</title>
@@ -17,21 +17,15 @@
 <style>
   /* Une colonne : barre du haut, fil de messages, zone de saisie flottante en bas. */
   :root {
-    --bg: #0c0e13; --surface: #14171e; --raised: #1b1f28; --line: #262b37; --line-strong: #343a49;
-    --text: #eceef3; --muted: #8b93a5; --faint: #5d6476;
-    --accent: #8fb3ff; --accent-strong: #5b8cff; --accent-ink: #0c0e13; --user: #1f2a44; --danger: #ff7b7b; --ok: #5fd39a;
+    /* Thème bleu nuit, boutons noirs */
+    --bg: #0b1730; --surface: #10203f; --raised: #15284d; --line: #1f3561; --line-strong: #2b4478;
+    --text: #e8eefb; --muted: #93a3c4; --faint: #61719a;
+    --accent: #8fb3ff; --accent-strong: #5b8cff; --accent-ink: #ffffff; --user: #1a3466; --danger: #ff7b7b; --ok: #5fd39a;
+    --btn: #000000; --btn-ink: #ffffff; --btn-line: #000000;
     --ui: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
     --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
     --radius: 14px;
     color-scheme: dark;
-  }
-  @media (prefers-color-scheme: light) {
-    :root {
-      --bg: #f7f8fa; --surface: #ffffff; --raised: #f0f2f6; --line: #e3e6ec; --line-strong: #d3d8e1;
-      --text: #151821; --muted: #5f6678; --faint: #9399a8;
-      --accent: #2f5fd8; --accent-strong: #2f5fd8; --accent-ink: #ffffff; --user: #e6edff; --danger: #c93838; --ok: #1f9d63;
-      color-scheme: light;
-    }
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; }
@@ -255,6 +249,16 @@
   #lock h2 { margin: 0; font-size: 20px; font-weight: 700; }
   #lock input { text-align: center; font: 500 18px var(--mono); letter-spacing: 0.15em; }
   #lock button { width: 100%; height: 44px; border-radius: 12px; border: 0; background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+  /* Boutons noirs (fond noir, texte blanc) */
+  .icon-btn, .adder button, .rule button, .learned button, .ghost, .chat-row .del, .lib-filter button,
+  .ext-head button, .copy-row button, .actions button, .cards button, .tool, .tool.on,
+  #sendBtn, .save, #lock button, .cta, .seg [aria-selected="true"], .tabs [aria-selected="true"] {
+    background: var(--btn); color: var(--btn-ink); border-color: var(--btn-line);
+  }
+  .tool { color: var(--muted); }
+  .tool.on { color: var(--btn-ink); border-color: var(--accent); }
+  .lib-filter [aria-selected="true"] { border-color: var(--accent); }
+  .chat-row .del[data-armed], .icon-btn[data-armed] { color: var(--danger); border-color: var(--danger); }
 </style>
 </head>
 <body>
