@@ -766,6 +766,8 @@ const HOME_MODELS = {
 };
 // Ordre d'essai : le premier modèle qui connaît le sujet demandé est utilisé.
 // Modèle qui comprend les phrases (texte → image, entraîné de zéro sur COCO). Actif quand son fichier est publié.
+// Visage et parties du corps, version 2 (bruit décalé : couleurs naturelles).
+HOME_MODELS.corps = { file: 'corps64.onnx', res: 64, nullId: 19, steps: 20, guidance: 2.5, subjects: 'sujets-corps.json', shift: -2 * Math.LN2, heavy: true };
 HOME_MODELS.texte = { file: 'texte64.onnx', res: 64, text: true, vocab: 'texte64-vocab.json', nullId: 1, steps: 30, guidance: 3, shift: -2 * Math.LN2, heavy: true };
 let textModelReady;
 function textModelAvailable() {
@@ -1207,6 +1209,16 @@ async function generateHomeImage(prompt, onProgress) {
   const learnedName = findLearned(prompt);
   if (learnedName) return generateLearnedImage(learnedName, onProgress);
   onProgress('Chargement de mon IA…');
+  // Une partie du corps ou un visage : le modèle spécialisé est plus net que le modèle « phrases ».
+  const bodyPart = findSubject(prompt, 'corps', await subjectsFor('corps'));
+  if (bodyPart >= 0 && bodyPart !== 15) { // « une personne qui… » : le modèle phrases comprend mieux la scène
+    const cfg = HOME_MODELS.corps;
+    const { gpu } = await loadHomeModel('corps');
+    const count = gpu ? 4 : 2;
+    const x = await homeDenoise('corps', bodyPart, randn(count * 3 * cfg.res * cfg.res), count, { guidance: cfg.guidance, onStep: (f) => onProgress(`Création… ${Math.round(f * 100)} %`) });
+    diag.log({ etape: 'creationImage', statut: 'ok', detail: 'modèle visage et corps' });
+    return homeGridSharp(x, count, cfg.res);
+  }
   // Le modèle qui comprend les phrases, s'il est publié et connaît au moins un mot de la demande.
   if (settings.homeTextModel !== false && await textModelAvailable()) {
     const { ids, known } = await textTokens(prompt);

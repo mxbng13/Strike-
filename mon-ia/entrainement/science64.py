@@ -173,7 +173,9 @@ def square64(data_or_path):
 def files_in(slug, include=None, exclude=None):
     import glob
     out = []
-    for p in glob.glob(f'/kaggle/input/{slug}/**/*', recursive=True):
+    # Kaggle peut monter les jeux sous /kaggle/input/<slug> ou /kaggle/input/datasets/<auteur>/<slug>.
+    roots = glob.glob(f'/kaggle/input/{slug}') + glob.glob(f'/kaggle/input/**/{slug}', recursive=True)
+    for p in {q for r in roots for q in glob.glob(f'{r}/**/*', recursive=True)}:
         if not p.lower().endswith(('.jpg', '.jpeg', '.png', '.tif', '.tiff', '.bmp')):
             continue
         low = p.lower()
@@ -228,6 +230,7 @@ def load_imagenet():  # même nom que la version ImageNet pour réutiliser train
                 xs.append(im); ys.append(cls); gal[cls] += 1
         os.remove(p)
     print('galaxies', gal, flush=True)
+    import collections; print('contenu de /kaggle/input :', sorted(glob.glob('/kaggle/input/*'))[:20], flush=True)
     return np.stack(xs), np.array(ys, dtype=np.int64)
 
 
