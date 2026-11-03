@@ -230,7 +230,6 @@ def load_imagenet():  # même nom que la version ImageNet pour réutiliser train
                 xs.append(im); ys.append(cls); gal[cls] += 1
         os.remove(p)
     print('galaxies', gal, flush=True)
-    import collections; print('contenu de /kaggle/input :', sorted(glob.glob('/kaggle/input/*'))[:20], flush=True)
     return np.stack(xs), np.array(ys, dtype=np.int64)
 
 
