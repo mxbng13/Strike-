@@ -282,15 +282,26 @@ PREVIEW = ['a dog in a forest', 'a red car on a street', 'a cat sleeping on a be
 def main():
     torch.manual_seed(0)
     images, captions = fake_data() if SMOKE else prepare_coco()
-    vocab = build_vocab([c for cs in captions for c in cs])
+    # Reprise : si un jeu « poids » est attaché (ema.pt + vocab.json), on garde le même vocabulaire et on repart de ces poids.
+    resume = (glob.glob('/kaggle/input/**/ema.pt', recursive=True) or [None])[0]
+    resume_vocab = (glob.glob('/kaggle/input/**/vocab.json', recursive=True) or [None])[0]
+    if resume and resume_vocab:
+        words_ = json.load(open(resume_vocab))['words']
+        vocab = {w: i for i, w in enumerate(words_)}
+        print('reprise depuis', resume, flush=True)
+    else:
+        resume = None
+        vocab = build_vocab([c for cs in captions for c in cs])
     json.dump({'words': sorted(vocab, key=vocab.get), 'max_len': MAX_LEN, 'pad': PAD, 'null': NULL, 'unk': UNK}, open(os.path.join(OUT, 'vocab.json'), 'w'))
     cap_ids = [[encode(c, vocab) for c in cs] for cs in captions]
     n = len(images)
     data = torch.from_numpy(images).permute(0, 3, 1, 2).contiguous()  # uint8 sur CPU
     model = UNet(base=32 if SMOKE else 64).to(DEVICE)
+    if resume:
+        model.load_state_dict(torch.load(resume, map_location=DEVICE))
     ema = UNet(base=32 if SMOKE else 64).to(DEVICE); ema.load_state_dict(model.state_dict()); ema.requires_grad_(False)
     print(f'paramètres : {sum(p.numel() for p in model.parameters()) / 1e6:.1f} M, images : {n}', flush=True)
-    opt = torch.optim.AdamW(model.parameters(), lr=2e-4, weight_decay=0.01)
+    opt = torch.optim.AdamW(model.parameters(), lr=1e-4 if resume else 2e-4, weight_decay=0.01)
     scaler = torch.cuda.amp.GradScaler(enabled=DEVICE == 'cuda')
     batch = 8 if SMOKE else 128
     preview_ids = torch.tensor([encode(p, vocab) for p in PREVIEW], device=DEVICE)
