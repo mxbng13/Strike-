@@ -5,7 +5,7 @@ import { Crosshair, List, Loader2, Map as MapIcon, RefreshCw, Search, X } from "
 import type { GeoJSONSource, Map as MLMap } from "maplibre-gl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { activeCount, defaultFilters, FilterButton, filtersToQuery, FilterSheet, type Filters } from "@/components/filters";
-import { MAP_STYLE } from "@/components/mini-map";
+import { loadMaplibre, MAP_STYLE } from "@/components/mini-map";
 import { useMe, useToast } from "@/components/providers";
 import { priceLabel, ServiceCardView } from "@/components/service-card";
 import { Chip, EmptyState, Input, cx } from "@/components/ui";
@@ -67,7 +67,7 @@ export default function MapPage() {
     let disposed = false;
     let map: MLMap | null = null;
     (async () => {
-      const maplibregl = await import("maplibre-gl");
+      const maplibregl = await loadMaplibre();
       if (disposed || !container.current) return;
       map = new maplibregl.Map({
         container: container.current,
@@ -137,6 +137,15 @@ export default function MapPage() {
     if (ready) load();
   }, [filters, ready, load]);
 
+  // Centre la carte sur la zone de l'utilisateur dès qu'elle est connue (une seule fois)
+  const centered = useRef(false);
+  useEffect(() => {
+    if (ready && location && !centered.current) {
+      centered.current = true;
+      mapRef.current?.jumpTo({ center: [location.lng, location.lat], zoom: 12.5 });
+    }
+  }, [ready, location]);
+
   // Recherche par ville
   useEffect(() => {
     if (q.trim().length < 3) return setResults([]);
@@ -156,7 +165,9 @@ export default function MapPage() {
   return (
     <div className="-mx-4 -mb-28 -mt-4 sm:-mx-6 lg:-mb-12 lg:-mt-8">
       <div className="relative h-[calc(100dvh-4rem)] lg:h-dvh">
-        <div ref={container} className={cx("absolute inset-0", view === "list" && "invisible")} />
+        <div className={cx("absolute inset-0", view === "list" && "invisible")}>
+          <div ref={container} className="h-full w-full" />
+        </div>
 
         {/* Barre supérieure */}
         <div className="absolute inset-x-0 top-0 z-10 space-y-2 p-3">

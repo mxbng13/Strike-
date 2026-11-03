@@ -12,6 +12,9 @@ export type Draft = {
   categoryConfidence: number;
   alternativeSlugs: string[];
   timingType: "immediate" | "today" | "tomorrow" | "scheduled" | "recurring";
+  /** false quand la phrase ne contient aucun indice temporel (le formulaire garde alors son choix) */
+  timingDetected: boolean;
+  startDate: string | null; // AAAA-MM-JJ (heure de Paris)
   startTime: string | null; // HH:MM
   durationMinutes: number | null;
   budgetEuros: number | null;
@@ -62,6 +65,8 @@ const COMMON_FIXES: [RegExp, string][] = [
   [/\bpr\b/gi, "pour"],
   [/\bbcp\b/gi, "beaucoup"],
   [/\bqlq\b/gi, "quelqu'un"],
+  [/\bqqn\b/gi, "quelqu'un"],
+  [/\bqq'un\b/gi, "quelqu'un"],
   [/\bqq1\b/gi, "quelqu'un"],
   [/\bjsuis\b/gi, "je suis"],
   [/\bchui\b/gi, "je suis"],
@@ -106,21 +111,42 @@ function parseTime(t: string): string | null {
   return `${String(h).padStart(2, "0")}:${m[2] ?? "00"}`;
 }
 
-export function draftFromSentence(sentence: string, categories: CategoryLite[]): Draft {
+const WEEKDAYS = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+
+/** Date (AAAA-MM-JJ) du prochain jour de semaine donné, à partir de `now`. */
+function nextWeekday(target: number, now: Date) {
+  const d = new Date(now);
+  const diff = (target - d.getDay() + 7) % 7 || 7;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().slice(0, 10);
+}
+
+export function draftFromSentence(sentence: string, categories: CategoryLite[], now = new Date()): Draft {
   const raw = sentence.trim().slice(0, 600);
   const t = strip(raw);
   const cat = categorize(raw, categories);
   const category = categories.find((c) => c.slug === cat.slug);
 
   let timingType: Draft["timingType"] = "scheduled";
+  let timingDetected = true;
+  let startDate: string | null = null;
+  const wd = WEEKDAYS.findIndex((d) => new RegExp(`\\b${d}s?\\b`).test(t));
   if (/\b(maintenant|tout de suite|immediatement|asap|de suite|vite)\b/.test(t)) timingType = "immediate";
   else if (/\b(ce soir|aujourd hui|cet apres-midi|cet aprem|ce midi|ce matin|cette nuit)\b/.test(t)) timingType = "today";
   else if (/\b(demain)\b/.test(t)) timingType = "tomorrow";
+  else if (/\b(ce )?week-?end\b/.test(t)) startDate = nextWeekday(6, now);
+  else if (wd >= 0) startDate = nextWeekday(wd, now);
+  else if (/\b(semaine prochaine)\b/.test(t)) startDate = nextWeekday(1, now);
+  else timingDetected = false;
   let recurrence: Draft["recurrence"] = null;
   if (/\b(tous les jours|chaque jour|quotidien)/.test(t)) recurrence = { freq: "daily" };
   else if (/\b(toutes les semaines|chaque semaine|hebdo|tous les (lundis|mardis|mercredis|jeudis|vendredis|samedis|dimanches))/.test(t)) recurrence = { freq: "weekly" };
   else if (/\b(tous les mois|chaque mois|mensuel)/.test(t)) recurrence = { freq: "monthly" };
-  if (recurrence) timingType = "recurring";
+  if (recurrence) {
+    timingType = "recurring";
+    timingDetected = true;
+    startDate ??= wd >= 0 ? nextWeekday(wd, now) : new Date(now.getTime() + 86400_000).toISOString().slice(0, 10);
+  }
 
   let urgency: Draft["urgency"] = "normal";
   if (/\b(urgent|urgence|au plus vite|asap)\b/.test(t) || timingType === "immediate") urgency = "urgent";
@@ -128,6 +154,7 @@ export function draftFromSentence(sentence: string, categories: CategoryLite[]):
 
   let startTime = parseTime(t);
   if (!startTime && /\bce soir\b/.test(t)) startTime = "19:00";
+  if (!startTime && startDate) startTime = /\bmatin\b/.test(t) ? "09:00" : /\bsoir\b/.test(t) ? "19:00" : "10:00";
 
   let durationMinutes: number | null = null;
   const hRange = t.match(/\bde\s?(\d{1,2})\s?h(?:\d{2})?\s?a\s?(\d{1,2})\s?h/);
@@ -158,6 +185,8 @@ export function draftFromSentence(sentence: string, categories: CategoryLite[]):
     categoryConfidence: cat.confidence,
     alternativeSlugs: cat.alternatives,
     timingType,
+    timingDetected,
+    startDate,
     startTime,
     durationMinutes,
     budgetEuros,
@@ -175,7 +204,11 @@ function buildTitle(corrected: string, categoryName: string, t: string): string 
     .replace(/^(je cherche|je recherche|j'ai besoin d'|j'ai besoin de|besoin d'|besoin de|cherche|recherche|qui peut|quelqu'un pour|quelqu'un qui peut)\s*/i, "")
     .replace(/^(quelqu'un|une personne|qq'un)\s+(pour|qui)\s+/i, "")
     .replace(/[.!?]$/, "");
-  let title = intent.split(/[.!?\n]/)[0].trim();
+  let title = intent
+    .split(/[.!?\n]/)[0]
+    .replace(/[,;–-]?\s*\d{1,4}(?:[.,]\d{1,2})?\s?(?:€|euros?)/gi, "")
+    .replace(/[,;]\s*$/, "")
+    .trim();
   if (title.length < 6) title = categoryName;
   if (title.length > 70) title = title.slice(0, 67).replace(/\s+\S*$/, "") + "…";
   if (/\bce soir\b/.test(t) && !/ce soir/i.test(title)) title += " ce soir";

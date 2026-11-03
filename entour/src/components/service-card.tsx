@@ -52,8 +52,8 @@ export function ServiceCardView({ s, index = 0, compact }: { s: Card; index?: nu
               </span>
             )}
           </div>
-          <div className="mt-2 flex items-center justify-between gap-2">
-            <span className="flex min-w-0 items-center gap-1.5 text-xs">
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+            <span className="flex min-w-0 shrink items-center gap-1.5 text-xs">
               <Avatar src={s.requester.avatarUrl} name={s.requester.firstName} size={20} />
               <span className="truncate font-medium">{s.requester.firstName}</span>
               {s.requester.verified && <BadgeCheck className="size-3.5 text-primary" aria-label="Profil vérifié" />}

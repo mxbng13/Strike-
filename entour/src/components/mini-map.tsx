@@ -4,6 +4,13 @@ import { useEffect, useRef } from "react";
 
 export const MAP_STYLE = process.env.NEXT_PUBLIC_MAP_STYLE_URL || "https://tiles.openfreemap.org/styles/liberty";
 
+/** Charge MapLibre et pointe vers son worker servi depuis /public (cf. scripts/copy-map-worker.mjs). */
+export async function loadMaplibre() {
+  const maplibregl = await import("maplibre-gl");
+  maplibregl.setWorkerUrl("/maplibre-gl-worker.mjs");
+  return maplibregl;
+}
+
 /** Cercle de ~400 m autour de la position floutée : on montre une zone, jamais un point précis. */
 export function circlePolygon(lat: number, lng: number, radiusM: number, steps = 48) {
   const coords: [number, number][] = [];
@@ -20,7 +27,7 @@ export function MiniMap({ lat, lng, exact, className }: { lat: number; lng: numb
     let map: import("maplibre-gl").Map | null = null;
     let cancelled = false;
     (async () => {
-      const maplibregl = await import("maplibre-gl");
+      const maplibregl = await loadMaplibre();
       if (cancelled || !ref.current) return;
       map = new maplibregl.Map({ container: ref.current, style: MAP_STYLE, center: [lng, lat], zoom: exact ? 15 : 13.5, interactive: false, attributionControl: { compact: true } });
       const m = map;

@@ -93,7 +93,7 @@ export function Sidebar() {
       <Link href="/publier" className="mt-6 flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary font-semibold text-primary-ink shadow-[0_10px_24px_-10px_var(--primary)] transition hover:bg-primary-hover active:scale-[0.98]">
         <Plus className="size-5" strokeWidth={2.5} /> Publier une demande
       </Link>
-      <ModeSwitch className="mt-4" />
+      <ModeSwitch className="mt-4" compact />
       <nav className="mt-4 flex-1 space-y-0.5 overflow-y-auto">
         {sideLinks.map((l) => {
           const active = path === l.href || path.startsWith(l.href + "/");
@@ -126,14 +126,14 @@ export function Sidebar() {
   );
 }
 
-export function ModeSwitch({ className }: { className?: string }) {
+export function ModeSwitch({ className, compact }: { className?: string; compact?: boolean }) {
   const { mode, setMode } = useMode();
   return (
     <div className={clsx("grid grid-cols-2 rounded-2xl bg-surface-2 p-1 text-sm font-semibold", className)} role="tablist" aria-label="Mode d'utilisation">
       {(["demandeur", "offreur"] as const).map((m) => (
         <button key={m} role="tab" aria-selected={mode === m} onClick={() => setMode(m)} className={clsx("relative rounded-xl py-2 transition", mode === m ? "text-text" : "text-muted")}>
           {mode === m && <motion.span layoutId="mode-pill" className="absolute inset-0 rounded-xl bg-surface shadow-card" transition={{ type: "spring", stiffness: 400, damping: 35 }} />}
-          <span className="relative">{m === "demandeur" ? "J'ai besoin d'aide" : "Je rends service"}</span>
+          <span className="relative">{m === "demandeur" ? (compact ? "Demander" : "J'ai besoin d'aide") : compact ? "Rendre service" : "Je rends service"}</span>
         </button>
       ))}
     </div>

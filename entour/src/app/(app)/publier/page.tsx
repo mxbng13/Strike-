@@ -130,7 +130,7 @@ function PublishForm() {
   const runAssistant = async () => {
     setDrafting(true);
     try {
-      const { draft } = await api<{ draft: { title: string; description: string; categoryId: number | null; alternativeSlugs: string[]; timingType: Timing; startTime: string | null; durationMinutes: number | null; budgetEuros: number | null; urgency: "normal" | "high" | "urgent"; peopleNeeded: number; skills: string[]; recurrence: { freq: "daily" | "weekly" | "monthly" } | null; source: "claude" | "local"; refused?: boolean } }>("/api/assistant/draft", { body: { text: sentence } });
+      const { draft } = await api<{ draft: { title: string; description: string; categoryId: number | null; alternativeSlugs: string[]; timingType: Timing; timingDetected: boolean; startDate: string | null; startTime: string | null; durationMinutes: number | null; budgetEuros: number | null; urgency: "normal" | "high" | "urgent"; peopleNeeded: number; skills: string[]; recurrence: { freq: "daily" | "weekly" | "monthly" } | null; source: "claude" | "local"; refused?: boolean } }>("/api/assistant/draft", { body: { text: sentence } });
       if (draft.refused) {
         push({ tone: "error", title: "Cette demande ne peut pas être publiée sur ENTOUR", body: "Elle semble concerner une activité illégale, dangereuse ou réglementée." });
         return;
@@ -139,7 +139,7 @@ function PublishForm() {
       setDescription(draft.description);
       if (draft.categoryId) setCategoryId(draft.categoryId);
       setAltCats(draft.alternativeSlugs.map((s) => cats.find((c) => c.slug === s)?.id).filter((x): x is number => !!x));
-      setTiming(draft.timingType);
+      if (draft.timingDetected) setTiming(draft.timingType);
       setUrgency(draft.urgency);
       if (draft.durationMinutes) setDuration(draft.durationMinutes);
       if (draft.budgetEuros != null) {
@@ -151,8 +151,8 @@ function PublishForm() {
       if (draft.recurrence) setFreq(draft.recurrence.freq);
       if (draft.startTime) {
         setTime(draft.startTime);
-        const base = new Date();
-        if (draft.timingType === "tomorrow") base.setDate(base.getDate() + 1);
+        const base = draft.startDate ? new Date(`${draft.startDate}T00:00:00`) : new Date();
+        if (!draft.startDate && draft.timingType === "tomorrow") base.setDate(base.getDate() + 1);
         const [h, m] = draft.startTime.split(":").map(Number);
         base.setHours(h, m, 0, 0);
         if (draft.timingType === "scheduled" || draft.timingType === "recurring") setStartsAt(toLocalInput(base));
@@ -256,7 +256,7 @@ function PublishForm() {
               onChange={(e) => setSentence(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && sentence.trim().length > 3 && (e.preventDefault(), runAssistant())}
               placeholder="Ex : je cherche qqn pour garder mon fils de 5 ans ce soir de 19h à 22h, 30€"
-              className="h-12 flex-1 rounded-xl border-0 bg-white/95 px-4 text-[15px] text-[#1b1a2e] placeholder:text-[#8a8799] focus:outline-none focus:ring-4 focus:ring-white/40"
+              className="h-12 w-full rounded-xl border-0 bg-white/95 sm:flex-1 px-4 text-[15px] text-[#1b1a2e] placeholder:text-[#8a8799] focus:outline-none focus:ring-4 focus:ring-white/40"
               aria-label="Décrire votre besoin"
             />
             <Button onClick={runAssistant} loading={drafting} disabled={sentence.trim().length < 4} className="bg-white !text-[#3b2fd9] hover:bg-white/90" icon={<Sparkles className="size-4" />}>
@@ -565,7 +565,7 @@ function PublishForm() {
           </p>
         )}
 
-        <div className="sticky bottom-20 z-10 lg:bottom-4">
+        <div className="sticky bottom-16 z-10 -mx-4 bg-gradient-to-t from-bg via-bg/95 to-transparent px-4 pb-3 pt-6 lg:bottom-0 lg:mx-0 lg:px-0">
           <Button full size="lg" onClick={submit} loading={submitting} disabled={!me?.emailVerified} className="shadow-xl">
             Publier ma demande
           </Button>

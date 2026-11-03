@@ -12,8 +12,13 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed-demo": "tsx scripts/seed-demo.ts",
     "db:setup": "tsx scripts/migrate.ts && tsx scripts/seed-base.ts",
-    "test": "vitest run",
-    "test:e2e": "tsx scripts/e2e.ts"
+    "test": "vitest run --config vitest.config.ts",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "db:purge-demo": "tsx scripts/purge-demo.ts",
+    "admin:grant": "tsx scripts/create-admin.ts",
+    "postinstall": "node scripts/copy-map-worker.mjs",
+    "predev": "node scripts/copy-map-worker.mjs",
+    "prebuild": "node scripts/copy-map-worker.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",

@@ -222,9 +222,10 @@ export async function acceptApplication(user: CurrentUser, applicationId: string
     return { assignment, app, s, conv, waitlisted, price };
   });
 
+  const [prov] = await db.select({ firstName: userProfiles.firstName }).from(userProfiles).where(eq(userProfiles.userId, outcome.app.applicantId));
   await systemMessage(
     outcome.conv.id,
-    `Mission confirmée avec ${outcome.app.applicantId === user.id ? "vous" : "l'intervenant"} pour ${formatEUR(outcome.price)}. L'adresse exacte est désormais visible dans la fiche mission.`,
+    `Mission confirmée : ${user.firstName} a choisi ${prov?.firstName ?? "l'intervenant"} pour ${formatEUR(outcome.price)}. L'adresse exacte est désormais visible dans la fiche mission.`,
     { action: { type: "assignment_confirmed", amountCents: outcome.price } },
   );
   await notify({
