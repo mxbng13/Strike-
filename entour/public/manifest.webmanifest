@@ -1,0 +1,10 @@
+{
+  "name": "ENTOUR — Les services entre voisins",
+  "short_name": "ENTOUR",
+  "start_url": "/accueil",
+  "display": "standalone",
+  "background_color": "#f7f5f0",
+  "theme_color": "#3b2fd9",
+  "lang": "fr",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

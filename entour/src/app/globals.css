@@ -1,0 +1,147 @@
+@import "tailwindcss";
+@import "@fontsource-variable/plus-jakarta-sans";
+@import "maplibre-gl/dist/maplibre-gl.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ───────── Identité ENTOUR ─────────
+   Encre indigo (confiance) · blanc cassé chaud (proximité) · vert (confirmation) · corail (urgence) */
+:root {
+  --bg: #f7f5f0;
+  --surface: #ffffff;
+  --surface-2: #f1eee7;
+  --border: #e9e4d9;
+  --text: #1b1a2e;
+  --muted: #6b6880;
+  --primary: #3b2fd9;
+  --primary-hover: #3025bd;
+  --primary-soft: #eeecff;
+  --primary-ink: #ffffff;
+  --success: #12a06b;
+  --success-soft: #e3f6ee;
+  --warning: #d98a0b;
+  --warning-soft: #fdf3e0;
+  --danger: #e5533d;
+  --danger-soft: #fdeceb;
+  --ring: rgba(59, 47, 217, 0.35);
+  --chart-1: #3b2fd9;
+  --chart-2: #12a06b;
+  --chart-grid: #ece8df;
+  --shadow: 0 1px 2px rgba(27, 26, 46, 0.04), 0 8px 24px -12px rgba(27, 26, 46, 0.12);
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #0e0d16;
+  --surface: #17162a;
+  --surface-2: #1f1d36;
+  --border: #2b2944;
+  --text: #f2f1f8;
+  --muted: #a09db6;
+  --primary: #7d72ff;
+  --primary-hover: #8f86ff;
+  --primary-soft: #262158;
+  --primary-ink: #0e0d16;
+  --success: #34c48b;
+  --success-soft: #11342a;
+  --warning: #f2b23b;
+  --warning-soft: #3a2c10;
+  --danger: #ff6f5a;
+  --danger-soft: #3d1a17;
+  --ring: rgba(125, 114, 255, 0.45);
+  --chart-1: #7d72ff;
+  --chart-2: #22a874;
+  --chart-grid: #2b2944;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -12px rgba(0, 0, 0, 0.6);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-ink: var(--primary-ink);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-grid: var(--chart-grid);
+  --shadow-card: var(--shadow);
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.75rem;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11";
+}
+
+*:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+::selection {
+  background: var(--primary-soft);
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  scrollbar-width: none;
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Carte MapLibre : popups et contrôles aux couleurs de l'application */
+.maplibregl-popup-content {
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 16px;
+  padding: 0;
+  box-shadow: var(--shadow);
+}
+.maplibregl-popup-tip {
+  border-top-color: var(--surface) !important;
+}
+.maplibregl-ctrl-group {
+  border-radius: 12px !important;
+  overflow: hidden;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
