@@ -235,6 +235,12 @@ describe("Parcours complet ENTOUR", () => {
     expect(prof.profile.ratingAvg).toBe(5);
     expect(prof.profile.missionsDone).toBe(1);
     expect(prof.profile.badges.map((b) => b.slug)).toContain("premiere-mission");
+    // Côté demandeur, le compteur de missions réalisées n'augmente pas : seules les demandes abouties comptent
+    const requesterId = (await requester.call<{ user: { id: string } }>("/api/me")).user.id;
+    const req = await provider.call<{ profile: { missionsDone: number; missionsRequested: number; badges: { slug: string }[] } }>(`/api/users/${requesterId}`);
+    expect(req.profile.missionsDone).toBe(0);
+    expect(req.profile.missionsRequested).toBe(1);
+    expect(req.profile.badges.map((b) => b.slug)).not.toContain("premiere-mission");
   });
 
   it("12. historique, calendrier et notifications", async () => {
