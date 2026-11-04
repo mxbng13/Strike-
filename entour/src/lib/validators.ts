@@ -54,6 +54,9 @@ export const createServiceSchema = z
     durationExact: z.boolean().default(false),
     pricingType: z.enum(["fixed", "negotiable", "offer"]),
     budgetCents: z.number().int().min(0).max(1_000_000).optional().nullable(),
+    /** Montant des achats à avancer par l'intervenant (bloqué dans la tirelire, jamais commissionné). */
+    purchaseCents: z.number().int().min(100, "Montant des achats : 1 € minimum").max(50_000, "Montant des achats : 500 € maximum").optional().nullable(),
+    purchaseNote: z.string().trim().max(300).optional().nullable(),
     peopleNeeded: z.number().int().min(1).max(20).default(1),
     urgency: z.enum(["normal", "high", "urgent"]).default("normal"),
     skillsRequired: z.array(z.string().trim().min(1).max(40)).max(8).default([]),
@@ -74,6 +77,8 @@ export const createServiceSchema = z
     if (v.timingType === "recurring" && !v.recurrence) ctx.addIssue({ code: "custom", path: ["recurrence"], message: "Indiquez la fréquence" });
     if (v.startsAt && new Date(v.startsAt).getTime() < Date.now() - 15 * 60_000)
       ctx.addIssue({ code: "custom", path: ["startsAt"], message: "La date choisie est déjà passée" });
+    if (v.purchaseCents && v.pricingType === "offer" && !v.budgetCents)
+      ctx.addIssue({ code: "custom", path: ["budgetCents"], message: "Avec des achats à avancer, indiquez la rémunération proposée" });
     if (v.durationExact && v.timingType === "immediate")
       ctx.addIssue({ code: "custom", path: ["durationExact"], message: "Pour une demande immédiate, indiquez une durée estimée" });
     if (v.visibility === "group" && !v.groupId) ctx.addIssue({ code: "custom", path: ["groupId"], message: "Choisissez un groupe" });

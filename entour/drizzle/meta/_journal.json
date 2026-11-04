@@ -22,6 +22,20 @@
       "when": 1793802651339,
       "tag": "0002_duration_exact",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793803805021,
+      "tag": "0003_purchases_escrow",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793803805904,
+      "tag": "0004_commission_5pct",
+      "breakpoints": true
     }
   ]
 }

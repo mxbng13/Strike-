@@ -82,6 +82,8 @@ export async function missionContext(serviceId: string, viewerId: string, otherI
     category: { name: s.catName, icon: s.catIcon, color: s.catColor },
     serviceStatus: s.s.status,
     budgetCents: s.s.budgetCents,
+    purchaseCents: assignment?.purchaseCents ?? s.s.purchaseCents ?? 0,
+    purchaseNote: s.s.purchaseNote,
     pricingType: s.s.pricingType,
     startsAt: (assignment?.startsAt ?? s.s.startsAt)?.toISOString() ?? null,
     durationMinutes: s.s.durationMinutes,
@@ -107,10 +109,17 @@ export async function missionContext(serviceId: string, viewerId: string, otherI
       mine: o.fromUserId === viewerId,
       createdAt: o.createdAt.toISOString(),
     })),
-    payment: payment ? { id: payment.id, status: payment.status, provider: payment.provider, amountCents: payment.amountCents, feeCents: payment.feeCents } : null,
+    payment: payment ? { id: payment.id, status: payment.status, provider: payment.provider, amountCents: payment.amountCents, feeCents: payment.feeCents, purchaseCents: payment.purchaseCents } : null,
+    claim: assignment ? await latestClaim(assignment.id) : null,
     reviewed: !!myReview,
     dispute: openDispute ? { id: openDispute.id, status: openDispute.status } : null,
   };
+}
+
+async function latestClaim(assignmentId: string) {
+  const { purchaseClaims } = await import("@/db/schema");
+  const [c] = await db.select().from(purchaseClaims).where(eq(purchaseClaims.assignmentId, assignmentId)).orderBy(desc(purchaseClaims.createdAt)).limit(1);
+  return c ? { id: c.id, status: c.status, claimedCents: c.claimedCents, refundedCents: c.refundedCents, decisionNote: c.decisionNote, createdAt: c.createdAt.toISOString() } : null;
 }
 
 /* ───────────── Négociation : propositions de prix et d'horaire ───────────── */
@@ -242,9 +251,18 @@ export async function reportLate(user: CurrentUser, assignmentId: string, minute
   await changed(a);
 }
 
+/** Mission avec achats à avancer : rien ne commence tant que la tirelire n'est pas remplie. */
+async function assertEscrowFilled(a: typeof serviceAssignments.$inferSelect) {
+  if (!a.purchaseCents) return;
+  const pay = await paymentForAssignment(a.id);
+  if (!pay || !["authorized", "captured"].includes(pay.status))
+    throw badRequest(`Le demandeur doit d'abord bloquer ${formatEUR(a.agreedPriceCents + a.purchaseCents)} dans la tirelire ENTOUR. N'avancez aucun achat avant.`);
+}
+
 export async function startMission(user: CurrentUser, assignmentId: string) {
   const { a, s } = await loadAssignment(assignmentId);
   if (user.id !== a.providerId) throw forbidden();
+  await assertEscrowFilled(a);
   if (a.status !== "confirmed") throw badRequest("Mission déjà démarrée ou terminée");
   await db.update(serviceAssignments).set({ status: "in_progress", startedAt: new Date() }).where(eq(serviceAssignments.id, assignmentId));
   await db.update(services).set({ status: "in_progress" }).where(and(eq(services.id, s.id), inArray(services.status, ["open", "assigned"])));
@@ -255,6 +273,7 @@ export async function startMission(user: CurrentUser, assignmentId: string) {
 export async function markDoneByProvider(user: CurrentUser, assignmentId: string) {
   const { a, s } = await loadAssignment(assignmentId);
   if (user.id !== a.providerId) throw forbidden();
+  await assertEscrowFilled(a);
   if (!["confirmed", "in_progress"].includes(a.status)) throw badRequest("Mission non active");
   await db.update(serviceAssignments).set({ status: "provider_done", providerDoneAt: new Date(), startedAt: a.startedAt ?? new Date() }).where(eq(serviceAssignments.id, assignmentId));
   await systemMessage(await convFor(a), `✅ ${user.firstName} indique avoir terminé la mission. ${"Le demandeur doit confirmer la fin pour débloquer le paiement."}`, { action: { type: "provider_done" } });
@@ -270,6 +289,7 @@ export async function confirmCompletion(user: CurrentUser, assignmentId: string)
   const settings = await getSettings();
   const pay = await paymentForAssignment(a.id);
   if (pay && pay.status === "requires_payment") throw badRequest("Sécurisez d'abord le paiement, ou annulez-le, avant de clôturer.");
+  if (a.purchaseCents && (!pay || pay.status !== "authorized")) throw badRequest("Remplissez d'abord la tirelire : l'intervenant doit être remboursé de ses achats.");
 
   const [updated] = await db
     .update(serviceAssignments)

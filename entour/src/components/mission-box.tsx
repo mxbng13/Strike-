@@ -1,9 +1,10 @@
 "use client";
 
-import { AlertTriangle, CalendarClock, Check, ChevronDown, CircleDollarSign, Clock, CreditCard, Flag, Play, ShieldCheck, Star, X } from "lucide-react";
+import { AlertTriangle, CalendarClock, Camera, Check, ChevronDown, CircleDollarSign, Clock, CreditCard, Flag, Loader2, PiggyBank, Play, ShieldCheck, Star, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { api } from "@/lib/client";
+import { api, uploadFile } from "@/lib/client";
+import { MoneyBreakdown } from "./fees";
 import { formatDuration, formatWhen } from "@/lib/dates";
 import { formatEUR } from "@/lib/money";
 import { CategoryBubble } from "./icons";
@@ -16,6 +17,8 @@ export type MissionCtx = {
   category: { name: string; icon: string; color: string };
   serviceStatus: string;
   budgetCents: number | null;
+  purchaseCents: number;
+  purchaseNote: string | null;
   pricingType: string;
   startsAt: string | null;
   durationMinutes: number | null;
@@ -23,7 +26,8 @@ export type MissionCtx = {
   application: { id: string; status: string; proposedPriceCents: number | null } | null;
   assignment: { id: string; status: string; agreedPriceCents: number; lateMinutes: number | null; providerDoneAt: string | null; priceConfirmedByProvider: boolean; priceConfirmedByRequester: boolean } | null;
   pendingOffers: { id: string; kind: "price" | "schedule"; amountCents: number | null; proposedStartsAt: string | null; note: string | null; mine: boolean }[];
-  payment: { id: string; status: string; provider: string; amountCents: number; feeCents: number } | null;
+  payment: { id: string; status: string; provider: string; amountCents: number; feeCents: number; purchaseCents: number } | null;
+  claim: { id: string; status: string; claimedCents: number; refundedCents: number | null; decisionNote: string | null } | null;
   reviewed: boolean;
   dispute: { id: string; status: string } | null;
 };
@@ -55,7 +59,10 @@ export function MissionBox({ m, conversationId, otherName, onChange }: { m: Miss
   const { run, pending } = useAction();
   const { push } = useToast();
   const [open, setOpen] = useState(true);
-  const [sheet, setSheet] = useState<null | "price" | "schedule" | "late" | "cancel" | "dispute" | "pay" | "complete">(null);
+  const [sheet, setSheet] = useState<null | "price" | "schedule" | "late" | "cancel" | "dispute" | "pay" | "complete" | "claim">(null);
+  const [receipt, setReceipt] = useState<{ key: string; url: string; name: string } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [claimAmount, setClaimAmount] = useState(m.purchaseCents ? String(m.purchaseCents / 100) : "");
   const [amount, setAmount] = useState("");
   const [when, setWhen] = useState(toLocalInput(new Date(Date.now() + 3600_000)));
   const [note, setNote] = useState("");
@@ -131,6 +138,25 @@ export function MissionBox({ m, conversationId, otherName, onChange }: { m: Miss
               {m.payment.provider === "simulation" && <span className="ml-auto rounded bg-warning-soft px-1.5 py-0.5 text-[10px] font-bold uppercase text-warning">Simulation</span>}
             </div>
           )}
+          {m.purchaseCents > 0 && (
+            <div className={cx("flex items-start gap-2 rounded-xl px-3 py-2 text-xs", paySecured ? "bg-success-soft text-success" : "bg-warning-soft text-warning")}>
+              <PiggyBank className="size-4 shrink-0" />
+              <span>
+                Achats à avancer : <strong>{formatEUR(m.purchaseCents)}</strong>
+                {m.purchaseNote ? ` (${m.purchaseNote})` : ""}.{" "}
+                {paySecured
+                  ? isReq
+                    ? "La tirelire est remplie."
+                    : "La tirelire est remplie : vous pouvez acheter. Gardez le ticket."
+                  : isReq
+                    ? `Remplissez la tirelire pour que ${otherName} puisse acheter.`
+                    : "N'achetez rien tant que la tirelire n'est pas remplie."}
+              </span>
+            </div>
+          )}
+          {m.claim?.status === "pending" && <p className="rounded-xl bg-warning-soft px-3 py-2 text-sm text-warning">Signalement « client injoignable » en cours d'examen par ENTOUR (preuve d'achat de {formatEUR(m.claim.claimedCents)}).</p>}
+          {m.claim?.status === "approved" && <p className="rounded-xl bg-success-soft px-3 py-2 text-sm text-success">ENTOUR a remboursé {formatEUR(m.claim.refundedCents)} d'achats à l'intervenant.</p>}
+          {m.claim?.status === "rejected" && <p className="rounded-xl bg-surface-2 px-3 py-2 text-sm text-muted">Signalement non retenu{m.claim.decisionNote ? ` : ${m.claim.decisionNote}` : ""}.</p>}
           {a?.status === "provider_done" && isReq && (
             <p className="rounded-xl bg-warning-soft px-3 py-2 text-sm text-warning">{otherName} indique avoir terminé. Vérifiez puis confirmez la fin de mission pour libérer le paiement.</p>
           )}
@@ -179,7 +205,7 @@ export function MissionBox({ m, conversationId, otherName, onChange }: { m: Miss
                   })
                 }
               >
-                Sécuriser le paiement
+                {m.purchaseCents > 0 ? "Remplir la tirelire" : "Sécuriser le paiement"}
               </Button>
             )}
             {a?.status === "confirmed" && !isReq && (
@@ -210,6 +236,11 @@ export function MissionBox({ m, conversationId, otherName, onChange }: { m: Miss
             {active && a && (
               <Button size="sm" variant="ghost" icon={<X className="size-4" />} onClick={() => setSheet("cancel")}>
                 Annuler la mission
+              </Button>
+            )}
+            {active && a && !isReq && m.purchaseCents > 0 && paySecured && m.claim?.status !== "pending" && (
+              <Button size="sm" variant="ghost" icon={<Camera className="size-4" />} onClick={() => setSheet("claim")}>
+                Client injoignable ?
               </Button>
             )}
             {a && ["confirmed", "in_progress", "provider_done", "completed"].includes(a.status) && !m.dispute && (
@@ -310,25 +341,70 @@ export function MissionBox({ m, conversationId, otherName, onChange }: { m: Miss
         </div>
       </Sheet>
 
-      <Sheet open={sheet === "pay"} onClose={() => setSheet(null)} title="Sécuriser le paiement">
+      <Sheet
+        open={sheet === "claim"}
+        onClose={() => setSheet(null)}
+        title="Le client ne répond plus ?"
+        footer={
+          <Button
+            full
+            loading={pending === "claim"}
+            disabled={!receipt || !(Number(claimAmount.replace(",", ".")) > 0)}
+            onClick={() =>
+              act("claim", `/api/assignments/${a?.id}/purchase-claim`, { receiptKey: receipt!.key, claimedCents: Math.round(Number(claimAmount.replace(",", ".")) * 100), note }, "Preuve envoyée à ENTOUR")
+            }
+          >
+            Envoyer la preuve à ENTOUR
+          </Button>
+        }
+      >
+        <div className="space-y-4 text-sm">
+          <p className="text-muted">
+            Vous avez avancé les achats et {otherName} ne répond plus ? Envoyez la photo du ticket. ENTOUR l'analyse et, si tout concorde, vous rembourse <strong className="text-text">le prix des achats</strong> (jusqu'à {formatEUR(m.purchaseCents)}) depuis la tirelire. La rémunération n'est pas versée si la mission n'a pas eu lieu.
+          </p>
+          <label className="flex cursor-pointer items-center gap-3 rounded-2xl border-2 border-dashed border-border p-4">
+            {uploading ? <Loader2 className="size-6 animate-spin text-muted" /> : <Camera className="size-6 text-primary" />}
+            <span className="flex-1">{receipt ? <strong>{receipt.name}</strong> : "Photo ou PDF du ticket de caisse"}</span>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              capture="environment"
+              className="hidden"
+              onChange={async (e) => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+                setUploading(true);
+                try {
+                  const r = await uploadFile(f, "message", conversationId);
+                  setReceipt({ key: r.key, url: r.url, name: r.fileName });
+                } catch (err) {
+                  push({ tone: "error", title: (err as Error).message });
+                } finally {
+                  setUploading(false);
+                }
+              }}
+            />
+          </label>
+          {receipt && receipt.url && /\.(jpg|png|webp)$/.test(receipt.key) && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={receipt.url} alt="Ticket" className="max-h-48 rounded-2xl object-contain" />
+          )}
+          <Field label="Montant payé (€)">
+            <Input inputMode="decimal" value={claimAmount} onChange={(e) => setClaimAmount(e.target.value.replace(/[^\d,.]/g, ""))} className="w-32" />
+          </Field>
+          <Field label="Ce qui s'est passé">
+            <Textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={1000} placeholder="Ex. : commande récupérée à 19 h 40, plus de réponse depuis, personne à l'adresse." />
+          </Field>
+          <p className="text-xs text-muted">Possible uniquement si {otherName} n'a pas écrit depuis au moins 2 heures. Les faux signalements entraînent la suspension du compte.</p>
+        </div>
+      </Sheet>
+
+      <Sheet open={sheet === "pay"} onClose={() => setSheet(null)} title={m.purchaseCents > 0 ? "Remplir la tirelire" : "Sécuriser le paiement"}>
         {simPayment && (
           <div className="space-y-4">
             <SimulationBanner />
-            <div className="space-y-2 rounded-2xl bg-surface-2 p-4 text-sm">
-              <div className="flex justify-between">
-                <span>Montant débité</span>
-                <strong>{formatEUR(simPayment.fees.totalChargedCents)}</strong>
-              </div>
-              <div className="flex justify-between text-muted">
-                <span>Dont commission ENTOUR</span>
-                <span>{formatEUR(simPayment.fees.platformFeeCents)}</span>
-              </div>
-              <div className="flex justify-between text-muted">
-                <span>Versé à {otherName} après la mission</span>
-                <span>{formatEUR(simPayment.fees.providerNetCents)}</span>
-              </div>
-            </div>
-            <p className="text-sm text-muted">En production, cette étape ouvre la page de paiement sécurisée de notre prestataire (Stripe). Le montant est seulement autorisé, puis prélevé à la confirmation de fin de mission.</p>
+            <MoneyBreakdown serviceCents={a?.agreedPriceCents ?? 0} purchaseCents={m.purchaseCents} perspective="requester" otherName={otherName} />
+            <p className="text-sm text-muted">En production, cette étape ouvre la page de paiement sécurisée de notre prestataire (Stripe). Le montant est seulement bloqué, puis prélevé à la confirmation de fin de mission.</p>
             <Button full size="lg" loading={pending === "sim"} onClick={() => act("sim", `/api/payments/${simPayment.paymentId}/simulate`, {}, "Paiement simulé sécurisé")}>
               Confirmer le paiement simulé
             </Button>

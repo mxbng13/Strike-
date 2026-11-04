@@ -12,17 +12,32 @@ export function formatEUR(cents: number | null | undefined, opts: { compact?: bo
 
 export type FeeSettings = { providerCommissionPct: number; payerServiceFeePct: number; payerServiceFeeFixedCents: number; minFeeCents: number };
 
-/** Calcule la répartition d'un paiement. Tous les montants sont en centimes, arrondis à l'entier. */
-export function computeFees(amountCents: number, fees: FeeSettings, commissionOverridePct?: number) {
+/** Taux de commission affiché partout (réglable dans l'administration). */
+export const DEFAULT_COMMISSION_PCT = 5;
+
+/**
+ * Répartition d'un paiement (centimes, arrondis à l'entier).
+ * - La commission ENTOUR porte UNIQUEMENT sur la rémunération du service (`serviceCents`).
+ * - Les achats avancés par l'intervenant (`purchaseCents`, ex. le menu McDo) ne sont jamais commissionnés :
+ *   ils lui sont reversés à l'euro près.
+ * - Le demandeur bloque `totalChargedCents` = achats + rémunération (+ frais demandeur éventuels).
+ */
+export function computeFees(serviceCents: number, fees: FeeSettings, commissionOverridePct?: number, purchaseCents = 0) {
   const pct = commissionOverridePct ?? fees.providerCommissionPct;
-  const providerFee = amountCents === 0 ? 0 : Math.max(fees.minFeeCents, Math.round((amountCents * pct) / 100));
-  const payerFee = Math.round((amountCents * fees.payerServiceFeePct) / 100) + (amountCents > 0 ? fees.payerServiceFeeFixedCents : 0);
-  const platformFee = Math.min(amountCents + payerFee, providerFee + payerFee);
+  const commission = serviceCents === 0 ? 0 : Math.max(fees.minFeeCents, Math.round((serviceCents * pct) / 100));
+  const providerFee = Math.min(serviceCents, commission);
+  const payerFee = Math.round((serviceCents * fees.payerServiceFeePct) / 100) + (serviceCents > 0 ? fees.payerServiceFeeFixedCents : 0);
+  const total = serviceCents + purchaseCents + payerFee;
   return {
-    amountCents,
+    amountCents: serviceCents,
+    serviceCents,
+    purchaseCents,
+    commissionPct: pct,
     payerFeeCents: payerFee,
-    totalChargedCents: amountCents + payerFee,
-    platformFeeCents: platformFee,
-    providerNetCents: amountCents + payerFee - platformFee,
+    totalChargedCents: total,
+    platformFeeCents: providerFee + payerFee,
+    providerServiceNetCents: serviceCents - providerFee,
+    providerNetCents: serviceCents - providerFee + purchaseCents,
   };
 }
+export type FeeBreakdown = ReturnType<typeof computeFees>;

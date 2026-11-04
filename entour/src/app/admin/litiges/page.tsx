@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import useSWR from "swr";
+import { PurchaseClaimsAdmin } from "@/components/admin-claims";
 import { useAction } from "@/components/providers";
 import { Badge, Button, Card, EmptyState, Field, Input, PageHeader, Select, Skeleton, Switch, Textarea } from "@/components/ui";
 import { api } from "@/lib/client";
@@ -20,6 +21,8 @@ export default function DisputesPage() {
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader title="Litiges" subtitle="Le paiement reste gelé jusqu'à la décision. Chaque décision est journalisée et notifiée aux deux parties." action={<Switch checked={all} onChange={setAll} label={<span className="text-sm">Historique</span>} />} />
+      <PurchaseClaimsAdmin all={all} />
+      <h2 className="mb-3 mt-8 text-lg font-bold">Litiges</h2>
       {!data ? (
         <Skeleton className="h-40" />
       ) : data.disputes.length === 0 ? (

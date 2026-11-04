@@ -1,0 +1,4 @@
+-- Nouvelle politique : 5 % sur la rémunération uniquement, sans minimum ; abonnements à 3 % et 2 %.
+UPDATE platform_settings SET value = jsonb_set(jsonb_set(value, '{providerCommissionPct}', '5'), '{minFeeCents}', '0'), updated_at = now() WHERE key = 'fees';--> statement-breakpoint
+UPDATE platform_settings SET value = '{"plus":{"priceCents":499,"label":"ENTOUR Plus","perks":["Commission réduite à 3 %","Alertes prioritaires","Badge Plus","Statistiques avancées"],"commissionPct":3},"pro":{"priceCents":1499,"label":"ENTOUR Pro","perks":["Profil professionnel vérifié","Commission réduite à 2 %","2 mises en avant / mois","Devis multiples illimités"],"commissionPct":2}}'::jsonb, updated_at = now() WHERE key = 'subscriptions';--> statement-breakpoint
+INSERT INTO platform_settings (key, value) VALUES ('purchaseClaims', '{"minSilenceMinutes":120,"maxPurchaseCents":50000}'::jsonb) ON CONFLICT (key) DO NOTHING;

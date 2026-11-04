@@ -178,8 +178,8 @@ export async function acceptApplication(user: CurrentUser, applicationId: string
   const outcome = await db.transaction(async (tx) => {
     const [app] = await tx.select().from(serviceApplications).where(eq(serviceApplications.id, applicationId));
     if (!app) throw notFound("Candidature");
-    const locked = await tx.execute<{ id: string; requester_id: string; status: string; people_needed: number; budget_cents: number | null; starts_at: string | null; title: string }>(
-      sql`select id, requester_id, status, people_needed, budget_cents, starts_at, title from services where id = ${app.serviceId} for update`,
+    const locked = await tx.execute<{ id: string; requester_id: string; status: string; people_needed: number; budget_cents: number | null; purchase_cents: number | null; starts_at: string | null; title: string }>(
+      sql`select id, requester_id, status, people_needed, budget_cents, purchase_cents, starts_at, title from services where id = ${app.serviceId} for update`,
     );
     const s = locked[0];
     if (!s) throw notFound("Demande");
@@ -204,6 +204,7 @@ export async function acceptApplication(user: CurrentUser, applicationId: string
         applicationId: app.id,
         conversationId: conv.id,
         agreedPriceCents: price,
+        purchaseCents: s.purchase_cents ?? 0,
         startsAt: s.starts_at ? new Date(s.starts_at) : null,
       })
       .returning();
@@ -225,7 +226,7 @@ export async function acceptApplication(user: CurrentUser, applicationId: string
   const [prov] = await db.select({ firstName: userProfiles.firstName }).from(userProfiles).where(eq(userProfiles.userId, outcome.app.applicantId));
   await systemMessage(
     outcome.conv.id,
-    `Mission confirmée : ${user.firstName} a choisi ${prov?.firstName ?? "l'intervenant"} pour ${formatEUR(outcome.price)}. L'adresse exacte est désormais visible dans la fiche mission.`,
+    `Mission confirmée : ${user.firstName} a choisi ${prov?.firstName ?? "l'intervenant"} pour ${formatEUR(outcome.price)}${outcome.s.purchase_cents ? ` + ${formatEUR(outcome.s.purchase_cents)} d'achats à avancer. ${user.firstName} doit d'abord bloquer ${formatEUR(outcome.price + outcome.s.purchase_cents)} dans la tirelire ENTOUR : n'achetez rien avant` : ""}. L'adresse exacte est désormais visible dans la fiche mission.`,
     { action: { type: "assignment_confirmed", amountCents: outcome.price } },
   );
   await notify({

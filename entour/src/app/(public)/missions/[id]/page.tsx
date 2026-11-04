@@ -11,6 +11,7 @@ import {
   Lock,
   MapPin,
   MessageCircle,
+  PiggyBank,
   Repeat,
   Rocket,
   Share2,
@@ -26,6 +27,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import useSWR from "swr";
 import { CategoryBubble } from "@/components/icons";
+import { MoneyBreakdown } from "@/components/fees";
 import { MiniMap } from "@/components/mini-map";
 import { useAction, useMe, useToast } from "@/components/providers";
 import { ReportButton } from "@/components/report-button";
@@ -165,7 +167,7 @@ function MissionPage() {
 
       <Card className="mt-5 grid grid-cols-2 gap-px overflow-hidden bg-border sm:grid-cols-4">
         {[
-          { i: <span className="text-lg font-extrabold text-primary">{priceLabel(s)}</span>, l: { fixed: "Prix fixe", negotiable: "Prix négociable", offer: "Sur proposition" }[s.pricingType] },
+          { i: <span className="text-lg font-extrabold text-primary">{priceLabel(s)}</span>, l: `${{ fixed: "Prix fixe", negotiable: "Prix négociable", offer: "Sur proposition" }[s.pricingType]}${s.purchaseCents ? ` + ${formatEUR(s.purchaseCents)} d'achats` : ""}` },
           { i: <CalendarClock className="size-5" />, l: s.timingType === "immediate" ? "Maintenant" : formatWhen(s.startsAt, { withTime: !!s.startsAt }) },
           { i: <Timer className="size-5" />, l: `${s.durationExact ? "Horaire précis" : "Estimation"} : ${formatTimeNeeded(s.startsAt, s.durationMinutes, s.durationExact)}` },
           { i: <Users className="size-5" />, l: `${s.peopleNeeded} personne${s.peopleNeeded > 1 ? "s" : ""}${s.peopleNeeded > 1 ? ` · ${s.seatsLeft} place${s.seatsLeft > 1 ? "s" : ""} libre${s.seatsLeft > 1 ? "s" : ""}` : ""}` },
@@ -176,6 +178,17 @@ function MissionPage() {
           </div>
         ))}
       </Card>
+
+      {s.purchaseCents ? (
+        <div className="mt-5 flex gap-3 rounded-2xl border border-primary/20 bg-primary-soft p-4 text-sm">
+          <PiggyBank className="size-5 shrink-0 text-primary" />
+          <div>
+            <p className="font-semibold">Achats à avancer : {formatEUR(s.purchaseCents)}{s.purchaseNote ? ` — ${s.purchaseNote}` : ""}</p>
+            <p className="mt-0.5 text-muted">Le demandeur bloque {formatEUR(s.purchaseCents + (s.budgetCents ?? 0))} dans la tirelire ENTOUR avant tout achat. L'intervenant est remboursé à l'euro près, sans commission. Si le demandeur ne répond plus, la preuve d'achat permet à ENTOUR de rembourser les achats.</p>
+          </div>
+        </div>
+      ) : null}
+      <MoneyBreakdown className="mt-4" serviceCents={s.budgetCents} purchaseCents={s.purchaseCents} perspective={v?.isOwner ? "requester" : "provider"} pct={s.commissionPct} />
 
       <section className="mt-6">
         <h2 className="mb-2 font-bold">Description</h2>
@@ -467,6 +480,7 @@ function ApplySheet({ open, onClose, s, onDone }: { open: boolean; onClose: () =
         <Field label="Votre expérience (facultatif)">
           <Input value={experience} onChange={(e) => setExperience(e.target.value)} maxLength={600} placeholder="Ex : 3 ans de baby-sitting, BAFA" />
         </Field>
+        <MoneyBreakdown serviceCents={mode === "offer" && price ? Math.round(Number(price.replace(",", ".")) * 100) : s.budgetCents} purchaseCents={s.purchaseCents} perspective="provider" pct={s.commissionPct} />
         <p className="flex items-start gap-2 text-xs text-muted">
           <Clock className="mt-0.5 size-3.5 shrink-0" /> Rien n'est engagé tant que le demandeur ne vous a pas choisi(e). Le paiement passe exclusivement par ENTOUR.
         </p>

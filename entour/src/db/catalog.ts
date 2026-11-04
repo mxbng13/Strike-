@@ -128,16 +128,17 @@ export const BADGE_SEEDS: BadgeSeed[] = [
 
 /** Paramètres de la plateforme, modifiables depuis l'administration. */
 export const DEFAULT_SETTINGS: Record<string, unknown> = {
-  fees: { providerCommissionPct: 10, payerServiceFeePct: 0, payerServiceFeeFixedCents: 0, minFeeCents: 50 },
+  fees: { providerCommissionPct: 5, payerServiceFeePct: 0, payerServiceFeeFixedCents: 0, minFeeCents: 0 },
   subscriptions: {
-    plus: { priceCents: 499, label: "ENTOUR Plus", perks: ["Commission réduite à 5 %", "Alertes prioritaires", "Badge Plus", "Statistiques avancées"], commissionPct: 5 },
-    pro: { priceCents: 1499, label: "ENTOUR Pro", perks: ["Profil professionnel vérifié", "Commission réduite à 4 %", "2 mises en avant / mois", "Devis multiples illimités"], commissionPct: 4 },
+    plus: { priceCents: 499, label: "ENTOUR Plus", perks: ["Commission réduite à 3 %", "Alertes prioritaires", "Badge Plus", "Statistiques avancées"], commissionPct: 3 },
+    pro: { priceCents: 1499, label: "ENTOUR Pro", perks: ["Profil professionnel vérifié", "Commission réduite à 2 %", "2 mises en avant / mois", "Devis multiples illimités"], commissionPct: 2 },
   },
   boost: { priceCents: 199, hours: 24 },
   limits: { maxOpenServicesPerUser: 10, maxApplicationsPerDay: 30, maxMessagesPerMinute: 30, maxNotificationsPerHour: 6 },
   moderation: { autoHoldRiskScore: 60, bannedWords: ["arme", "drogue", "cannabis", "prostitution", "faux papiers", "contrefaçon"] },
   loyalty: { pointsPerMission: 20, pointsPerReview: 5, pointsPerReferral: 100, levels: [0, 100, 300, 700, 1500, 3000] },
   referral: { rewardPoints: 100, qualifyingMissions: 1 },
+  purchaseClaims: { minSilenceMinutes: 120, maxPurchaseCents: 50000 },
   launch: { activeZones: [{ label: "Lyon", lat: 45.764, lng: 4.8357, radiusKm: 20 }], waitlistOutsideZones: false },
   legal: { termsVersion: "2026-11" },
 };

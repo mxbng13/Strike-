@@ -7,6 +7,7 @@ import { notFound } from "@/lib/errors";
 import { parseBody, route } from "@/lib/http";
 import { getSettings, type Settings } from "@/lib/settings";
 import * as admin from "@/server/admin";
+import { decidePurchaseClaim, listPurchaseClaims } from "@/server/claims";
 import { paymentsAdminList } from "@/server/payments";
 import { awardManualBadge, revokeBadge } from "@/server/reputation";
 
@@ -84,6 +85,9 @@ export const GET = route<P>(async (req, { path }) => {
     case "disputes":
       await guard("disputes.handle");
       return { disputes: await admin.listDisputes(sp.get("all") === "1" ? "all" : "open") };
+    case "purchase-claims":
+      await guard("disputes.handle");
+      return { claims: await listPurchaseClaims(sp.get("all") === "1" ? "all" : "pending") };
     case "categories":
       await guard("categories.manage");
       return { categories: await db.select().from(categories).orderBy(categories.sortOrder) };
@@ -159,6 +163,12 @@ export const POST = route<P>(async (req, { path }) => {
         z.object({ outcome: z.enum(["resolved_requester", "resolved_provider", "resolved_split", "under_review"]), resolution: z.string().min(3).max(2000), refundCents: z.number().int().min(0).optional() }),
       );
       await admin.resolveDispute(a, id, input, ip);
+      return { ok: true };
+    }
+    case "purchase-claims": {
+      const a = await guard("disputes.handle");
+      const input = await parseBody(req, z.object({ approve: z.boolean(), refundCents: z.number().int().min(1).optional(), note: z.string().max(1000).default("") }));
+      await decidePurchaseClaim(a, id, input, ip);
       return { ok: true };
     }
     case "reviews": {

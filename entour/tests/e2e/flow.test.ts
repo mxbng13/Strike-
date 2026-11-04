@@ -203,6 +203,7 @@ describe("Parcours complet ENTOUR", () => {
     const pay = await requester.call<{ paymentId: string; provider: string; fees: { totalChargedCents: number; platformFeeCents: number } }>(`/api/assignments/${assignmentId}/pay`, { body: {} });
     expect(pay.provider).toBe("simulation");
     expect(pay.fees.totalChargedCents).toBe(4200);
+    expect(pay.fees.platformFeeCents).toBe(210); // 5 % de 42 €
     await provider.call(`/api/payments/${pay.paymentId}/simulate`, { body: {}, expect: 404 });
     await requester.call(`/api/payments/${pay.paymentId}/simulate`, { body: {} });
     const [p] = await sql<{ status: string; provider: string }[]>`select status, provider from payments where id = ${pay.paymentId}`;
@@ -217,7 +218,7 @@ describe("Parcours complet ENTOUR", () => {
     await requester.call(`/api/assignments/${assignmentId}/complete`, { body: {} });
     await requester.call(`/api/assignments/${assignmentId}/complete`, { body: {}, expect: 400 });
     const tx = await provider.call<{ summary: { earnedCents: number }; transactions: { type: string; amountCents: number; provider: string }[] }>("/api/transactions");
-    expect(tx.summary.earnedCents).toBe(3780); // 4200 − 10 % de commission
+    expect(tx.summary.earnedCents).toBe(3990); // 4200 − 5 % de commission
     expect(tx.transactions[0].provider).toBe("simulation");
     const spent = await requester.call<{ summary: { spentCents: number } }>("/api/transactions");
     expect(spent.summary.spentCents).toBe(4200);
@@ -276,6 +277,61 @@ describe("Parcours complet ENTOUR", () => {
     const ok = await requester.call<{ id: string }>("/api/services", { body: { ...base, durationMinutes: 90, durationExact: true } });
     const d = await requester.call<{ service: { durationMinutes: number; durationExact: boolean } }>(`/api/services/${ok.id}`);
     expect(d.service).toMatchObject({ durationMinutes: 90, durationExact: true });
+  });
+
+  it("16. achats avancés : tirelire bloquée, puis client injoignable → seuls les achats sont remboursés", async () => {
+    const repasId = (await sql<{ id: number }[]>`select id from categories where slug = 'livraison-repas'`)[0].id;
+    // Demande : menu McDo à 30 € + 5 € pour aller le chercher
+    const { id } = await requester.call<{ id: string }>("/api/services", {
+      body: { title: "Ramener mon menu McDo", categoryId: repasId, description: "Menu Best Of à récupérer au McDo de Bellecour.", location: { ...LYON }, searchRadiusKm: 5, timingType: "today", startsAt: new Date(Date.now() + 2 * 3600_000).toISOString(), durationMinutes: 45, pricingType: "fixed", budgetCents: 500, purchaseCents: 3000, purchaseNote: "Menu Best Of", peopleNeeded: 1 },
+    });
+    const det = await provider.call<{ service: { purchaseCents: number; commissionPct: number } }>(`/api/services/${id}`);
+    expect(det.service).toMatchObject({ purchaseCents: 3000, commissionPct: 5 });
+    const ap = await provider.call<{ conversationId: string }>(`/api/services/${id}/apply`, { body: { acceptsBudget: true } });
+    const apps = await requester.call<{ applications: { id: string; applicant: { firstName: string } }[] }>(`/api/services/${id}/applications`);
+    await requester.call(`/api/applications/${apps.applications.find((a) => a.applicant.firstName === "Bruno")!.id}/accept`, { body: {} });
+    const [as] = await sql<{ id: string; purchase_cents: number }[]>`select id, purchase_cents from service_assignments where service_id = ${id}`;
+    expect(as.purchase_cents).toBe(3000);
+
+    // Rien ne commence tant que la tirelire n'est pas remplie
+    const blocked = await provider.call<{ error: { message: string } }>(`/api/assignments/${as.id}/start`, { body: {}, expect: 400 });
+    expect(blocked.error.message).toContain("tirelire");
+    const pay = await requester.call<{ paymentId: string; fees: { totalChargedCents: number; platformFeeCents: number; providerNetCents: number } }>(`/api/assignments/${as.id}/pay`, { body: {} });
+    expect(pay.fees).toMatchObject({ totalChargedCents: 3500, platformFeeCents: 25, providerNetCents: 3475 });
+    await requester.call(`/api/payments/${pay.paymentId}/simulate`, { body: {} });
+    await provider.call(`/api/assignments/${as.id}/start`, { body: {} });
+
+    // Preuve d'achat (PNG minimal) envoyée dans la conversation
+    const png = Buffer.from("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da63f8ffff3f0005fe02fea7d6a4c50000000049454e44ae426082", "hex");
+    const fd = new FormData();
+    fd.append("file", new Blob([png], { type: "image/png" }), "ticket.png");
+    fd.append("purpose", "message");
+    fd.append("conversationId", ap.conversationId);
+    const up = await fetch(`${BASE}/api/uploads`, { method: "POST", headers: { Origin: BASE, Cookie: provider.cookie }, body: fd }).then((r) => r.json());
+    expect(up.key).toBeTruthy();
+
+    // Trop tôt : le demandeur vient d'agir → refusé
+    await provider.call(`/api/assignments/${as.id}/purchase-claim`, { body: { receiptKey: up.key, claimedCents: 3000, note: "" }, expect: 400 });
+    // Délai de silence ramené à 0 pour le test (le cache des paramètres dure 15 s)
+    await sql`update platform_settings set value = '{"minSilenceMinutes":0,"maxPurchaseCents":50000}'::jsonb where key = 'purchaseClaims'`;
+    await new Promise((r) => setTimeout(r, 16_000));
+    await provider.call(`/api/assignments/${as.id}/purchase-claim`, { body: { receiptKey: up.key, claimedCents: 3500, note: "" }, expect: 400 }); // plus que les achats prévus
+    await requester.call(`/api/assignments/${as.id}/purchase-claim`, { body: { receiptKey: up.key, claimedCents: 3000, note: "" }, expect: 403 });
+    const claim = await provider.call<{ claim: { id: string; analysis: { source: string } } }>(`/api/assignments/${as.id}/purchase-claim`, { body: { receiptKey: up.key, claimedCents: 3000, note: "Commande récupérée, plus de réponse" } });
+    const [st] = await sql<{ status: string }[]>`select status from service_assignments where id = ${as.id}`;
+    expect(st.status).toBe("disputed");
+
+    // Décision de l'équipe : on rembourse les 30 € d'achats, rien de plus
+    const list = await admin.call<{ claims: { id: string }[] }>("/api/admin/purchase-claims");
+    expect(list.claims.some((c) => c.id === claim.claim.id)).toBe(true);
+    await admin.call(`/api/admin/purchase-claims/${claim.claim.id}`, { body: { approve: true, refundCents: 3000, note: "Ticket conforme" } });
+    const txs = await sql<{ type: string; amount_cents: number; user_id: string | null }[]>`
+      select t.type, t.amount_cents, t.user_id from transactions t join payments p on p.id = t.payment_id where p.assignment_id = ${as.id}`;
+    expect(txs.filter((t) => t.type === "earning").reduce((n, t) => n + t.amount_cents, 0)).toBe(3000);
+    expect(txs.filter((t) => t.type === "platform_fee")).toHaveLength(0);
+    const [pp] = await sql<{ status: string; refunded_cents: number }[]>`select status, refunded_cents from payments where id = ${pay.paymentId}`;
+    expect(pp).toEqual({ status: "partially_refunded", refunded_cents: 500 });
+    await sql`update platform_settings set value = '{"minSilenceMinutes":120,"maxPurchaseCents":50000}'::jsonb where key = 'purchaseClaims'`;
   });
 
   it("14. annonce suspecte mise en attente de modération", async () => {

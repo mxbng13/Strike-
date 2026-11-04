@@ -14,10 +14,10 @@ Un même compte demande et propose : la plupart des membres sont tour à tour l'
 
 | Source | Mécanisme | Réglage (back-office) | Remarques |
 |---|---|---|---|
-| Commission | 10 % prélevés sur la part de l'intervenant, minimum 0,50 € | `fees` | Prix affiché au demandeur = prix payé ; simple et lisible |
+| Commission | **5 % de la rémunération uniquement**, sans minimum ; jamais sur les achats avancés (repas, courses…) | `fees` | Affichée à chaque étape ; prix affiché au demandeur = prix payé |
 | Frais de service demandeur | % et/ou fixe | `fees.payerServiceFee*` | Désactivés au lancement (0) pour ne pas freiner l'adoption |
-| ENTOUR Plus (4,99 €/mois) | commission 5 %, alertes prioritaires, statistiques | `subscriptions.plus` | Rentable dès ~100 € de revenus mensuels pour l'intervenant |
-| ENTOUR Pro (14,99 €/mois) | profil professionnel vérifié, commission 4 %, mises en avant | `subscriptions.pro` | Cible : auto-entrepreneurs (jardiniers, bricoleurs, photographes) |
+| ENTOUR Plus (4,99 €/mois) | commission 3 %, alertes prioritaires, statistiques | `subscriptions.plus` | Rentable dès ~100 € de revenus mensuels pour l'intervenant |
+| ENTOUR Pro (14,99 €/mois) | profil professionnel vérifié, commission 2 %, mises en avant | `subscriptions.pro` | Cible : auto-entrepreneurs (jardiniers, bricoleurs, photographes) |
 | Mise en avant d'annonce | 24 h en tête de liste, signalée comme telle | `boost` | Offerte pendant le lancement |
 | Partenariats locaux | commerces (fleuristes, quincailleries, pressings) proposant des services ou des avantages | — | Acquisition croisée plutôt que publicité intrusive |
 | Offre petits commerces | comptes Pro pour livraisons de proximité | — | Phase 4 |
@@ -26,7 +26,7 @@ Un même compte demande et propose : la plupart des membres sont tour à tour l'
 
 **Pilotage** : la page Finances sépare strictement revenus réels (Stripe) et opérations simulées ; le tableau de bord suit volume, commissions, abonnements ; la page Zones mesure l'équilibre offre/demande.
 
-Ordre de grandeur (hypothèses à valider) : panier moyen 25 €, commission nette ~2,20 € après frais Stripe (~1,5 % + 0,25 €). Il faut ~4 500 missions/mois pour 10 k€ de marge brute de commissions : la rentabilité vient de la **densité locale** (fréquence d'usage), d'où la stratégie de lancement ville par ville.
+Ordre de grandeur (hypothèses à valider) : rémunération moyenne 20 €, commission 1 € par mission. Les frais Stripe (~1,5 % + 0,25 € par paiement, calculés sur le montant total, achats compris) en absorbent une part importante pour les petites missions avec achats : surveiller la marge par mission dans la page Finances, et envisager des frais de service fixes côté demandeur (déjà paramétrables) si elle devient négative. Il faut ~15 000 missions/mois pour 10 k€ de marge brute : la rentabilité vient de la **densité locale** (fréquence d'usage), d'où la stratégie de lancement ville par ville.
 
 ## 3. Lancement progressif
 
@@ -39,6 +39,10 @@ Ordre de grandeur (hypothèses à valider) : panier moyen 25 €, commission net
 5. **Animation** : remerciements publics, classements de quartier, défis mensuels et badges saisonniers pour créer de l'habitude.
 6. **Mesure** : page Zones (demandes sans réponse > 50 % → recruter des offreurs ; offreurs sans demandes → communication habitants). Critère d'extension : > 70 % des demandes avec au moins une réponse en moins de 2 h pendant 4 semaines.
 7. **Extension** : communes voisines d'abord (effet de réseau contigu), puis une deuxième ville en répliquant le playbook.
+
+## 3 bis. Tirelire et achats avancés
+
+Pour les missions avec achats (livraison de repas, courses, pharmacie…), le demandeur bloque **achats + rémunération** avant que l'intervenant n'achète. À la fin, l'intervenant reçoit les achats à l'euro près et sa rémunération moins 5 %. Si le demandeur disparaît après l'achat (au moins 2 h sans réponse), l'intervenant envoie la preuve d'achat : analyse automatique du ticket puis décision d'un modérateur ; seul le prix des achats est versé, le reste revient au demandeur, et le score de risque du demandeur augmente. L'intervenant ne prend donc jamais de risque financier, et le demandeur ne paie jamais plus que ce qui a été réellement acheté.
 
 ## 4. Confiance et sécurité — règles par catégorie
 

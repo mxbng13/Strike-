@@ -113,6 +113,8 @@ export async function createService(user: CurrentUser, input: CreateServiceInput
         startsAt,
         durationMinutes: input.durationMinutes,
         durationExact: input.durationExact,
+        purchaseCents: input.purchaseCents || null,
+        purchaseNote: input.purchaseCents ? input.purchaseNote || null : null,
         recurrence: input.timingType === "recurring" && input.recurrence ? { freq: input.recurrence.freq, interval: input.recurrence.interval, until: input.recurrence.until ?? null } : null,
         urgency: input.timingType === "immediate" ? "urgent" : input.urgency,
         peopleNeeded: input.peopleNeeded,
@@ -191,6 +193,7 @@ export type ServiceCard = {
   category: { id: number; slug: string; name: string; icon: string; color: string };
   pricingType: "fixed" | "negotiable" | "offer";
   budgetCents: number | null;
+  purchaseCents: number | null;
   timingType: string;
   startsAt: string | null;
   durationMinutes: number | null;
@@ -253,7 +256,7 @@ export async function listServices(p: ServiceListParams, viewerId: string | null
   }[p.sort ?? "relevance"];
 
   const rows = await db.execute<Record<string, unknown>>(sql`
-    select s.id, s.title, left(s.description, 180) as excerpt, s.status, s.pricing_type, s.budget_cents, s.timing_type, s.starts_at,
+    select s.id, s.title, left(s.description, 180) as excerpt, s.status, s.pricing_type, s.budget_cents, s.purchase_cents, s.timing_type, s.starts_at,
       s.duration_minutes, s.duration_exact, s.urgency, s.people_needed, s.area_label, s.public_lat, s.public_lng, s.recurrence, s.is_group_buy,
       (s.boosted_until is not null and s.boosted_until > now()) as boosted, s.created_at, s.is_demo,
       ${dist} as distance_km,
@@ -282,6 +285,7 @@ function toCard(r: Record<string, unknown>): ServiceCard {
     category: { id: Number(r.c_id), slug: String(r.c_slug), name: String(r.c_name), icon: String(r.c_icon), color: String(r.c_color) },
     pricingType: r.pricing_type as ServiceCard["pricingType"],
     budgetCents: r.budget_cents == null ? null : Number(r.budget_cents),
+    purchaseCents: r.purchase_cents == null ? null : Number(r.purchase_cents),
     timingType: String(r.timing_type),
     startsAt: r.starts_at ? new Date(r.starts_at as string).toISOString() : null,
     durationMinutes: r.duration_minutes == null ? null : Number(r.duration_minutes),
@@ -416,6 +420,9 @@ export async function getServiceDetail(id: string, viewer: CurrentUser | null, o
     moderationReasons: isOwner || isAdmin ? s.moderationReasons : [],
     pricingType: s.pricingType,
     budgetCents: s.budgetCents,
+    purchaseCents: s.purchaseCents,
+    purchaseNote: s.purchaseNote,
+    commissionPct: (await getSettings()).fees.providerCommissionPct,
     timingType: s.timingType,
     startsAt: s.startsAt?.toISOString() ?? null,
     durationMinutes: s.durationMinutes,
@@ -550,6 +557,8 @@ export async function renewTemplate(user: CurrentUser, id: string) {
     description: s.description,
     pricingType: s.pricingType,
     budgetCents: s.budgetCents,
+    purchaseCents: s.purchaseCents,
+    purchaseNote: s.purchaseNote,
     durationMinutes: s.durationMinutes,
     durationExact: s.durationExact,
     peopleNeeded: s.peopleNeeded,

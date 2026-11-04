@@ -12,6 +12,7 @@ import {
   reportLate,
   startMission,
 } from "@/server/assignments";
+import { createPurchaseClaim } from "@/server/claims";
 import { startPayment } from "@/server/payments";
 
 export const POST = route<{ id: string; action: string }>(async (req, { id, action }) => {
@@ -37,6 +38,10 @@ export const POST = route<{ id: string; action: string }>(async (req, { id, acti
     case "dispute": {
       const input = await parseBody(req, z.object({ reason: z.string().trim().min(3).max(120), description: z.string().trim().min(20, "Décrivez la situation (20 caractères minimum)").max(3000) }));
       return { dispute: await openDispute(await requireUser(), id, input) };
+    }
+    case "purchase-claim": {
+      const input = await parseBody(req, z.object({ receiptKey: z.string().max(80), claimedCents: z.number().int().min(1).max(1_000_000), note: z.string().trim().max(1000).default("") }));
+      return { claim: await createPurchaseClaim(await requireActiveUser(), id, input) };
     }
     case "pay":
       return startPayment(await requireActiveUser(), id);

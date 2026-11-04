@@ -38,20 +38,32 @@ describe("âge", () => {
   });
 });
 
-describe("frais", () => {
-  const fees = { providerCommissionPct: 10, payerServiceFeePct: 0, payerServiceFeeFixedCents: 0, minFeeCents: 50 };
-  it("prélève la commission sur la part de l'intervenant", () => {
-    expect(computeFees(3000, fees)).toMatchObject({ totalChargedCents: 3000, platformFeeCents: 300, providerNetCents: 2700 });
+describe("frais : 5 % sur la rémunération uniquement", () => {
+  const fees = { providerCommissionPct: 5, payerServiceFeePct: 0, payerServiceFeeFixedCents: 0, minFeeCents: 0 };
+  it("McDo à 30 € + 5 € de service : 35 € bloqués, 0,25 € de commission, 34,75 € versés", () => {
+    expect(computeFees(500, fees, undefined, 3000)).toMatchObject({ totalChargedCents: 3500, platformFeeCents: 25, providerServiceNetCents: 475, providerNetCents: 3475, purchaseCents: 3000 });
   });
-  it("applique la commission minimale et la réduction d'abonnement", () => {
-    expect(computeFees(200, fees).platformFeeCents).toBe(50);
-    expect(computeFees(3000, fees, 5).platformFeeCents).toBe(150);
+  it("ne prend jamais de commission sur les achats", () => {
+    expect(computeFees(500, fees, undefined, 3000).platformFeeCents).toBe(computeFees(500, fees).platformFeeCents);
+    expect(computeFees(0, fees, undefined, 3000)).toMatchObject({ platformFeeCents: 0, providerNetCents: 3000 });
+  });
+  it("applique la réduction d'abonnement", () => {
+    expect(computeFees(3000, fees, 2).platformFeeCents).toBe(60);
   });
   it("conserve l'égalité payé = versé + commission", () => {
     for (const a of [0, 1, 99, 500, 1234, 99999]) {
-      const r = computeFees(a, { ...fees, payerServiceFeePct: 3, payerServiceFeeFixedCents: 25 });
+      const r = computeFees(a, { ...fees, payerServiceFeePct: 3, payerServiceFeeFixedCents: 25 }, undefined, 777);
       expect(r.providerNetCents + r.platformFeeCents).toBe(r.totalChargedCents);
     }
+  });
+});
+
+describe("preuve d'achat", () => {
+  it("tolère 1 € ou 5 % d'écart entre le ticket et le montant réclamé", async () => {
+    const { isConsistent } = await import("@/lib/receipt");
+    expect(isConsistent(3020, 3000)).toBe(true);
+    expect(isConsistent(3300, 3000)).toBe(false);
+    expect(isConsistent(null, 3000)).toBeNull();
   });
 });
 

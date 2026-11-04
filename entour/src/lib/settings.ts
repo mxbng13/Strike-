@@ -12,6 +12,7 @@ export type Settings = {
   moderation: { autoHoldRiskScore: number; bannedWords: string[] };
   loyalty: { pointsPerMission: number; pointsPerReview: number; pointsPerReferral: number; levels: number[] };
   referral: { rewardPoints: number; qualifyingMissions: number };
+  purchaseClaims: { minSilenceMinutes: number; maxPurchaseCents: number };
   launch: { activeZones: { label: string; lat: number; lng: number; radiusKm: number }[]; waitlistOutsideZones: boolean };
   legal: { termsVersion: string };
 };

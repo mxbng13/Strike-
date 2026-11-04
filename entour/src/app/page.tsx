@@ -96,7 +96,7 @@ export default async function Landing() {
               { n: "1", t: "Publiez", d: "Décrivez votre besoin en une phrase : l'assistant rédige l'annonce et suggère un prix juste." },
               { n: "2", t: "Recevez des réponses", d: "Les voisins disponibles et compétents sont prévenus. Ils acceptent, proposent un tarif ou posent une question." },
               { n: "3", t: "Choisissez", d: "Comparez notes, avis, distance, badges et prix. Discutez dans la messagerie intégrée." },
-              { n: "4", t: "Payez & notez", d: "Le paiement est sécurisé puis versé à la fin de la mission. Vous vous évaluez mutuellement." },
+              { n: "4", t: "Payez & notez", d: "L'argent est bloqué dans la tirelire ENTOUR puis versé à la fin. ENTOUR ne prend que 5 % de la rémunération, jamais sur les achats." },
             ].map((s) => (
               <div key={s.n}>
                 <span className="flex size-10 items-center justify-center rounded-2xl bg-primary font-extrabold text-primary-ink">{s.n}</span>
@@ -125,7 +125,7 @@ export default async function Landing() {
         <div className="grid gap-4 lg:grid-cols-3">
           {[
             { i: ShieldCheck, t: "La confiance avant tout", d: "Vérification de l'e-mail, du téléphone et de l'identité. Règles renforcées pour la garde d'enfants, l'accès au domicile et les personnes vulnérables." },
-            { i: CreditCard, t: "Paiement protégé", d: "L'argent est sécurisé auprès de notre prestataire de paiement agréé et versé uniquement quand la mission est confirmée." },
+            { i: CreditCard, t: "Tirelire protégée, 5 % seulement", d: "Commande à 30 € + 5 € de service ? Vous bloquez 35 € ; l'intervenant ne paie rien de sa poche et reçoit 34,75 € à la fin. ENTOUR prend 5 % de la rémunération uniquement." },
             { i: MessageCircle, t: "Tout se passe dans l'app", d: "Messagerie complète, propositions de prix, changements d'horaire, partage temporaire de position : tout est tracé." },
           ].map((f) => (
             <div key={f.t} className="rounded-3xl border border-border bg-surface p-6">

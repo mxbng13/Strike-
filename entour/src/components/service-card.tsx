@@ -31,7 +31,10 @@ export function ServiceCardView({ s, index = 0, compact }: { s: Card; index?: nu
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <p className="line-clamp-2 font-bold leading-snug">{s.title}</p>
-            <span className="shrink-0 rounded-xl bg-primary-soft px-2 py-1 text-sm font-extrabold text-primary">{priceLabel(s)}</span>
+            <span className="shrink-0 text-right">
+              <span className="block rounded-xl bg-primary-soft px-2 py-1 text-sm font-extrabold text-primary">{priceLabel(s)}</span>
+              {s.purchaseCents ? <span className="mt-0.5 block text-[11px] font-semibold text-muted">+ {formatEUR(s.purchaseCents, { compact: true })} d'achats</span> : null}
+            </span>
           </div>
           <p className="mt-0.5 truncate text-xs font-medium text-muted">{s.category.name}</p>
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">

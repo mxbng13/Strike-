@@ -3,6 +3,7 @@
 import { ArrowDownLeft, ArrowUpRight, Banknote, Info, Landmark } from "lucide-react";
 import Link from "next/link";
 import useSWR from "swr";
+import { CommissionLine } from "@/components/fees";
 import { useAction } from "@/components/providers";
 import { Badge, Button, Card, EmptyState, PageHeader, SimulationBanner, Skeleton, Stat, cx } from "@/components/ui";
 import { api } from "@/lib/client";
@@ -36,6 +37,7 @@ export default function MoneyPage() {
         <Stat label="Dépensé au total" value={formatEUR(s.spentCents)} />
       </div>
 
+      <CommissionLine className="-mt-2" />
       <Card className="p-5">
         <h2 className="mb-4 font-bold">12 derniers mois</h2>
         {s.months.length === 0 ? (

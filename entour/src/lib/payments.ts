@@ -32,7 +32,8 @@ export interface PaymentGateway {
   name: "stripe" | "simulation";
   isLive: boolean;
   startAuthorization(input: AuthorizeInput): Promise<AuthorizeResult>;
-  capture(externalId: string): Promise<void>;
+  /** Capture totale, ou partielle (`amountCents`) avec une commission `feeCents` (ex. 0 pour un simple remboursement d'achats). */
+  capture(externalId: string, opts?: { amountCents?: number; feeCents?: number }): Promise<void>;
   cancel(externalId: string): Promise<void>;
   refund(externalId: string, amountCents: number): Promise<void>;
   createPayoutAccount(user: { id: string; email: string }, returnUrl: string): Promise<{ externalId: string; onboardingUrl: string | null }>;
@@ -89,8 +90,8 @@ class StripeGateway implements PaymentGateway {
     const s = await this.stripe.checkout.sessions.retrieve(externalId);
     return typeof s.payment_intent === "string" ? s.payment_intent : s.payment_intent?.id ?? "";
   }
-  async capture(externalId: string) {
-    await this.stripe.paymentIntents.capture(await this.intentId(externalId));
+  async capture(externalId: string, opts: { amountCents?: number; feeCents?: number } = {}) {
+    await this.stripe.paymentIntents.capture(await this.intentId(externalId), opts.amountCents != null ? { amount_to_capture: opts.amountCents, application_fee_amount: opts.feeCents ?? 0 } : {});
   }
   async cancel(externalId: string) {
     const id = await this.intentId(externalId);

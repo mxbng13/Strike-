@@ -49,7 +49,7 @@ export async function dashboardStats(opts: { includeDemo?: boolean } = {}) {
       (select coalesce(sum(p.fee_cents), 0) from payments p where p.status in ('captured','partially_refunded') and p.provider = 'stripe')::bigint as revenue_live,
       (select coalesce(sum(p.amount_cents), 0) from payments p where p.status in ('captured','partially_refunded') and p.provider = 'simulation')::bigint as volume_sim,
       (select coalesce(sum(p.fee_cents), 0) from payments p where p.status in ('captured','partially_refunded') and p.provider = 'simulation')::bigint as revenue_sim,
-      (select count(*) from disputes where status in ('open','under_review'))::int as disputes_open,
+      ((select count(*) from disputes where status in ('open','under_review')) + (select count(*) from purchase_claims where status = 'pending'))::int as disputes_open,
       (select count(*) from reports where status in ('open','reviewing'))::int as reports_open,
       (select count(*) from user_verifications where status = 'pending')::int as verifications_pending,
       (select count(*) from subscriptions where status = 'active')::int as subscriptions_active`);

@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import { CategoryBubble } from "@/components/icons";
+import { MoneyBreakdown } from "@/components/fees";
 import { LocationPicker, type PickedLocation } from "@/components/location-picker";
 import { useMe, useToast } from "@/components/providers";
 import { Button, ButtonLink, Card, Chip, Field, Input, PageHeader, Segmented, Select, Sheet, Switch, Textarea, cx } from "@/components/ui";
@@ -28,6 +29,9 @@ const TIMINGS: { v: Timing; label: string }[] = [
   { v: "scheduled", label: "Date précise" },
   { v: "recurring", label: "Récurrent" },
 ];
+/** Catégories où l'intervenant avance généralement des achats : l'option est proposée d'office. */
+const PURCHASE_CATS = new Set(["livraison-repas", "courses-alimentaires", "courses-pharmacie", "courses-derniere-minute", "accompagnement-courses"]);
+const euros = (v: string) => Math.round(Number(v.replace(",", ".")) * 100);
 const DURATIONS = [15, 30, 45, 60, 90, 120, 180, 240, 360, 480];
 
 function toLocalInput(d: Date) {
@@ -67,6 +71,9 @@ function PublishForm() {
   const [loc, setLoc] = useState<PickedLocation | null>(null);
   const [radius, setRadius] = useState(5);
   const [pricing, setPricing] = useState<Pricing>("fixed");
+  const [purchaseOn, setPurchaseOn] = useState(false);
+  const [purchase, setPurchase] = useState("");
+  const [purchaseNote, setPurchaseNote] = useState("");
   const [budget, setBudget] = useState<string>("");
   const [people, setPeople] = useState(1);
   const [urgency, setUrgency] = useState<"normal" | "high" | "urgent">("normal");
@@ -93,7 +100,7 @@ function PublishForm() {
     }
     const renew = sp.get("renouveler");
     if (renew)
-      api<{ template: { title: string; categoryId: number; description: string; pricingType: Pricing; budgetCents: number | null; durationMinutes: number | null; peopleNeeded: number; skillsRequired: string[]; searchRadiusKm: number; location: PickedLocation; addressPrivate: string | null; parentServiceId: string } }>(`/api/services/${renew}/renew`)
+      api<{ template: { title: string; categoryId: number; description: string; pricingType: Pricing; budgetCents: number | null; durationMinutes: number | null; peopleNeeded: number; skillsRequired: string[]; searchRadiusKm: number; location: PickedLocation; addressPrivate: string | null; purchaseCents: number | null; purchaseNote: string | null; parentServiceId: string } }>(`/api/services/${renew}/renew`)
         .then(({ template: t }) => {
           setTitle(t.title);
           setCategoryId(t.categoryId);
@@ -106,6 +113,11 @@ function PublishForm() {
           setRadius(t.searchRadiusKm);
           setLoc({ ...t.location, address: t.addressPrivate ?? undefined });
           setParentId(t.parentServiceId);
+          if (t.purchaseCents) {
+            setPurchaseOn(true);
+            setPurchase(String(t.purchaseCents / 100));
+            setPurchaseNote(t.purchaseNote ?? "");
+          }
         })
         .catch(() => push({ tone: "error", title: "Impossible de charger l'ancienne demande" }));
   }, [sp, push]);
@@ -120,6 +132,10 @@ function PublishForm() {
   }, [categoryId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Suggestion de prix (historique réel ou repères indicatifs)
+  useEffect(() => {
+    if (category && PURCHASE_CATS.has(category.slug)) setPurchaseOn(true);
+  }, [category]);
+
   useEffect(() => {
     if (!categoryId) return setSuggestion(null);
     const ctrl = new AbortController();
@@ -207,6 +223,8 @@ function PublishForm() {
     if (description.trim().length < 10) errs.description = "Décrivez votre besoin (10 caractères minimum)";
     if (!loc) errs.location = "Indiquez le lieu";
     if (pricing !== "offer" && !(Number(budget) > 0)) errs.budgetCents = "Indiquez un montant";
+    if (purchaseOn && !(euros(purchase) >= 100)) errs.purchaseCents = "Indiquez le montant des achats (1 € minimum)";
+    if (purchaseOn && pricing === "offer" && !(Number(budget) > 0)) errs.budgetCents = "Avec des achats à avancer, indiquez la rémunération proposée";
     if ((timing === "scheduled" || timing === "recurring") && !startsAt) errs.startsAt = "Choisissez la date et l'heure";
     const tn = timeNeeded();
     if ("error" in tn) errs.durationMinutes = tn.error;
@@ -232,6 +250,8 @@ function PublishForm() {
           durationExact: timeMode === "exact",
           pricingType: pricing,
           budgetCents: budget ? Math.round(Number(budget.replace(",", ".")) * 100) : null,
+          purchaseCents: purchaseOn ? euros(purchase) : null,
+          purchaseNote: purchaseOn ? purchaseNote.trim() || null : null,
           peopleNeeded: people,
           urgency: timing === "immediate" ? "urgent" : urgency,
           skillsRequired: skills,
@@ -500,9 +520,32 @@ function PublishForm() {
           </div>
         </div>
 
+        {/* Achats à avancer */}
+        <div className={cx("space-y-3 rounded-3xl border bg-surface p-4", errors.purchaseCents ? "border-danger" : "border-border")}>
+          <Switch
+            checked={purchaseOn}
+            onChange={setPurchaseOn}
+            label="L'intervenant doit avancer des achats"
+            description="Ex. : votre menu au restaurant, des courses, un médicament. Vous bloquez le montant dans la tirelire ENTOUR avant qu'il n'achète ; il est remboursé à l'euro près, sans commission."
+          />
+          {purchaseOn && (
+            <div className="grid gap-3 sm:grid-cols-[180px_1fr]">
+              <Field label="Prix des achats" error={errors.purchaseCents}>
+                <div className="relative">
+                  <Input inputMode="decimal" value={purchase} onChange={(e) => setPurchase(e.target.value.replace(/[^\d,.]/g, ""))} placeholder="30" className="pr-10 text-lg font-bold" />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-muted">€</span>
+                </div>
+              </Field>
+              <Field label="Quoi acheter ?" hint="Le détail précis peut aussi se donner dans la conversation.">
+                <Input value={purchaseNote} onChange={(e) => setPurchaseNote(e.target.value.slice(0, 300))} placeholder="Ex. : menu Best Of Big Mac, frites, Coca" />
+              </Field>
+            </div>
+          )}
+        </div>
+
         {/* Rémunération */}
         <div className="space-y-3">
-          <p className="text-sm font-semibold">Rémunération</p>
+          <p className="text-sm font-semibold">{purchaseOn ? "Rémunération pour le service (en plus des achats)" : "Rémunération"}</p>
           <Segmented
             value={pricing}
             onChange={setPricing}
@@ -540,6 +583,7 @@ function PublishForm() {
               </button>
             </div>
           )}
+          <MoneyBreakdown serviceCents={Number(budget) > 0 ? euros(budget) : null} purchaseCents={purchaseOn && euros(purchase) > 0 ? euros(purchase) : 0} perspective="requester" />
         </div>
 
         {/* Options */}

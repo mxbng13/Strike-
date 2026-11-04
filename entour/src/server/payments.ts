@@ -35,7 +35,7 @@ export async function startPayment(user: CurrentUser, assignmentId: string) {
   if (existing && ["authorized", "captured"].includes(existing.status)) throw badRequest("Le paiement est déjà sécurisé");
 
   const settings = await getSettings();
-  const fees = computeFees(a.agreedPriceCents, settings.fees, await commissionFor(a.providerId));
+  const fees = computeFees(a.agreedPriceCents, settings.fees, await commissionFor(a.providerId), a.purchaseCents);
   let destination: string | null = null;
   if (gateway.name === "stripe") {
     const [acct] = await db.select().from(payoutAccounts).where(and(eq(payoutAccounts.userId, a.providerId), eq(payoutAccounts.provider, "stripe")));
@@ -50,6 +50,7 @@ export async function startPayment(user: CurrentUser, assignmentId: string) {
     payeeId: a.providerId,
     provider: gateway.name,
     amountCents: fees.totalChargedCents,
+    purchaseCents: fees.purchaseCents,
     feeCents: fees.platformFeeCents,
     payerFeeCents: fees.payerFeeCents,
     status: "requires_payment" as const,
@@ -91,10 +92,10 @@ export async function markAuthorized(paymentId: string, externalId: string | nul
   if (!p) return;
   const [a] = await db.select().from(serviceAssignments).where(eq(serviceAssignments.id, p.assignmentId));
   if (a?.conversationId)
-    await systemMessage(a.conversationId, `Paiement sécurisé${p.provider === "simulation" ? " (SIMULATION — aucun argent réel)" : ""} : ${formatEUR(p.amountCents)}. Il sera versé après confirmation de fin de mission.`, {
+    await systemMessage(a.conversationId, `Tirelire remplie${p.provider === "simulation" ? " (SIMULATION — aucun argent réel)" : ""} : ${formatEUR(p.amountCents)} bloqués sur ENTOUR${p.purchaseCents ? `, dont ${formatEUR(p.purchaseCents)} pour les achats : vous pouvez maintenant les avancer` : ""}. L'argent sera versé à la fin de la mission.`, {
       action: { type: "payment_authorized", amountCents: p.amountCents },
     });
-  await notify({ userId: p.payeeId, type: "payment", title: "Paiement sécurisé", body: `Le paiement de ${formatEUR(p.amountCents - p.feeCents)} (net) est sécurisé.`, link: a?.conversationId ? `/messages/${a.conversationId}` : "/revenus" });
+  await notify({ userId: p.payeeId, type: "payment", title: "Tirelire remplie", body: `${formatEUR(p.amountCents - p.feeCents)} vous attendent à la fin de la mission${p.purchaseCents ? ` (dont ${formatEUR(p.purchaseCents)} de remboursement d'achats)` : ""}.`, link: a?.conversationId ? `/messages/${a.conversationId}` : "/revenus" });
 }
 
 /** Capture à la fin de mission : écritures comptables pour l'historique des revenus et dépenses. */
@@ -106,8 +107,9 @@ export async function capturePayment(assignmentId: string) {
   await db.transaction(async (tx) => {
     await tx.update(payments).set({ status: "captured", capturedAt: new Date() }).where(eq(payments.id, p.id));
     await tx.insert(transactions).values([
-      { paymentId: p.id, userId: p.payerId, type: "charge", amountCents: -p.amountCents, label: "Paiement de mission", provider: p.provider },
-      { paymentId: p.id, userId: p.payeeId, type: "earning", amountCents: p.amountCents - p.feeCents, label: "Revenu de mission (net de commission)", provider: p.provider },
+      { paymentId: p.id, userId: p.payerId, type: "charge", amountCents: -p.amountCents, label: p.purchaseCents ? "Paiement de mission (achats + rémunération)" : "Paiement de mission", provider: p.provider },
+      { paymentId: p.id, userId: p.payeeId, type: "earning", amountCents: p.amountCents - p.purchaseCents - p.feeCents, label: "Rémunération (après commission ENTOUR)", provider: p.provider },
+      ...(p.purchaseCents ? [{ paymentId: p.id, userId: p.payeeId, type: "earning" as const, amountCents: p.purchaseCents, label: "Remboursement des achats avancés (sans commission)", provider: p.provider }] : []),
       { paymentId: p.id, userId: null, type: "platform_fee", amountCents: p.feeCents, label: "Commission ENTOUR", provider: p.provider },
     ]);
   });
@@ -233,4 +235,24 @@ export async function paymentsAdminList(limit = 100) {
     .innerJoin(users, eq(users.id, payments.payerId))
     .orderBy(desc(payments.createdAt))
     .limit(limit);
+}
+
+/**
+ * Client injoignable après des achats avancés : ENTOUR ne verse à l'intervenant QUE le prix des achats
+ * (sans commission), le reste de la tirelire est rendu au demandeur.
+ */
+export async function captureForPurchaseRefund(assignmentId: string, refundCents: number) {
+  const p = await paymentForAssignment(assignmentId);
+  if (!p || p.status !== "authorized") throw new Error("La tirelire de cette mission n'est pas remplie");
+  const amount = Math.min(refundCents, p.purchaseCents);
+  if (amount <= 0) throw new Error("Aucun achat à rembourser");
+  if (p.provider === "stripe" && p.externalId) await getGateway().capture(p.externalId, { amountCents: amount, feeCents: 0 });
+  await db.transaction(async (tx) => {
+    await tx.update(payments).set({ status: "partially_refunded", capturedAt: new Date(), refundedCents: p.amountCents - amount, feeCents: 0 }).where(eq(payments.id, p.id));
+    await tx.insert(transactions).values([
+      { paymentId: p.id, userId: p.payerId, type: "charge", amountCents: -amount, label: "Achats avancés pour vous (client injoignable)", provider: p.provider },
+      { paymentId: p.id, userId: p.payeeId, type: "earning", amountCents: amount, label: "Remboursement des achats (décision ENTOUR)", provider: p.provider },
+    ]);
+  });
+  return { amount, released: p.amountCents - amount };
 }

@@ -95,6 +95,7 @@ export const reportStatus = pgEnum("report_status", ["open", "reviewing", "actio
 export const referralStatus = pgEnum("referral_status", ["pending", "qualified", "rewarded"]);
 export const subscriptionPlan = pgEnum("subscription_plan", ["plus", "pro"]);
 export const subscriptionStatus = pgEnum("subscription_status", ["active", "past_due", "cancelled"]);
+export const claimStatus = pgEnum("claim_status", ["pending", "approved", "rejected", "withdrawn"]);
 export const tokenType = pgEnum("token_type", ["email_verify", "password_reset", "phone_code"]);
 export const favoriteKind = pgEnum("favorite_kind", ["service", "user", "trusted"]);
 export const groupKind = pgEnum("group_kind", ["neighborhood", "topic"]);
@@ -316,6 +317,9 @@ export const services = pgTable(
     status: serviceStatus("status").notNull().default("open"),
     pricingType: pricingType("pricing_type").notNull(),
     budgetCents: integer("budget_cents"),
+    /** Achats que l'intervenant doit avancer (ex. la commande au restaurant). Jamais commissionnés. */
+    purchaseCents: integer("purchase_cents"),
+    purchaseNote: text("purchase_note"),
     timingType: timingType("timing_type").notNull(),
     startsAt: ts("starts_at"),
     durationMinutes: integer("duration_minutes"),
@@ -358,6 +362,7 @@ export const services = pgTable(
     uniqueIndex("services_invite_uq").on(t.inviteCode),
     check("services_people", sql`${t.peopleNeeded} between 1 and 20`),
     check("services_budget", sql`${t.budgetCents} is null or ${t.budgetCents} between 0 and 1000000`),
+    check("services_purchase", sql`${t.purchaseCents} is null or ${t.purchaseCents} between 0 and 1000000`),
     check("services_radius", sql`${t.searchRadiusKm} in (1,3,5,10,20,50)`),
   ],
 );
@@ -426,6 +431,7 @@ export const serviceAssignments = pgTable(
     applicationId: uuid("application_id").references(() => serviceApplications.id),
     conversationId: uuid("conversation_id"),
     agreedPriceCents: integer("agreed_price_cents").notNull(),
+    purchaseCents: integer("purchase_cents").notNull().default(0),
     priceConfirmedByProvider: boolean("price_confirmed_by_provider").notNull().default(true),
     priceConfirmedByRequester: boolean("price_confirmed_by_requester").notNull().default(true),
     startsAt: ts("starts_at"),
@@ -661,6 +667,8 @@ export const payments = pgTable(
     payeeId: uuid("payee_id").notNull().references(() => users.id),
     provider: paymentProvider("provider").notNull(),
     amountCents: integer("amount_cents").notNull(),
+    /** Part « achats » du montant bloqué : reversée sans commission à l'intervenant. */
+    purchaseCents: integer("purchase_cents").notNull().default(0),
     feeCents: integer("fee_cents").notNull(),
     payerFeeCents: integer("payer_fee_cents").notNull().default(0),
     currency: text("currency").notNull().default("eur"),
@@ -714,6 +722,28 @@ export const disputes = pgTable(
     resolvedAt: ts("resolved_at"),
   },
   (t) => [index("disputes_status_idx").on(t.status, t.createdAt), uniqueIndex("disputes_open_uq").on(t.assignmentId).where(sql`${t.status} in ('open','under_review')`)],
+);
+
+/** Réclamation d'un intervenant ayant avancé des achats quand le client ne répond plus. */
+export const purchaseClaims = pgTable(
+  "purchase_claims",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    assignmentId: uuid("assignment_id").notNull().references(() => serviceAssignments.id, { onDelete: "cascade" }),
+    providerId: uuid("provider_id").notNull().references(() => users.id),
+    receiptKey: text("receipt_key").notNull(),
+    claimedCents: integer("claimed_cents").notNull(),
+    note: text("note").notNull().default(""),
+    status: claimStatus("status").notNull().default("pending"),
+    previousStatus: text("previous_status").notNull(),
+    analysis: jsonb("analysis").$type<{ source: "claude" | "none"; totalCents?: number | null; merchant?: string | null; date?: string | null; readable?: boolean; consistent?: boolean | null; notes?: string }>().notNull().default({ source: "none" }),
+    refundedCents: integer("refunded_cents"),
+    decidedBy: uuid("decided_by").references(() => users.id),
+    decisionNote: text("decision_note"),
+    createdAt: createdAt(),
+    decidedAt: ts("decided_at"),
+  },
+  (t) => [index("purchase_claims_status_idx").on(t.status, t.createdAt), uniqueIndex("purchase_claims_open_uq").on(t.assignmentId).where(sql`${t.status} = 'pending'`)],
 );
 
 export const subscriptions = pgTable(
