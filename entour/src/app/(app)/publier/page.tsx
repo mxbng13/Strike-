@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertTriangle, CalendarClock, Check, CheckCircle2, ImagePlus, Lightbulb, Loader2, Lock, Repeat, Share2, ShieldAlert, Sparkles, Users, Wand2, X } from "lucide-react";
+import { AlertTriangle, CalendarClock, Check, CheckCircle2, ImagePlus, Lightbulb, Loader2, Lock, Repeat, Share2, ShieldAlert, Sparkles, Timer, Users, Wand2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
@@ -59,7 +59,9 @@ function PublishForm() {
   const [timing, setTiming] = useState<Timing>("today");
   const [startsAt, setStartsAt] = useState<string>("");
   const [time, setTime] = useState("18:00");
-  const [duration, setDuration] = useState<number | null>(60);
+  const [duration, setDuration] = useState<number | null>(null);
+  const [timeMode, setTimeMode] = useState<"estimate" | "exact">("estimate");
+  const [endTime, setEndTime] = useState("");
   const [freq, setFreq] = useState<"daily" | "weekly" | "monthly">("weekly");
   const [until, setUntil] = useState("");
   const [loc, setLoc] = useState<PickedLocation | null>(null);
@@ -114,7 +116,7 @@ function PublishForm() {
   }, [location]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (category?.suggestedDurationMinutes && duration === 60 && !sp.get("renouveler")) setDuration(category.suggestedDurationMinutes);
+    // La durée n'est jamais pré-remplie : c'est au demandeur de l'indiquer (estimation ou horaire précis).
   }, [categoryId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Suggestion de prix (historique réel ou repères indicatifs)
@@ -130,7 +132,7 @@ function PublishForm() {
   const runAssistant = async () => {
     setDrafting(true);
     try {
-      const { draft } = await api<{ draft: { title: string; description: string; categoryId: number | null; alternativeSlugs: string[]; timingType: Timing; timingDetected: boolean; startDate: string | null; startTime: string | null; durationMinutes: number | null; budgetEuros: number | null; urgency: "normal" | "high" | "urgent"; peopleNeeded: number; skills: string[]; recurrence: { freq: "daily" | "weekly" | "monthly" } | null; source: "claude" | "local"; refused?: boolean } }>("/api/assistant/draft", { body: { text: sentence } });
+      const { draft } = await api<{ draft: { title: string; description: string; categoryId: number | null; alternativeSlugs: string[]; timingType: Timing; timingDetected: boolean; startDate: string | null; startTime: string | null; durationMinutes: number | null; durationExact: boolean; budgetEuros: number | null; urgency: "normal" | "high" | "urgent"; peopleNeeded: number; skills: string[]; recurrence: { freq: "daily" | "weekly" | "monthly" } | null; source: "claude" | "local"; refused?: boolean } }>("/api/assistant/draft", { body: { text: sentence } });
       if (draft.refused) {
         push({ tone: "error", title: "Cette demande ne peut pas être publiée sur ENTOUR", body: "Elle semble concerner une activité illégale, dangereuse ou réglementée." });
         return;
@@ -142,6 +144,11 @@ function PublishForm() {
       if (draft.timingDetected) setTiming(draft.timingType);
       setUrgency(draft.urgency);
       if (draft.durationMinutes) setDuration(draft.durationMinutes);
+      if (draft.durationExact && draft.startTime && draft.durationMinutes) {
+        const end = (Number(draft.startTime.slice(0, 2)) * 60 + Number(draft.startTime.slice(3, 5)) + draft.durationMinutes) % 1440;
+        setTimeMode("exact");
+        setEndTime(`${String(Math.floor(end / 60)).padStart(2, "0")}:${String(end % 60).padStart(2, "0")}`);
+      } else if (draft.durationMinutes) setTimeMode("estimate");
       if (draft.budgetEuros != null) {
         setBudget(String(draft.budgetEuros));
         setPricing("fixed");
@@ -175,6 +182,24 @@ function PublishForm() {
     return d.toISOString();
   };
 
+  /** Heure de début (HH:MM) utilisée pour l'horaire précis. */
+  const startHHMM = (): string | null => {
+    if (timing === "today" || timing === "tomorrow") return time;
+    if ((timing === "scheduled" || timing === "recurring") && startsAt) return startsAt.slice(11, 16);
+    return null;
+  };
+  const toMin = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+  /** Durée finale en minutes, ou un message d'erreur. */
+  const timeNeeded = (): { minutes: number } | { error: string } => {
+    if (timeMode === "estimate") return duration ? { minutes: duration } : { error: "Choisissez une durée estimée, ou passez en horaire précis" };
+    if (timing === "immediate") return { error: "Pour une demande immédiate, indiquez une durée estimée" };
+    const start = startHHMM();
+    if (!start) return { error: "Choisissez d'abord la date et l'heure de début" };
+    if (!endTime) return { error: "Indiquez l'heure de fin" };
+    const m = toMin(endTime) - toMin(start);
+    return m > 0 ? { minutes: m } : { error: "L'heure de fin doit être après l'heure de début" };
+  };
+
   const submit = async () => {
     const errs: Record<string, string> = {};
     if (!categoryId) errs.categoryId = "Choisissez une catégorie";
@@ -183,6 +208,8 @@ function PublishForm() {
     if (!loc) errs.location = "Indiquez le lieu";
     if (pricing !== "offer" && !(Number(budget) > 0)) errs.budgetCents = "Indiquez un montant";
     if ((timing === "scheduled" || timing === "recurring") && !startsAt) errs.startsAt = "Choisissez la date et l'heure";
+    const tn = timeNeeded();
+    if ("error" in tn) errs.durationMinutes = tn.error;
     setErrors(errs);
     if (Object.keys(errs).length) {
       push({ tone: "error", title: "Quelques informations manquent", body: Object.values(errs)[0] });
@@ -201,7 +228,8 @@ function PublishForm() {
           searchRadiusKm: radius,
           timingType: timing,
           startsAt: computeStartsAt(),
-          durationMinutes: duration,
+          durationMinutes: "minutes" in tn ? tn.minutes : null,
+          durationExact: timeMode === "exact",
           pricingType: pricing,
           budgetCents: budget ? Math.round(Number(budget.replace(",", ".")) * 100) : null,
           peopleNeeded: people,
@@ -410,15 +438,51 @@ function PublishForm() {
               </Field>
             </div>
           )}
-          <Field label="Durée estimée" hint={category?.suggestedDurationMinutes ? `Durée habituelle pour ce service : ${formatDuration(category.suggestedDurationMinutes)}` : undefined}>
-            <div className="flex flex-wrap gap-2">
-              {DURATIONS.map((d) => (
-                <Chip key={d} active={duration === d} onClick={() => setDuration(d)} className="h-8 text-xs">
-                  {formatDuration(d)}
-                </Chip>
-              ))}
+          <div id="temps" className={cx("space-y-3 rounded-3xl border bg-surface p-4", errors.durationMinutes ? "border-danger" : "border-border")}>
+            <div>
+              <p className="flex items-center gap-2 text-sm font-semibold">
+                <Timer className="size-4" /> Temps nécessaire <span className="rounded-full bg-danger-soft px-2 py-0.5 text-[11px] font-bold text-danger">Obligatoire</span>
+              </p>
+              <p className="mt-0.5 text-xs text-muted">Indiquez une estimation, ou l'horaire précis de début et de fin.</p>
             </div>
-          </Field>
+            <Segmented
+              value={timeMode}
+              onChange={setTimeMode}
+              className="w-full"
+              options={[
+                { value: "estimate", label: "Estimation" },
+                { value: "exact", label: "Horaire précis" },
+              ]}
+            />
+            {timeMode === "estimate" ? (
+              <>
+                <div className="flex flex-wrap gap-2">
+                  {DURATIONS.map((d) => (
+                    <Chip key={d} active={duration === d} onClick={() => setDuration(d)} className="h-8 text-xs">
+                      ≈ {formatDuration(d)}
+                    </Chip>
+                  ))}
+                </div>
+                {category?.suggestedDurationMinutes && <p className="text-xs text-muted">Repère pour ce service : environ {formatDuration(category.suggestedDurationMinutes)}.</p>}
+              </>
+            ) : timing === "immediate" ? (
+              <p className="text-sm text-warning">Pour une demande immédiate, indiquez plutôt une durée estimée.</p>
+            ) : (
+              <div className="flex flex-wrap items-end gap-3">
+                <Field label="Début">
+                  <Input value={startHHMM() ?? "—"} disabled className="w-32" />
+                </Field>
+                <Field label="Fin">
+                  <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-32" />
+                </Field>
+                {(() => {
+                  const tn = timeNeeded();
+                  return "minutes" in tn ? <p className="pb-3 text-sm font-semibold text-success">soit {formatDuration(tn.minutes)}</p> : endTime ? <p className="pb-3 text-sm text-danger">{tn.error}</p> : null;
+                })()}
+              </div>
+            )}
+            {errors.durationMinutes && <p className="text-sm font-semibold text-danger">{errors.durationMinutes}</p>}
+          </div>
         </div>
 
         {/* Où */}

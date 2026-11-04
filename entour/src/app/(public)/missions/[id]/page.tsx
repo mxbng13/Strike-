@@ -32,7 +32,7 @@ import { ReportButton } from "@/components/report-button";
 import { priceLabel } from "@/components/service-card";
 import { Avatar, BackButton, Badge, Button, ButtonLink, Card, Confirm, ErrorState, Field, Input, Segmented, Sheet, Skeleton, Stars, Textarea } from "@/components/ui";
 import { api } from "@/lib/client";
-import { formatDuration, formatWhen, timeAgo } from "@/lib/dates";
+import { formatTimeNeeded, formatWhen, timeAgo } from "@/lib/dates";
 import { formatDistance } from "@/lib/geo";
 import { formatEUR } from "@/lib/money";
 import type { ServiceDetail } from "@/server/services";
@@ -167,7 +167,7 @@ function MissionPage() {
         {[
           { i: <span className="text-lg font-extrabold text-primary">{priceLabel(s)}</span>, l: { fixed: "Prix fixe", negotiable: "Prix négociable", offer: "Sur proposition" }[s.pricingType] },
           { i: <CalendarClock className="size-5" />, l: s.timingType === "immediate" ? "Maintenant" : formatWhen(s.startsAt, { withTime: !!s.startsAt }) },
-          { i: <Timer className="size-5" />, l: s.durationMinutes ? formatDuration(s.durationMinutes) : "Durée libre" },
+          { i: <Timer className="size-5" />, l: `${s.durationExact ? "Horaire précis" : "Estimation"} : ${formatTimeNeeded(s.startsAt, s.durationMinutes, s.durationExact)}` },
           { i: <Users className="size-5" />, l: `${s.peopleNeeded} personne${s.peopleNeeded > 1 ? "s" : ""}${s.peopleNeeded > 1 ? ` · ${s.seatsLeft} place${s.seatsLeft > 1 ? "s" : ""} libre${s.seatsLeft > 1 ? "s" : ""}` : ""}` },
         ].map((x, i) => (
           <div key={i} className="flex flex-col items-center justify-center gap-1 bg-surface p-3 text-center">

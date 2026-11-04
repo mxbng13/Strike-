@@ -64,6 +64,7 @@ export async function draftListing(sentence: string, categories: CategoryLite[])
       alternativeSlugs: out.alternativeSlugs.filter((s) => valid.has(s)).slice(0, 3),
       categoryConfidence: 0.9,
       timingDetected: true,
+      durationExact: local.durationExact,
       startDate: local.startDate,
       peopleNeeded: Math.max(1, Math.min(20, out.peopleNeeded)),
       budgetEuros: local.budgetEuros ?? out.budgetEuros,

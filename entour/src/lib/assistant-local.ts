@@ -17,6 +17,8 @@ export type Draft = {
   startDate: string | null; // AAAA-MM-JJ (heure de Paris)
   startTime: string | null; // HH:MM
   durationMinutes: number | null;
+  /** true quand la phrase donne un début et une fin (« de 19 h à 22 h ») */
+  durationExact: boolean;
   budgetEuros: number | null;
   urgency: "normal" | "high" | "urgent";
   peopleNeeded: number;
@@ -166,7 +168,6 @@ export function draftFromSentence(sentence: string, categories: CategoryLite[], 
   } else if (dM) durationMinutes = Number(dM[1]);
   else if (dH && !/\b(a|vers|pour|des)\s?\d{1,2}\s?h/.test(t)) durationMinutes = Math.round(Number(dH[1].replace(",", ".")) * 60);
   if (durationMinutes != null && (durationMinutes <= 0 || durationMinutes > 24 * 60)) durationMinutes = null;
-  durationMinutes ??= category?.suggestedDurationMinutes ?? null;
 
   const money = raw.match(/(\d{1,4}(?:[.,]\d{1,2})?)\s?(?:€|euros?|eur\b)/i);
   const budgetEuros = money ? Number(money[1].replace(",", ".")) : null;
@@ -189,6 +190,7 @@ export function draftFromSentence(sentence: string, categories: CategoryLite[], 
     startDate,
     startTime,
     durationMinutes,
+    durationExact: !!hRange && durationMinutes != null,
     budgetEuros,
     urgency,
     peopleNeeded: Math.max(1, Math.min(20, peopleNeeded)),

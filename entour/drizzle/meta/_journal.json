@@ -15,6 +15,13 @@
       "when": 1793741483126,
       "tag": "0001_geo_and_search",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793802651339,
+      "tag": "0002_duration_exact",
+      "breakpoints": true
     }
   ]
 }

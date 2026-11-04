@@ -1,0 +1,1 @@
+ALTER TABLE "services" ADD COLUMN "duration_exact" boolean DEFAULT false NOT NULL;

@@ -36,6 +36,18 @@ export function timeAgo(date: Date | string): string {
   return d.toLocaleDateString("fr-FR", { timeZone: TZ, day: "numeric", month: "short" });
 }
 
+/** « 19 h 00 – 22 h 00 » pour un horaire précis, « ≈ 3 h » pour une estimation. */
+export function formatTimeNeeded(startsAt: Date | string | null | undefined, minutes: number | null | undefined, exact: boolean) {
+  if (!minutes) return "Durée non précisée";
+  if (exact && startsAt) {
+    const s = new Date(startsAt);
+    const e = new Date(s.getTime() + minutes * 60_000);
+    const f = (d: Date) => d.toLocaleTimeString("fr-FR", { timeZone: TZ, hour: "2-digit", minute: "2-digit" }).replace(":", " h ");
+    return `${f(s)} – ${f(e)}`;
+  }
+  return `≈ ${formatDuration(minutes)}`;
+}
+
 export function formatDuration(minutes: number | null | undefined): string {
   if (!minutes) return "";
   if (minutes < 60) return `${minutes} min`;

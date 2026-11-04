@@ -268,6 +268,16 @@ describe("Parcours complet ENTOUR", () => {
     await expect(sql`delete from admin_logs`).rejects.toThrow();
   });
 
+  it("15. le temps nécessaire est obligatoire (estimation ou horaire précis)", async () => {
+    const base = { title: "Arroser mes plantes", categoryId: jardinId, description: "Une dizaine de plantes sur le balcon, arrosoir fourni.", location: { ...LYON }, searchRadiusKm: 5, timingType: "tomorrow", startsAt: new Date(Date.now() + 26 * 3600_000).toISOString(), pricingType: "fixed", budgetCents: 1000, peopleNeeded: 1 };
+    const r = await requester.call<{ error: { details: { path: string }[] } }>("/api/services", { body: base, expect: 400 });
+    expect(r.error.details.some((d) => d.path === "durationMinutes")).toBe(true);
+    await requester.call("/api/services", { body: { ...base, timingType: "immediate", durationMinutes: 30, durationExact: true }, expect: 400 });
+    const ok = await requester.call<{ id: string }>("/api/services", { body: { ...base, durationMinutes: 90, durationExact: true } });
+    const d = await requester.call<{ service: { durationMinutes: number; durationExact: boolean } }>(`/api/services/${ok.id}`);
+    expect(d.service).toMatchObject({ durationMinutes: 90, durationExact: true });
+  });
+
   it("14. annonce suspecte mise en attente de modération", async () => {
     const r = await requester.call<{ held: boolean }>("/api/services", {
       body: { title: "Travail très rapide", categoryId: jardinId, description: "Paiement en coupons PCS, envoyez un acompte avant. drogue", location: { ...LYON }, searchRadiusKm: 5, timingType: "today", startsAt: new Date(Date.now() + 3600_000).toISOString(), durationMinutes: 60, pricingType: "fixed", budgetCents: 2000, peopleNeeded: 1 },

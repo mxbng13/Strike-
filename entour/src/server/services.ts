@@ -111,7 +111,8 @@ export async function createService(user: CurrentUser, input: CreateServiceInput
         budgetCents: input.pricingType === "offer" ? (input.budgetCents ?? null) : input.budgetCents,
         timingType: input.timingType,
         startsAt,
-        durationMinutes: input.durationMinutes ?? cat.suggestedDurationMinutes ?? null,
+        durationMinutes: input.durationMinutes,
+        durationExact: input.durationExact,
         recurrence: input.timingType === "recurring" && input.recurrence ? { freq: input.recurrence.freq, interval: input.recurrence.interval, until: input.recurrence.until ?? null } : null,
         urgency: input.timingType === "immediate" ? "urgent" : input.urgency,
         peopleNeeded: input.peopleNeeded,
@@ -193,6 +194,7 @@ export type ServiceCard = {
   timingType: string;
   startsAt: string | null;
   durationMinutes: number | null;
+  durationExact: boolean;
   urgency: "normal" | "high" | "urgent";
   peopleNeeded: number;
   areaLabel: string;
@@ -252,7 +254,7 @@ export async function listServices(p: ServiceListParams, viewerId: string | null
 
   const rows = await db.execute<Record<string, unknown>>(sql`
     select s.id, s.title, left(s.description, 180) as excerpt, s.status, s.pricing_type, s.budget_cents, s.timing_type, s.starts_at,
-      s.duration_minutes, s.urgency, s.people_needed, s.area_label, s.public_lat, s.public_lng, s.recurrence, s.is_group_buy,
+      s.duration_minutes, s.duration_exact, s.urgency, s.people_needed, s.area_label, s.public_lat, s.public_lng, s.recurrence, s.is_group_buy,
       (s.boosted_until is not null and s.boosted_until > now()) as boosted, s.created_at, s.is_demo,
       ${dist} as distance_km,
       c.id as c_id, c.slug as c_slug, c.name as c_name, c.icon as c_icon, c.color as c_color,
@@ -283,6 +285,7 @@ function toCard(r: Record<string, unknown>): ServiceCard {
     timingType: String(r.timing_type),
     startsAt: r.starts_at ? new Date(r.starts_at as string).toISOString() : null,
     durationMinutes: r.duration_minutes == null ? null : Number(r.duration_minutes),
+    durationExact: !!r.duration_exact,
     urgency: r.urgency as ServiceCard["urgency"],
     peopleNeeded: Number(r.people_needed),
     areaLabel: String(r.area_label),
@@ -416,6 +419,7 @@ export async function getServiceDetail(id: string, viewer: CurrentUser | null, o
     timingType: s.timingType,
     startsAt: s.startsAt?.toISOString() ?? null,
     durationMinutes: s.durationMinutes,
+    durationExact: s.durationExact,
     recurrence: s.recurrence,
     urgency: s.urgency,
     peopleNeeded: s.peopleNeeded,
@@ -547,6 +551,7 @@ export async function renewTemplate(user: CurrentUser, id: string) {
     pricingType: s.pricingType,
     budgetCents: s.budgetCents,
     durationMinutes: s.durationMinutes,
+    durationExact: s.durationExact,
     peopleNeeded: s.peopleNeeded,
     skillsRequired: s.skillsRequired,
     searchRadiusKm: s.searchRadiusKm,

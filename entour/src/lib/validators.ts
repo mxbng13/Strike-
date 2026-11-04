@@ -50,7 +50,8 @@ export const createServiceSchema = z
     searchRadiusKm: radiusSchema,
     timingType: z.enum(["immediate", "today", "tomorrow", "scheduled", "recurring"]),
     startsAt: z.string().datetime({ offset: true }).optional().nullable(),
-    durationMinutes: z.number().int().min(10).max(24 * 60 * 14).optional().nullable(),
+    durationMinutes: z.number({ message: "Indiquez le temps nécessaire (estimation ou horaire précis)" }).int().min(5, "Durée trop courte").max(24 * 60 * 14),
+    durationExact: z.boolean().default(false),
     pricingType: z.enum(["fixed", "negotiable", "offer"]),
     budgetCents: z.number().int().min(0).max(1_000_000).optional().nullable(),
     peopleNeeded: z.number().int().min(1).max(20).default(1),
@@ -73,6 +74,8 @@ export const createServiceSchema = z
     if (v.timingType === "recurring" && !v.recurrence) ctx.addIssue({ code: "custom", path: ["recurrence"], message: "Indiquez la fréquence" });
     if (v.startsAt && new Date(v.startsAt).getTime() < Date.now() - 15 * 60_000)
       ctx.addIssue({ code: "custom", path: ["startsAt"], message: "La date choisie est déjà passée" });
+    if (v.durationExact && v.timingType === "immediate")
+      ctx.addIssue({ code: "custom", path: ["durationExact"], message: "Pour une demande immédiate, indiquez une durée estimée" });
     if (v.visibility === "group" && !v.groupId) ctx.addIssue({ code: "custom", path: ["groupId"], message: "Choisissez un groupe" });
   });
 export type CreateServiceInput = z.infer<typeof createServiceSchema>;

@@ -223,3 +223,12 @@ describe("assistant local — titre", () => {
     expect(d.budgetEuros).toBe(25);
   });
 });
+
+describe("temps nécessaire", () => {
+  it("l'assistant repère un horaire précis et n'invente jamais de durée", () => {
+    const d = draftFromSentence("garder mon fils ce soir de 19h à 22h", cats);
+    expect(d).toMatchObject({ durationMinutes: 180, durationExact: true, startTime: "19:00" });
+    expect(draftFromSentence("monter une armoire ikea", cats).durationMinutes).toBeNull();
+    expect(draftFromSentence("promener mon chien 45 minutes", cats)).toMatchObject({ durationMinutes: 45, durationExact: false });
+  });
+});

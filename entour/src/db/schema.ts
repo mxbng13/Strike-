@@ -319,6 +319,8 @@ export const services = pgTable(
     timingType: timingType("timing_type").notNull(),
     startsAt: ts("starts_at"),
     durationMinutes: integer("duration_minutes"),
+    /** true : horaire précis (début et fin) ; false : durée estimée */
+    durationExact: boolean("duration_exact").notNull().default(false),
     recurrence: jsonb("recurrence").$type<Recurrence | null>(),
     urgency: urgencyLevel("urgency").notNull().default("normal"),
     peopleNeeded: smallint("people_needed").notNull().default(1),

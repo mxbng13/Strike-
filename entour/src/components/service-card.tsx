@@ -1,9 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { BadgeCheck, CalendarClock, MapPin, Repeat, Users, Zap } from "lucide-react";
+import { BadgeCheck, CalendarClock, MapPin, Repeat, Timer, Users, Zap } from "lucide-react";
 import Link from "next/link";
-import { formatWhen } from "@/lib/dates";
+import { formatTimeNeeded, formatWhen } from "@/lib/dates";
 import { formatDistance } from "@/lib/geo";
 import { formatEUR } from "@/lib/money";
 import type { ServiceCard as Card } from "@/server/services";
@@ -45,6 +45,12 @@ export function ServiceCardView({ s, index = 0, compact }: { s: Card; index?: nu
               <CalendarClock className="size-3.5" />
               {s.timingType === "immediate" ? "Maintenant" : formatWhen(s.startsAt ?? null, { withTime: !!s.startsAt })}
             </span>
+            {s.durationMinutes ? (
+              <span className="inline-flex items-center gap-1">
+                <Timer className="size-3.5" />
+                {formatTimeNeeded(s.startsAt, s.durationMinutes, s.durationExact)}
+              </span>
+            ) : null}
             {s.peopleNeeded > 1 && (
               <span className="inline-flex items-center gap-1">
                 <Users className="size-3.5" />
