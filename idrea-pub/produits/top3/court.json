@@ -1,0 +1,18 @@
+{
+ "lignes": [
+  "Trois accessoires à moins de treize euros pour ta routine. Regarde.",
+  "Un : la brosse en silicone. Elle fait mousser ton nettoyant, tout en douceur.",
+  "Deux : le peigne applicateur. Ton huile va direct à la racine, sans en mettre partout.",
+  "Trois : le kit extracteur. Plus précis et plus hygiénique qu'avec les doigts.",
+  "Tout est chez Idréa, le lien est en bio."
+ ],
+ "voix": "fr-FR-RemyMultilingualNeural",
+ "debit": "+12%",
+ "musique": ["--variante2"],
+ "accroche": ["3 ACCESSOIRES", "À MOINS DE 13 €"],
+ "produits": [
+  {"image": "assets/brosse.png", "nom": "BROSSE EN SILICONE", "prix": "9,99 €", "puce": "FAIT MOUSSER EN DOUCEUR", "couleur": [92, 150, 214]},
+  {"image": "assets/peigne.png", "nom": "PEIGNE APPLICATEUR", "prix": "12,99 €", "puce": "L'HUILE À LA RACINE", "couleur": [214, 160, 64]},
+  {"image": "assets/extracteur.png", "nom": "KIT EXTRACTEUR", "prix": "12,49 €", "puce": "PLUS HYGIÉNIQUE QUE LES DOIGTS", "couleur": [96, 112, 132]}
+ ]
+}
