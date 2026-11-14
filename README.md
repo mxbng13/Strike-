@@ -113,8 +113,8 @@ capitale/
 - **Le joueur** : salarié dans son métier, ou à son compte — fabriquer et vendre au marché (prix automatique qui suit la
   concurrence), recevoir des clients pour un service, récolter. Créer sa société, faire construire atelier, usine ou
   boutique, y installer des machines, embaucher des habitants (contrat de travail, fiches de paie chaque semaine).
-- **Chaque métier sert** : `node` sur le script de validation (dans l’historique de la conversation) vérifie que les 212
-  métiers ont une activité, que chaque bien a un producteur et que chaque production est utilisée par quelqu’un.
+- **Chaque métier sert** : `node capitale/tests/economie.mjs` vérifie que les 212 métiers ont une activité, que chaque
+  bien a un producteur et que chaque production est utilisée par quelqu’un.
 - Justice (vol → enquête de police → procureur → juge → prison), prêts, courtiers en assurance, traders, export avec
   dédouanement, transport de marchandises, entrepôts, enfants à nourrir, scolariser et faire garder chaque jour, etc.
 - L’onglet **📊 Marché** montre les pénuries du jour (places à prendre) et permet d’explorer chaque chaîne de production.
