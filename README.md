@@ -79,21 +79,39 @@ tests/boxes.test.mjs            tests de la logique des box (npm test)
 Sauvegarde : locale à ce navigateur, sans synchronisation entre appareils.
 Console : `__game.save.reset()` remet la progression à zéro.
 
-## Nouveau jeu : NEXUS (carte et capitale)
+## Nouveau jeu : NEXUS (simulation de vie)
 
 Page séparée : `capitale/index.html` → http://localhost:5173/capitale/ avec `npm run dev`
-(fichier autonome, il marche aussi ouvert seul dans un navigateur grâce à Three.js chargé depuis un CDN).
+(Three.js chargé depuis un CDN, sauvegarde locale dans le navigateur).
 
-- **Carte de 8 000 × 8 000** générée par bruit (toujours la même) : plaines, forêts (≈ 30 000 arbres),
-  lacs, montagnes enneigées, plages, océan sur les bords.
-- **Capitale NEXUS** au centre, sur un plateau : flèche centrale avec anneaux en lévitation et balise,
-  dôme de recherche, tours jumelles, centre de commandement à gradins, piste avec navette, réservoirs
-  d'énergie, quartier d'habitation, rempart hexagonal avec pylônes et 3 portes, bouclier d'énergie,
-  drones en orbite, routes lumineuses vers la campagne.
-- **Caméra** : molette / pincer pour zoomer et dézoomer (le zoom va vers le curseur, de très près
-  jusqu'à la carte entière), glisser pour se déplacer, clic droit ou 2 doigts pour pivoter,
-  ZQSD / flèches, A / E pour pivoter, Espace pour revenir à la capitale.
-- **Interface** : boutons + / − / capitale, boussole (clic = nord en haut), mini-carte cliquable.
+```
+capitale/
+  index.html            interface (HUD, panneaux, styles)
+  js/main.js            relie carte, simulation et interface ; trajets, mini-carte, mini-jeu
+  js/world.js           carte 3D 8 000 × 8 000, capitale, avant-postes, marqueurs, avatar, jour/nuit, pluie
+  js/game/state.js      état du joueur et sauvegarde
+  js/game/game.js       moteur : temps, besoins, climat, santé, métiers, récolte, fabrication, économie
+  js/data/resources.js  les 80 ressources (métaux, énergie, chimie, bio, avancées, mer, agriculture…)
+  js/data/items.js      objets : nourriture, vêtements, outils, équipements, meubles, médicaments, cadeaux…
+  js/data/jobs.js       19 secteurs, 171 métiers, permis et certificats
+  js/data/places.js     42 lieux de la capitale, 8 sites de ressources, recettes, véhicules, logements,
+                        guildes, bourse, « joueurs » simulés qui tiennent les services
+```
+
+- **Besoins** qui baissent avec le temps : faim, soif, hygiène, sommeil, santé, moral. À 0 de santé : évanouissement
+  et facture d’hôpital. Climat (froid en altitude, chaud au sud) et météo (pluie, orage, canicule, vague de froid)
+  imposent les bons vêtements.
+- **Métiers** : formation payante à l’Académie (3 formateurs au choix), niveaux 1 à 10, outils et équipements
+  qui s’usent, accidents sans équipement, permis obligatoires pour certains. Petits boulots sans diplôme.
+- **Ressources** récoltées sur 8 sites (ferme, forêt, mine, port, champ pétrolifère, volcan, forêt ancienne,
+  cratère de haut niveau), vendues au Comptoir (prix qui varient), transformées à l’atelier, l’usine et le labo.
+- **Déplacements** : à pied (toucher le sol), cheval, voiture, drone (achat ou location, carburant, entretien),
+  train et navettes, téléportation payante.
+- **Social, confort, santé, loisirs, famille, économie** : guildes, ville privée, club, musée, logement (location
+  ou achat), meubles et confort, médecins, pharmacie, hôpital, assurance, spectacles, sport, voyages guidés,
+  mini-jeu de l’arène, rencontres, mariage, enfants, entreprise avec employés, publicité, bourse, placements.
+- L’onglet **📖 Besoins** reprend les 10 familles de besoins et renvoie vers les lieux correspondants.
+- Les services « tenus par des joueurs » sont simulés : un serveur multijoueur sera nécessaire pour de vrais joueurs.
 
 ## Mise à jour : XP, niveaux, paliers, boutique, fusils
 
