@@ -79,6 +79,22 @@ tests/boxes.test.mjs            tests de la logique des box (npm test)
 Sauvegarde : locale à ce navigateur, sans synchronisation entre appareils.
 Console : `__game.save.reset()` remet la progression à zéro.
 
+## Nouveau jeu : NEXUS (carte et capitale)
+
+Page séparée : `capitale/index.html` → http://localhost:5173/capitale/ avec `npm run dev`
+(fichier autonome, il marche aussi ouvert seul dans un navigateur grâce à Three.js chargé depuis un CDN).
+
+- **Carte de 8 000 × 8 000** générée par bruit (toujours la même) : plaines, forêts (≈ 30 000 arbres),
+  lacs, montagnes enneigées, plages, océan sur les bords.
+- **Capitale NEXUS** au centre, sur un plateau : flèche centrale avec anneaux en lévitation et balise,
+  dôme de recherche, tours jumelles, centre de commandement à gradins, piste avec navette, réservoirs
+  d'énergie, quartier d'habitation, rempart hexagonal avec pylônes et 3 portes, bouclier d'énergie,
+  drones en orbite, routes lumineuses vers la campagne.
+- **Caméra** : molette / pincer pour zoomer et dézoomer (le zoom va vers le curseur, de très près
+  jusqu'à la carte entière), glisser pour se déplacer, clic droit ou 2 doigts pour pivoter,
+  ZQSD / flèches, A / E pour pivoter, Espace pour revenir à la capitale.
+- **Interface** : boutons + / − / capitale, boussole (clic = nord en haut), mini-carte cliquable.
+
 ## Mise à jour : XP, niveaux, paliers, boutique, fusils
 
 - **Barre latérale** : XP (logo XP), STRIKER (silhouette de combattant), ARMES.
