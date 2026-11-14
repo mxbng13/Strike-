@@ -305,7 +305,7 @@ def main():
     print(f'paramètres : {sum(p.numel() for p in model.parameters()) / 1e6:.1f} M, images : {n}', flush=True)
     opt = torch.optim.AdamW(model.parameters(), lr=1e-4 if resume else 2e-4, weight_decay=0.01)
     scaler = torch.cuda.amp.GradScaler(enabled=DEVICE == 'cuda')
-    batch = 8 if SMOKE else 128
+    batch = 8 if SMOKE else int(os.environ.get('BATCH', '128'))
     preview_ids = torch.tensor([encode(p, vocab) for p in PREVIEW], device=DEVICE)
     ac = AC.to(DEVICE)
     t_end = time.time() + BUDGET_H * 3600
