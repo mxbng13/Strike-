@@ -7,6 +7,8 @@ import { PLACES, SITES, VEHICLES, HOUSING, GUILDS, STOCKS, NAMES } from '../data
 import { RECIPES, SERVICES, BUILDINGS, BUILD_STEPS, COMPANY_DOCS, LIFE_REQUIREMENTS, GATHER_JOBS } from '../data/economy.js';
 import { def, has, addItem, removeItem, wear, log, clamp, fmt, hourOf, day, duration, save } from './state.js';
 import { Market, createEconomy, VALUE, serviceValue, RECIPES_BY_JOB, SERVICES_BY_JOB } from './market.js';
+import { installLife, seasonOf, weekday } from './life.js';
+import { PETS } from '../data/life.js';
 
 export const PLACE_BY_ID = Object.fromEntries([...PLACES, ...SITES].map((p) => [p.id, p]));
 const rnd = Math.random;
@@ -41,6 +43,7 @@ export class Game {
         this.saleLog[k] = this.saleLog[k] || { n: 0, money: 0 };
         this.saleLog[k].n += n; this.saleLog[k].money += money;
         this.s.stats_total.gagne += money;
+        if (b) this.s.weekCompany = (this.s.weekCompany || 0) + money; else this.s.weekIncome = (this.s.weekIncome || 0) + money;
       },
     };
   }
@@ -94,7 +97,7 @@ export class Game {
     this.s.stats_total.depense += amount;
     if (this.s.money < 0) log(this.s, `Vous êtes à découvert (${fmt(this.s.money)}) après : ${why}.`, 'bad');
   }
-  earn(amount) { this.s.money += amount; this.s.stats_total.gagne += amount; }
+  earn(amount, taxable = true) { this.s.money += amount; this.s.stats_total.gagne += amount; if (taxable) this.s.weekIncome = (this.s.weekIncome || 0) + amount; }
   applyEff(eff, mult = 1) {
     if (!eff) return;
     for (const k of STAT_KEYS) if (eff[k]) this.s.stats[k] = clamp(this.s.stats[k] + eff[k] * mult, 0, 100);
@@ -166,7 +169,7 @@ export class Game {
         else {
           const k = need === 'pluie' ? 0.45 : 1;
           s.stats.sante -= 2 * k * h; s.stats.moral -= 2 * k * h; s.stats.energie -= 1 * k * h;
-          if (need !== 'chaud' && rnd() < 0.024 * h * k) this.addCondition('maladie');
+          if (need !== 'chaud' && rnd() < 0.024 * h * k * (this.event()?.ill || 1)) this.addCondition('maladie');
           if (!this._climateWarned || s.time - this._climateWarned > 240) {
             this._climateWarned = s.time;
             log(s, `🥶 Rien pour vous protéger contre ${PROTECT_NAMES[need]} : santé et moral baissent (vêtements chez les couturiers).`, 'warn');
@@ -176,6 +179,7 @@ export class Game {
       if (s.stats.faim <= 0) s.stats.sante -= 5 * h;
       if (s.stats.soif <= 0) s.stats.sante -= 7 * h;
       if (s.stats.energie <= 0) { s.stats.sante -= 3 * h; s.stats.moral -= 2 * h; }
+      if (this.event()?.ill && rnd() < 0.006 * h * this.event().ill) this.addCondition('maladie');
       if (s.stats.hygiene < 20) { s.stats.moral -= 1 * h; if (rnd() < 0.02 * h) this.addCondition('maladie'); if (rnd() < 0.01 * h) this.addCondition('carie'); }
       if (s.stats.moral < 12 && rnd() < 0.03 * h) this.addCondition('deprime');
       for (const c of s.conditions) {
@@ -198,6 +202,7 @@ export class Game {
         }
       }
       if (day(s.time) !== day(before)) this.dailyTick();
+      if (weekday(s.time) === 6 && hourOf(before) < 20 && hourOf(s.time) >= 20 && day(s.time) === day(before)) { this.lotoDraw(); this.electionResult(); }
       if (s.stats.sante <= 0 && !opt.noFaint) { this.faint(); break; }
     }
     this.lowStatWarnings();
@@ -219,8 +224,10 @@ export class Game {
   rollWeather() {
     const s = this.s, r = rnd();
     let type = 'soleil';
-    if (r < 0.42) type = 'soleil'; else if (r < 0.66) type = 'nuageux'; else if (r < 0.86) type = 'pluie'; else if (r < 0.92) type = 'orage';
-    else if (r < 0.96) type = 'canicule'; else type = 'vague_froid';
+    const se = seasonOf(s.time);
+    if (r < se.froid) type = 'vague_froid'; else if (r < se.froid + se.chaud) type = 'canicule';
+    else { const q = rnd(); type = q < 0.45 ? 'soleil' : q < 0.7 ? 'nuageux' : q < 0.92 ? 'pluie' : 'orage'; }
+    if (this.event()?.weather) type = this.event().weather;
     if (type !== s.weather.type && (type === 'canicule' || type === 'vague_froid' || type === 'orage')) log(s, `${WEATHER[type].emoji} Météo : ${WEATHER[type].nom.toLowerCase()} !`, 'warn');
     s.weather = { type, until: s.time + 180 };
   }
@@ -254,6 +261,9 @@ export class Game {
     this.m.day();
     this.autoPrices();
     if (s.housing?.type === 'location') { this.forcePay(HOUSING.location.loyer, 'loyer'); lines.push(`loyer −${HOUSING.location.loyer} ₵`); }
+    this.lifeDaily();
+    if (weekday(s.time) === 0) this.weeklyTick();
+    this.electionState();
     if (s.guild) { const g = GUILDS.find((x) => x.id === s.guild); this.forcePay(g.cotisation, 'cotisation de guilde'); lines.push(`guilde −${g.cotisation} ₵`); }
     if (s.privateCity) s.stats.moral = clamp(s.stats.moral + 2, 0, 100);
     if (s.storageUntil && s.storageUntil < s.time && Object.keys(s.warehouse).length) log(s, '📦 Votre location d’entrepôt est terminée : il faut la renouveler pour y ajouter des marchandises.', 'warn');
@@ -312,6 +322,7 @@ export class Game {
   }
   buyGood(id, n = 1, opts = {}) {
     if (!opts.anywhere && !this.canBuyHere(id)) return fail('Ce produit ne se vend pas ici (essayez le Comptoir des ressources).');
+    if (!opts.anywhere) { const cl = this.closedMsg(this.hereId()); if (cl) return fail(cl); }
     const discount = opts.useBon && has(this.s, 'bon_achat') ? 0.15 : 0;
     const r = this.m.buy('player', id, n, { discount });
     if (!r.n) return fail(this.m.offers(id).length ? 'Pas assez d’argent.' : `Rupture : personne ne vend de ${def(id).nom.toLowerCase()} en ce moment.`);
@@ -325,6 +336,7 @@ export class Game {
     const s = this.s, d = def(id);
     if (!d || !has(s, id)) return fail('Objet absent.');
     if (d.vehicle) return this.registerVehicle(id);
+    if (d.pet) return this.adoptPet(id);
     if (id === 'manuel' || id === 'encyclopedie') {
       if (!s.job) return fail('Il faut un métier pour progresser avec un livre.');
       const xp = id === 'manuel' ? 3 : 8;
@@ -356,13 +368,19 @@ export class Game {
   providerPrice(svcId, p) {
     const svc = SERVICES[svcId];
     let price = p.price;
-    if (svc.health) { price *= 1 - this.coverage(); if (this.guild('soigneurs')) price *= 0.8; }
+    const pol = this.policy();
+    if (svc.health) { price *= (1 - 0.3 - this.coverage()) * (pol.sante || 1); if (this.guild('soigneurs')) price *= 0.8; }
+    if (['school', 'childcare', 'child_growth'].includes(svc.special)) price *= pol.ecole || 1;
+    price *= this.friendDiscount(p.c.id);
     if (svc.free && this.s.money < 80) price = 0;
     return Math.round(price * 10) / 10;
   }
   buyService(svcId, citizenId, arg) {
     const s = this.s, svc = SERVICES[svcId];
     if (!this.atPlaceFor(svc)) return fail('Il faut être sur place.');
+    if (!svc.place.startsWith('*')) { const cl = this.closedMsg(svc.place); if (cl) return fail(cl); }
+    if (this.event()?.block?.includes(svc.special)) return fail(`${this.event().nom} : service interrompu.`);
+    if (['flight', 'tour', 'loan'].includes(svc.special) && !has(s, 'carte_identite')) return fail('Il faut une carte d’identité (préfecture).');
     const prov = this.m.providers(svcId).find((p) => p.c.id === citizenId) || this.m.providers(svcId)[0];
     if (!prov) return fail(`Personne n’exerce ce service en ce moment (${svc.jobs.map((j) => JOBS[j].nom).join(', ')}). Une place à prendre !`);
     const n = svc.needs || {};
@@ -375,6 +393,7 @@ export class Game {
     if (!this.pay(price)) return fail(`Pas assez d'argent (${fmt(price)}).`);
     this.m.payService(prov.c, svc, prov.price, 'player');
     s.stats_total.services++;
+    this.befriend(prov.c.id, 3);
     const who = `${prov.c.nom} (${JOBS[prov.c.job].nom.toLowerCase()})`;
     return this.applyService(svc, who, price, arg);
   }
@@ -405,6 +424,10 @@ export class Game {
       case 'clean_home': case 'renovate': return s.housing ? null : 'Il faut un logement.';
       case 'tour': case 'teleport': case 'train': case 'flight': case 'taxi': return arg ? null : 'Choisissez une destination.';
       case 'minigame': return null;
+      case 'vet': return (s.pets || []).length ? null : 'Vous n’avez pas d’animal.';
+      case 'parcel': return s.family.partner ? (arg && def(arg)?.gift && has(s, arg) ? null : 'Choisissez un cadeau de votre sac.') : 'Personne à qui envoyer un colis.';
+      case 'driving': return s.permits.includes('permis_conduire') ? 'Vous avez déjà le permis.' : null;
+      case 'clean_building': return s.buildings.some((b) => b.stage === 'actif') ? null : 'Il vous faut un bâtiment actif.';
       default: return null;
     }
   }
@@ -493,7 +516,7 @@ export class Game {
         const big = has(s, 'plan_financement');
         const amount = big ? 8000 : 2000;
         if (big) removeItem(s, 'plan_financement');
-        this.earn(amount);
+        this.earn(amount, false);
         s.loan = { left: amount * 1.12, daily: (amount * 1.12) / 14 };
         msg += ` Prêt de ${fmt(amount)} accordé, remboursé sur 14 jours (+12 %).`; return done();
       }
@@ -506,6 +529,16 @@ export class Game {
       case 'photos': addItem(s, 'photos', 2); this.advance(svc.min); this.applyEff(svc.eff); return done();
       case 'consign': return this.consign(arg, who);
       case 'wedding_plan': s.flags.weddingPlanned = true; this.advance(svc.min); msg += ' Le mariage est organisé : il ne reste qu’à le célébrer à la salle des fêtes.'; return done();
+      case 'vet': for (const p of s.pets) { p.sante = 100; } this.advance(svc.min); msg += ' Vos animaux sont soignés.'; return done();
+      case 'parcel': { const d2 = def(arg); removeItem(s, arg); s.family.partner.love = clamp(s.family.partner.love + d2.gift, 0, 100); msg += ` ${d2.nom} livré(e) à ${s.family.partner.nom} (affection +${d2.gift}).`; return done(); }
+      case 'loto': s.lotoTickets = (s.lotoTickets || 0) + 1; msg += ` Vous avez ${s.lotoTickets} ticket(s) pour le tirage de dimanche 20 h.`; return done();
+      case 'realtor': s.flags.realtorUntil = s.time + 1440; msg += ' L’agent vous accompagne 24 h pour louer ou acheter.'; return done();
+      case 'driving': this.advance(svc.min); s.permits.push('permis_conduire'); msg += ' 🚗 Permis de conduire obtenu !'; return done();
+      case 'library': this.advance(svc.min); this.applyEff(svc.eff); if (s.job && s.flags.libDay !== day(s.time)) { s.flags.libDay = day(s.time); this.gainXp(1); msg += ' +1 expérience.'; } return done();
+      case 'clean_building': for (const b of s.buildings) if (b.stage === 'actif') b.rep = clamp((b.rep || 30) + 10, 0, 100); this.advance(30); msg += ' Locaux propres : réputation +10.'; return done();
+      case 'internet': s.internetUntil = Math.max(s.internetUntil || 0, s.time) + 30 * 1440; msg += ' Internet et téléphone pour 30 jours (télétravail possible).'; return done();
+      case 'home_insurance': s.homeInsuranceUntil = Math.max(s.homeInsuranceUntil || 0, s.time) + 30 * 1440; msg += ' Logement assuré 30 jours (tempêtes, cambriolages).'; return done();
+      case 'car_insurance': s.carInsuranceUntil = Math.max(s.carInsuranceUntil || 0, s.time) + 30 * 1440; msg += ' Véhicules assurés 30 jours.'; return done();
       case 'party': this.advance(svc.min); this.applyEff(svc.eff); if (s.family.partner) s.family.partner.love = clamp(s.family.partner.love + 6, 0, 100); return done();
       default: break;
     }
@@ -562,8 +595,11 @@ export class Game {
     const s = this.s;
     const job = odd ? ODD_JOB : this.currentJob();
     if (!job) return fail('Vous n’avez pas de métier.');
-    if (!this.at(job.place)) return fail(`Votre lieu de travail : ${this.place(job.place).nom}.`);
+    const tele = !odd && this.canTelework();
+    if (!tele && !this.at(job.place)) return fail(`Votre lieu de travail : ${this.place(job.place).nom}.`);
+    if (!tele) { const cl = this.closedMsg(job.place); if (cl) return fail(cl); }
     if (s.stats.energie < 15) return fail('Trop fatigué pour travailler. Dormez d’abord.');
+    if (!odd) s.flags.everEmployed = true;
     const miss = this.missingFor(job);
     if (miss.outils.length) return fail(`Outils manquants : ${miss.outils.map((i) => def(i).nom).join(', ')}.`);
     if (miss.permis) return fail(`Il faut : ${PERMITS[miss.permis].nom}.`);
@@ -587,6 +623,7 @@ export class Game {
     if (!s.job || !svc.jobs.includes(s.job)) return fail('Ce service n’est pas votre métier.');
     if (svc.special === 'build') return fail('Sur un chantier, travaillez comme salarié ou proposez vos services aux autres.');
     if (!this.atPlaceFor(svc)) return fail(`Il faut être au bon endroit : ${svc.place.startsWith('*') ? 'sur un site' : this.place(svc.place).nom}.`);
+    if (!svc.place.startsWith('*')) { const cl = this.closedMsg(svc.place); if (cl) return fail(cl); }
     if (s.stats.energie < 15) return fail('Trop fatigué.');
     if (svc.tool && !has(s, svc.tool)) return fail(`Il faut : ${def(svc.tool).nom}.`);
     const miss = this.missingFor(JOBS[s.job]);
@@ -609,6 +646,8 @@ export class Game {
     if (svc.tool) wear(s, svc.tool, 1);
     const gain = served * myPrice;
     this.earn(gain);
+    s.notoriety = clamp((s.notoriety || 0) + served * 0.5, 0, 100);
+    s.flags.everEmployed = true;
     const missing = served < clients ? ` (${clients - served} client(s) renvoyé(s) : il manque ${Object.keys(svc.supplies).map((i) => def(i).nom.toLowerCase()).join(', ')})` : '';
     log(s, `🧑‍💼 ${svc.nom} : ${served} client(s) servi(s) en 4 h, +${fmt(gain)}${missing}.${served === 0 && !missing ? ' Peu de demande aujourd’hui : baissez votre prix ou changez de lieu.' : ''}`, served ? 'good' : 'warn');
     return this.gainXp(1);
@@ -627,6 +666,7 @@ export class Game {
   trainingCost(jobId) {
     let c = JOBS[jobId].formation;
     if (this.s.flags.orientation) c *= 0.8;
+    if (this.event()?.training) c *= this.event().training;
     return Math.round(c);
   }
   trainJob(jobId, paidToTrainer, who) {
@@ -653,6 +693,7 @@ export class Game {
   quitJob() { if (!this.s.job) return fail('Aucun métier.'); log(this.s, `Vous avez quitté votre poste de ${JOBS[this.s.job].nom}.`); this.s.job = null; return ok(); }
   buyPermit(id) {
     const s = this.s, p = PERMITS[id];
+    if (id === 'permis_conduire') return fail('Le permis de conduire se passe à l’auto-école, avec un moniteur.');
     if (!this.at('ecole')) return fail('À l’Académie.');
     const prov = this.m.providers('formation')[0];
     if (!prov) return fail('Aucun formateur disponible.');
@@ -841,6 +882,7 @@ export class Game {
     if (!v) return 'Vous n’avez pas ce véhicule';
     if (d.permis && !this.s.permits.includes(d.permis)) return `Il faut : ${PERMITS[d.permis].nom}`;
     if (d.needs && !has(this.s, d.needs)) return `Il faut : ${def(d.needs).nom}`;
+    if ((id === 'voiture' || id === 'drone') && !v.rentedUntil && !has(this.s, 'carte_grise')) return 'Il faut une carte grise (préfecture)';
     if (v.fuel <= 0) return `Plus de ${d.fuelNom.toLowerCase()}`;
     if (v.cond <= 0) return 'En panne : entretien nécessaire';
     return null;
@@ -853,6 +895,7 @@ export class Game {
       const v = s.vehicles[mode], d = VEHICLES[mode];
       v.fuel = clamp(v.fuel - dist / 1000 * d.fuel, 0, 100);
       v.cond = clamp(v.cond - dist / 1000 * d.wear, 0, 100);
+      this.roadEvents(dist, mode);
       if (v.fuel <= 0 || v.cond <= 0) {
         log(s, `${d.emoji} Votre ${d.nom.toLowerCase()} ${v.fuel <= 0 ? `n'a plus de ${d.fuelNom.toLowerCase()}` : 'est en panne'}. Vous continuez à pied.`, 'warn');
         s.transport = 'marche';
@@ -918,6 +961,8 @@ export class Game {
     const s = this.s;
     if (!this.at('immobilier')) return fail('À l’agence immobilière.');
     if (s.housing) return fail('Vous avez déjà un logement.');
+    if (!has(s, 'carte_identite')) return fail('Il faut une carte d’identité pour le dossier (préfecture).');
+    if (!(s.flags.realtorUntil > s.time)) return fail('Il faut être accompagné par un agent immobilier (service ci-dessous).');
     const h = HOUSING.location;
     if (!this.pay(h.caution + h.loyer)) return fail(`Il faut ${fmt(h.caution + h.loyer)}.`);
     s.housing = { type: 'location' };
@@ -928,6 +973,8 @@ export class Game {
     const s = this.s, h = HOUSING[type];
     if (!this.at('immobilier')) return fail('À l’agence immobilière.');
     if (type === 'villa' && !s.privateCity) return fail('La villa est en Haute-Ville : il faut en être citoyen.');
+    if (!has(s, 'carte_identite')) return fail('Il faut une carte d’identité (préfecture).');
+    if (!(s.flags.realtorUntil > s.time)) return fail('Il faut être accompagné par un agent immobilier.');
     const miss = Object.entries(LIFE_REQUIREMENTS.achat_maison).filter(([id, q]) => !has(s, id, q));
     if (miss.length) return fail(`Il faut : ${miss.map(([id]) => def(id).nom).join(' et ')} (achetez-les au Comptoir, faits par un notaire et un géomètre).`);
     let price = h.prix;
@@ -1049,6 +1096,7 @@ export class Game {
     if (f.married) return fail('Déjà marié(e) !');
     if (!s.housing) return fail('Il faut un logement.');
     if (!s.flags.weddingPlanned) return fail('Il faut d’abord un wedding planner (service à la salle des fêtes).');
+    if (!has(s, 'carte_identite')) return fail('Il faut une carte d’identité.');
     const miss = Object.entries(LIFE_REQUIREMENTS.mariage).filter(([id, q]) => !has(s, id, q));
     if (miss.length) return fail(`Il manque : ${miss.map(([id, q]) => `${def(id).nom} ×${q}`).join(', ')} (bijoutier, cuisiniers).`);
     if (!this.pay(500)) return fail('Frais de mairie : 500 ₵.');
@@ -1064,6 +1112,7 @@ export class Game {
     if (!this.at('famille')) return fail('À la Maison de la famille.');
     if (!h?.family) return fail('Il faut une maison familiale ou une villa.');
     if (s.family.children.length >= 3) return fail('Votre foyer est complet.');
+    if (!has(s, 'carte_identite')) return fail('Il faut une carte d’identité (préfecture).');
     if (!has(s, 'dossier_admin')) return fail('Il faut un dossier administratif (secrétaires).');
     const p = this.m.providers('aide_sociale')[0];
     if (!p) return fail('Aucun assistant social pour l’enquête sociale.');
@@ -1278,6 +1327,7 @@ export class Game {
     if (s.guardUntil > s.time) chance *= 0.2;
     const police = s.eco.citizens.filter((c) => c.job === 'securite.policier' || c.job === 'securite.gendarme').length;
     chance *= police ? 0.8 : 1.5;
+    chance /= this.policy().police || 1;
     if (rnd() < chance) {
       const amount = Math.round(Math.min(s.money * 0.25, 600));
       s.money -= amount;
@@ -1338,5 +1388,7 @@ export class Game {
     log(this.s, `🏟️ Tournoi de l’arène : ${score} cibles touchées → +${fmt(gain)}.`, gain > 20 ? 'good' : 'info');
   }
 }
+
+installLife(Game);
 
 export { duration, fmt, VALUE, serviceValue, RECIPES_BY_JOB, SERVICES_BY_JOB };

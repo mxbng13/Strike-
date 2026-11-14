@@ -11,7 +11,7 @@
 const G = (id, nom, emoji, cat, extra = {}) => [id, { id, nom, emoji, cat, kind: 'good', ...extra }];
 
 export const GOOD_CATEGORIES = {
-  agro: 'Produits agricoles et alimentaires', materiau: 'Matériaux transformés', meca: 'Pièces et composants',
+  agro: 'Produits agricoles et alimentaires', animal: 'Animaux de compagnie', materiau: 'Matériaux transformés', meca: 'Pièces et composants',
   doc: 'Documents et dossiers', machine: 'Machines industrielles', vehicule: 'Véhicules', energie: 'Énergie',
 };
 
@@ -107,6 +107,11 @@ export const GOODS = Object.fromEntries([
   G('arc', 'Arc de chasse', '🏹', 'outil', { dur: 30 }), G('ruche', 'Ruche', '🐝', 'outil', { dur: 40 }),
   G('alambic', 'Alambic', '⚗️', 'outil', { dur: 40 }), G('selle', 'Selle (pour monter à cheval)', '🏇', 'outil', { dur: 400 }),
   G('bateau_peche', 'Bateau de pêche', '🚤', 'outil', { dur: 60 }),
+  // vie quotidienne
+  G('croquettes', 'Croquettes pour animaux', '🦴', 'agro', { prix: 3 }),
+  G('chiot', 'Chiot', '🐕', 'animal', { pet: 'chiot' }), G('chaton', 'Chaton', '🐈', 'animal', { pet: 'chaton' }),
+  G('smartphone', 'Smartphone', '📱', 'meca', { comfort: 2, phone: true }),
+  G('carte_identite', 'Carte d’identité', '🪪', 'doc', { idcard: true }), G('carte_grise', 'Carte grise (véhicule)', '📇', 'doc'),
   // véhicules (fabriqués par l'éleveur, le mécanicien automobile, l'ingénieur aéronautique)
   G('cheval', 'Cheval', '🐎', 'vehicule', { vehicle: 'cheval' }), G('voiture', 'Voiture', '🚗', 'vehicule', { vehicle: 'voiture' }),
   G('drone', 'Drone personnel', '🛸', 'vehicule', { vehicle: 'drone' }),
@@ -394,6 +399,15 @@ export const RECIPES = [
   R({ financement: 1 }, { plan_financement: 1 }, 'arts.producteur'),
   R({ direction_artistique: 1 }, { papier: 1 }, 'arts.directeur_artistique'),
   R({ oeuvre_restauree: 1 }, { tableau: 1, peinture: 1 }, 'arts.restaurateur_d_uvres_d_art', { min: 240 }),
+  // --- Vie quotidienne
+  R({ croquettes: 12 }, { viande: 1, ble: 3 }, 'agroalim.conserveur'),
+  R({ croquettes: 10 }, { viande: 1, ble: 3 }, 'agri.eleveur_canin'),
+  R({ chiot: 1 }, { croquettes: 8 }, 'agri.eleveur_canin', { min: 480 }),
+  R({ chaton: 1 }, { croquettes: 5 }, 'agri.eleveur_canin', { min: 480 }),
+  R({ smartphone: 1 }, { circuit: 1, batterie: 1, verre: 1, plastique: 1 }, 'mecanique.electronicien', { min: 180 }),
+  R({ carte_identite: 3 }, { papier: 1 }, 'admin.agent_de_prefecture', { min: 60 }),
+  R({ carte_grise: 3 }, { papier: 1 }, 'admin.agent_de_prefecture', { min: 60 }),
+  R({ plante: 3 }, { graines: 2 }, 'agri.jardinier'),
   // --- Cuisine à la maison (tout le monde)
   R({ repas_maison: 2 }, { fruits_legumes: 3 }, '*', { min: 40, home: true }),
   R({ repas_maison: 3 }, { viande: 1, fruits_legumes: 2, farine: 1 }, '*', { min: 50, home: true }),
@@ -510,6 +524,8 @@ export const SERVICES = Object.fromEntries([
   S('ordre_bourse', 'Passer des ordres de bourse (obligatoire)', 'finance.trader', 'banque', { min: 10, special: 'broker', npc: 0.02 }),
   S('gestion_patrimoine', 'Gestion de patrimoine (7 jours)', 'finance.gestionnaire_de_patrimoine', 'banque', { min: 30, special: 'wealth', npc: 0.004 }),
   S('assurance', 'Contrat d’assurance santé (30 jours)', 'finance.courtier_en_assurances', 'assurance', { min: 30, supplies: { tarification: 0.25 }, special: 'insurance', npc: 0.02 }),
+  S('assurance_habitation', 'Assurance habitation (30 jours)', 'finance.courtier_en_assurances', 'assurance', { min: 30, supplies: { tarification: 0.25 }, special: 'home_insurance', npc: 0.02 }),
+  S('assurance_auto', 'Assurance auto (30 jours)', 'finance.courtier_en_assurances', 'assurance', { min: 30, supplies: { tarification: 0.25 }, special: 'car_insurance', npc: 0.01 }),
   S('installation_reseau', 'Installation réseau (bâtiment)', 'info.administrateur_reseau', '*any', { min: 120, supplies: { cable_cuivre: 2 }, special: 'network', npc: 0.005 }),
   S('audit_cyber', 'Protection cybersécurité (30 jours)', 'info.ingenieur_en_cybersecurite', 'technopole', { min: 60, special: 'cyber', npc: 0.005 }),
   S('hebergement', 'Hébergement de site web (30 jours)', 'info.architecte_cloud', 'technopole', { min: 30, special: 'hosting', npc: 0.004 }),
@@ -518,6 +534,17 @@ export const SERVICES = Object.fromEntries([
   S('reportage_photo', 'Reportage photo (mariage, fête)', 'com.photographe', 'evenements', { min: 120, special: 'photos', eff: { moral: 8 }, npc: 0.005 }),
   S('vente_boutique', 'Confier ses marchandises à un vendeur (+10 % du prix)', ['commerce.vendeur', 'commerce.responsable_de_magasin', 'commerce.marchandiseur'], 'marche', { min: 30, special: 'consign', npc: 0.03 }),
   S('organisation_mariage', 'Organisation de mariage', 'services.wedding_planner', 'evenements', { min: 60, special: 'wedding_plan', npc: 0.002 }),
+  // Vie quotidienne
+  S('soins_animal', 'Consultation vétérinaire', 'sante.veterinaire', 'veterinaire', { min: 45, supplies: { antidouleur: 0.3 }, special: 'vet', npc: 0.03 }),
+  S('colis', 'Envoyer un colis (cadeau à distance)', 'transport.facteur', 'poste', { min: 15, special: 'parcel', npc: 0.04 }),
+  S('loto', 'Ticket de loto (tirage le dimanche soir)', 'commerce.buraliste', 'kiosque', { min: 5, special: 'loto', npc: 0.08 }),
+  S('visite_immo', 'Accompagnement par un agent immobilier (obligatoire pour louer ou acheter)', 'commerce.agent_immobilier', 'immobilier', { min: 60, special: 'realtor', npc: 0.01 }),
+  S('cours_conduite', 'Permis de conduire (cours et examen)', 'education.moniteur_d_auto_ecole', 'auto_ecole', { min: 600, special: 'driving', npc: 0.01 }),
+  S('pret_livre', 'Emprunter des livres', 'education.bibliothecaire', 'bibliotheque', { min: 120, eff: { moral: 5 }, special: 'library', npc: 0.05 }),
+  S('jardinage', 'Entretien du jardin', 'agri.jardinier', 'residences', { min: 120, eff: { moral: 5 }, special: 'clean_home', npc: 0.02 }),
+  S('collecte_dechets', 'Collecte des déchets', 'agri.eboueur', 'residences', { min: 5, npc: 0.15, hidden: true }),
+  S('nettoyage_locaux', 'Nettoyage de vos locaux (+10 réputation)', 'services.agent_d_entretien', '*any', { min: 120, supplies: { savon: 0.5 }, special: 'clean_building', npc: 0.03 }),
+  S('abonnement_internet', 'Abonnement internet et téléphone (30 jours)', 'info.technicien_telecom', 'technopole', { min: 30, supplies: { cable_cuivre: 0.2 }, special: 'internet', npc: 0.03 }),
   S('animation_fete', 'Animation de fête', 'sport.animateur_socioculturel', 'evenements', { min: 300, supplies: { plat: 4, biere: 6 }, eff: { moral: 30, energie: -15 }, special: 'party', npc: 0.004 }),
 ]);
 
@@ -541,6 +568,10 @@ export const NPC_NEEDS = [
   { any: ['manuel', 'encyclopedie'], p: 0.01, q: 1 },
   { any: ['equip_sport'], p: 0.01, q: 1 },
   { any: ['site_web', 'logiciel'], p: 0.003, q: 1, rich: 1500 },
+  { any: ['croquettes'], p: 0.04, q: 1 },
+  { any: ['smartphone'], p: 0.006, q: 1, rich: 800 },
+  { any: ['chiot', 'chaton'], p: 0.003, q: 1, rich: 600 },
+  { any: ['carte_identite', 'carte_grise'], p: 0.004, q: 1 },
 ];
 
 // Commandes régulières des entreprises (simulées) : documents et fournitures dont elles ont besoin
@@ -590,4 +621,4 @@ export const LIFE_REQUIREMENTS = {
 export const PUBLIC_JOBS = ['securite.policier', 'securite.gendarme', 'securite.militaire', 'securite.pompier', 'securite.gardien_de_prison',
   'securite.douanier', 'education.professeur_des_ecoles', 'education.enseignant_en_college_lycee', 'education.surveillant_scolaire',
   'droit.juge', 'droit.procureur', 'droit.greffier', 'finance.inspecteur_des_finances', 'sante.assistant_social', 'sante.aide_soignant',
-  'agri.technicien_en_environnement', 'transport.controleur_aerien', 'arts.conservateur_de_musee', 'education.maitre_de_conferences'];
+  'agri.technicien_en_environnement', 'transport.controleur_aerien', 'agri.eboueur', 'agri.jardinier', 'education.bibliothecaire', 'admin.agent_de_prefecture', 'transport.facteur', 'arts.conservateur_de_musee', 'education.maitre_de_conferences'];

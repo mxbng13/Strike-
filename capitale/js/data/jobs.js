@@ -15,6 +15,9 @@ const SECTORS_RAW = [
       ['Bûcheron', { place: 'foret', outils: ['hache'], equip: ['casque'], risque: 0.07 }],
       ['Ingénieur agronome', { place: 'labo', salaire: 150, formation: 3500, heures: 24, outils: ['ordinateur_pro'], equip: [] }],
       ['Technicien en environnement', { salaire: 95, formation: 1500, heures: 16 }],
+      ['Éleveur canin', { place: 'veterinaire', salaire: 65, formation: 600, heures: 6, outils: [], equip: [] }],
+      ['Jardinier', { place: 'parc', salaire: 55, formation: 300, heures: 4, outils: ['faucille'], equip: ['gants'] }],
+      ['Éboueur', { place: 'residences', salaire: 60, formation: 200, heures: 3, outils: [], equip: ['gants'] }],
     ] },
   { id: 'artisanat', nom: 'Artisanat et Métiers d’Art', emoji: '🔨', place: 'atelier',
     formation: 900, heures: 12, salaire: 80, outils: ['marteau'], equip: ['gants'], risque: 0.04, jobs: [
@@ -37,6 +40,8 @@ const SECTORS_RAW = [
       ['Acheteur', { salaire: 100, place: 'comptoir' }], ['Chef de produit', { salaire: 130, formation: 2500, heures: 16, outils: ['ordinateur_pro'] }],
       ['Marchandiseur', {}], ['Télévendeur', { salaire: 50 }], ['Représentant', { salaire: 90, outils: ['mallette'] }],
       ['Négociateur', { salaire: 120, place: 'comptoir', formation: 1800, heures: 12 }],
+      ['Buraliste', { place: 'kiosque', salaire: 55, formation: 300, heures: 4 }],
+      ['Agent immobilier', { place: 'immobilier', salaire: 110, formation: 1500, heures: 10 }],
     ] },
   { id: 'com', nom: 'Communication, Médias et Multimédia', emoji: '📡', place: 'com',
     formation: 1200, heures: 12, salaire: 90, outils: ['ordinateur_pro'], equip: [], risque: 0.005, jobs: [
@@ -47,7 +52,7 @@ const SECTORS_RAW = [
     ] },
   { id: 'info', nom: 'Informatique et Télécommunications', emoji: '💻', place: 'technopole',
     formation: 2500, heures: 20, salaire: 140, outils: ['ordinateur_pro'], equip: [], risque: 0.002, jobs: [
-      ['Développeur logiciel', {}], ['Administrateur réseau', { salaire: 130 }], ['Ingénieur en cybersécurité', { salaire: 175, formation: 4500, heures: 28 }],
+      ['Développeur logiciel', {}], ['Technicien télécom', { salaire: 95, formation: 1200, heures: 10, outils: [] }], ['Administrateur réseau', { salaire: 130 }], ['Ingénieur en cybersécurité', { salaire: 175, formation: 4500, heures: 28 }],
       ['Technicien support', { salaire: 90, formation: 1200, heures: 10 }], ['Data scientist', { salaire: 170, formation: 4500, heures: 28 }],
       ['Chef de projet IT', { salaire: 165, formation: 4000, heures: 24 }], ['Analyste en systèmes d’information', { salaire: 145 }],
       ['Intégrateur web', { salaire: 110, formation: 1500, heures: 12 }], ['Architecte cloud', { salaire: 190, formation: 6000, heures: 32 }],
@@ -60,6 +65,7 @@ const SECTORS_RAW = [
       ['Assistant social', { place: 'mairie', salaire: 90, formation: 1500, heures: 12, outils: [], equip: [] }],
       ['Kinésithérapeute', { place: 'cabinet', salaire: 140 }], ['Orthophoniste', { place: 'cabinet', salaire: 125, outils: [] }],
       ['Aide-soignant', { salaire: 80, formation: 900, heures: 8 }],
+      ['Vétérinaire', { place: 'veterinaire', salaire: 190, formation: 7000, heures: 40 }],
     ] },
   { id: 'education', nom: 'Éducation et Formation', emoji: '🎓', place: 'ecole',
     formation: 2000, heures: 18, salaire: 95, outils: ['mallette'], equip: [], risque: 0.002, jobs: [
@@ -67,6 +73,8 @@ const SECTORS_RAW = [
       ['Conseiller d’orientation', {}], ['Éducateur spécialisé', { salaire: 90 }], ['Surveillant scolaire', { salaire: 55, formation: 300, heures: 4, outils: [] }],
       ['Maître de conférences', { salaire: 160, formation: 6000, heures: 36 }], ['Animateur périscolaire', { salaire: 55, formation: 300, heures: 4, outils: [] }],
       ['Chercheur en éducation', { place: 'labo', salaire: 140, formation: 4500, heures: 28 }],
+      ['Moniteur d’auto-école', { place: 'auto_ecole', salaire: 85, formation: 1500, heures: 12, outils: [], permis: 'permis_conduire' }],
+      ['Bibliothécaire', { place: 'bibliotheque', salaire: 60, formation: 800, heures: 8, outils: [] }],
     ] },
   { id: 'transport', nom: 'Transport et Logistique', emoji: '🚚', place: 'gare',
     formation: 900, heures: 10, salaire: 85, outils: [], equip: [], risque: 0.02, jobs: [
@@ -76,6 +84,7 @@ const SECTORS_RAW = [
       ['Affréteur', { salaire: 100, place: 'port' }], ['Contrôleur aérien', { salaire: 190, formation: 7000, heures: 40 }],
       ['Capitaine de navire', { place: 'port', salaire: 180, formation: 6000, heures: 36, permis: 'permis_bateau' }],
       ['Opérateur de téléportation', { place: 'portail', salaire: 130, formation: 3500, heures: 20 }],
+      ['Facteur', { place: 'poste', salaire: 60, formation: 300, heures: 4 }],
     ] },
   { id: 'hotellerie', nom: 'Hôtellerie, Restauration et Tourisme', emoji: '🍽️', place: 'restaurant',
     formation: 500, heures: 6, salaire: 60, outils: [], equip: [], risque: 0.02, jobs: [
@@ -129,7 +138,8 @@ const SECTORS_RAW = [
       ['Secrétaire', { salaire: 65, formation: 500, heures: 6 }], ['Assistant de direction', {}], ['Comptable', { salaire: 110 }],
       ['Ressources humaines', { salaire: 105 }], ['Contrôleur de gestion', { salaire: 135, formation: 2500, heures: 16 }],
       ['Directeur administratif et financier', { salaire: 200, formation: 7000, heures: 40 }], ['Gestionnaire de paie', { salaire: 95 }],
-      ['Office manager', { salaire: 95 }], ['Auditeur', { salaire: 150, formation: 3500, heures: 22 }],
+      ['Office manager', { salaire: 95 }],
+      ['Agent de préfecture', { place: 'prefecture', salaire: 75, formation: 800, heures: 8 }], ['Auditeur', { salaire: 150, formation: 3500, heures: 22 }],
     ] },
   { id: 'finance', nom: 'Finance et Assurance', emoji: '💰', place: 'banque',
     formation: 3500, heures: 24, salaire: 150, outils: ['ordinateur_pro'], equip: [], risque: 0.002, jobs: [
@@ -150,6 +160,7 @@ const SECTORS_RAW = [
       ['Coiffeur', {}], ['Esthéticienne', {}], ['Aide à domicile', { place: 'residences' }], ['Nounou', { place: 'famille' }],
       ['Auxiliaire de vie', { place: 'residences', salaire: 70 }], ['Conseiller en image', { place: 'vetements', salaire: 85 }],
       ['Masseur bien-être', { place: 'bains', salaire: 75 }], ['Wedding planner', { place: 'evenements', salaire: 100, formation: 1500, heures: 10 }],
+      ['Agent d’entretien', { place: 'technopole', salaire: 50, formation: 200, heures: 3 }],
       ['Chauffeur privé', { place: 'garage', salaire: 80, permis: 'permis_conduire' }],
       ['Agent des bains publics', { place: 'bains', salaire: 45, formation: 200, heures: 3 }],
     ] },

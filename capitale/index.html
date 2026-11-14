@@ -53,6 +53,10 @@
   .chip { font-size: 12px; padding: 1px 7px; border-radius: 10px; border: 1px solid var(--edge); }
   .chip.bad { border-color: var(--bad); color: var(--bad); }
   .chip.ok { border-color: var(--good); color: var(--good); }
+  .chip.warn { border-color: var(--accent-2); color: var(--accent-2); cursor: pointer; }
+  .chip[data-a] { cursor: pointer; }
+  #actionbar button.badge { position: relative; }
+  #actionbar button.badge::after { content: attr(data-n); position: absolute; top: 0; right: 6px; background: var(--bad); color: #fff; border-radius: 8px; font-size: 11px; padding: 0 5px; font-weight: 700; }
   #transport { display: flex; gap: 4px; margin-top: 6px; }
   #transport button { border: 1px solid var(--edge); background: rgba(94, 227, 255, 0.06); border-radius: 8px; padding: 2px 7px; cursor: pointer; font-size: 17px; }
   #transport button small { font-size: 11px; color: var(--muted); }
@@ -223,6 +227,7 @@
     <li><b>Vos besoins baissent</b> avec le temps : faim, soif, hygiène, sommeil, moral. Tout se paie : repas, douche, chambre, vêtements adaptés au climat…</li>
     <li><b>Tout est fait par quelqu’un</b> : le pain par un boulanger (farine du meunier, blé de l’agriculteur), les médicaments par un pharmacien (plantes d’un cueilleur), les machines par des mécaniciens (acier du métallurgiste, minerai du mineur)… Si personne ne le produit, c’est la pénurie.</li>
     <li><b>212 métiers, tous utiles</b> : travaillez comme salarié, ou à votre compte : fabriquez et vendez au marché, recevez des clients, récoltez. Créez votre société, faites construire votre usine et embauchez.</li>
+    <li><b>La vraie vie</b> : jours de la semaine, saisons, jours fériés, horaires d’ouverture, factures et impôts dans votre courrier, papiers d’identité, élections municipales, amis, animaux, actualités qui bousculent l’économie.</li>
     <li><b>Déplacez-vous</b> : touchez le sol pour marcher, touchez un lieu pour l’ouvrir. Chevaux, voitures, drones, trains et téléportation.</li>
     <li><b>Carte</b> : glisser pour se déplacer, molette ou pincer pour zoomer, clic droit ou 2 doigts pour pivoter.</li>
   </ul>

@@ -9,6 +9,7 @@ import { ITEMS } from '../data/items.js';
 import { GOODS, RECIPES, SERVICES, GATHER_JOBS, NPC_NEEDS, COMPANY_NEEDS, CONSTRUCTION_NEEDS, RESEARCH_NEEDS, PUBLIC_JOBS } from '../data/economy.js';
 import { JOBS } from '../data/jobs.js';
 import { SITES, NAMES } from '../data/places.js';
+import { PROGRAMMES, EVENTS, seasonOf, holidayOf } from '../data/life.js';
 
 export const ALL = { ...RESOURCES, ...ITEMS, ...GOODS };
 const SITE = Object.fromEntries(SITES.map((s) => [s.id, s]));
@@ -66,7 +67,7 @@ export function serviceValue(svc) {
 const MORE = { 'agri.agriculteur': 8, 'agroalim.boulanger': 8, 'agri.maraicher': 7, 'agri.pepinieriste': 5, 'hotellerie.chef_cuisinier': 5, 'hotellerie.sommelier': 3, 'agroalim.brasseur': 3,  'agri.eleveur': 3, 'agroalim.boucher': 3, 'agroalim.torrefacteur': 3,
   'hotellerie.serveur': 3, 'hotellerie.chef_cuisinier': 3, 'services.agent_des_bains_publics': 3, 'services.coiffeur': 3, 'industrie.papetier': 6,
   'extraction.carrier': 4, 'industrie.metallurgiste': 5, 'energie.operateur_de_centrale': 6, 'energie.technicien_solaire': 4, 'energie.technicien_eolien': 4, 'extraction.mineur': 6, 'agri.technicien_en_environnement': 8,
-  'agri.bucheron': 4, 'artisanat.verrier': 3, 'artisanat.ceramiste': 3, 'btp.charpentier': 3, 'industrie.chimiste': 5, 'agroalim.meunier': 5, 'textile.tisserand': 3, 'textile.couturier': 3,
+  'agri.bucheron': 4, 'artisanat.verrier': 3, 'artisanat.ceramiste': 3, 'btp.charpentier': 3, 'industrie.chimiste': 5, 'agroalim.meunier': 5, 'agroalim.conserveur': 3, 'textile.tisserand': 3, 'textile.couturier': 3,
   'extraction.cueilleur_de_plantes_medicinales': 3, 'sante.pharmacien': 3, 'sante.medecin': 3, 'industrie.operateur_de_production': 5, 'energie.raffineur': 4,
   'extraction.foreur_petrolier': 3, 'artisanat.forgeron': 3, 'mecanique.tourneur_fraiseur': 3, 'mecanique.electronicien': 3 };
 
@@ -125,6 +126,16 @@ export class Market {
     this.dirty = true;
   }
   citizen(id) { return this.byId.get(id); }
+  policy() { return PROGRAMMES.find((p) => p.id === this.s.city?.programme) || PROGRAMMES[1]; }
+  tax() { return this.policy().tva ?? TAX; }
+  event() { const e = this.e.event; return e && e.until > (this.s.time || 0) ? EVENTS.find((x) => x.id === e.id) : null; }
+  // saisons, actualités et politique de la ville changent la production
+  prodMult(job) {
+    const sector = JOBS[job]?.sector;
+    let m = this.event()?.prod?.[sector] || 1;
+    if (sector === 'agri') m *= seasonOf(this.s.time || 0).agri * (this.policy().agri || 1);
+    return m;
+  }
   // Offres de vente d'un bien, de la moins chère à la plus chère
   offers(good) {
     if (this.dirty) this.rebuild();
@@ -135,7 +146,7 @@ export class Market {
     for (const c of this.e.citizens) {
       if (c.hired) continue;
       for (const id of OUTPUTS[c.job]) if ((c.stock[id] || 0) > 0)
-        (idx[id] = idx[id] || []).push({ seller: c, name: c.nom, job: c.job, qty: () => this.sellable(c, id), price: () => c.price[id] || VALUE[id], player: false });
+        (idx[id] = idx[id] || []).push({ seller: c, name: c.nom, job: c.job, qty: () => this.sellable(c, id), price: () => (c.price[id] || VALUE[id]) * this.saleMult(id), player: false });
     }
     // offres du joueur (son sac) et de ses bâtiments
     for (const [id, l] of Object.entries(this.s.listings || {})) {
@@ -148,6 +159,10 @@ export class Market {
     }
     this.index = idx;
     this.dirty = false;
+  }
+  saleMult(id) {
+    const ev = this.event();
+    return ev?.sale && ['vetement', 'meuble', 'deco', 'appareil', 'climat'].includes(ALL[id]?.cat) ? ev.sale : 1;
   }
   sellable(c, id) {
     // un habitant garde de quoi travailler : il ne vend pas les matières dont il a besoin
@@ -188,7 +203,7 @@ export class Market {
     return { n, spent };
   }
   pay(offer, good, p, buyerName) {
-    const tax = p * TAX;
+    const tax = p * this.tax();
     this.e.budget += tax;
     this.e.sales[good] = (this.e.sales[good] || 0) + 1;
     this.e.lastTx[good] = p;
@@ -216,7 +231,8 @@ export class Market {
   // Prestataires d'un service (habitants qui exercent le métier et ont de quoi travailler)
   providers(svcId) {
     const svc = SERVICES[svcId];
-    return this.e.citizens.filter((c) => !c.hired && svc.jobs.includes(c.job) && (c.clients || 0) < 8 && this.canServe(c, svc))
+    const cap = clamp(Math.round(600 / svc.min), 4, 40);
+    return this.e.citizens.filter((c) => !c.hired && svc.jobs.includes(c.job) && (c.clients || 0) < cap && this.canServe(c, svc))
       .map((c) => ({ c, price: c.price[`svc:${svcId}`] || serviceValue(svc) }))
       .sort((a, b) => a.price - b.price);
   }
@@ -240,8 +256,8 @@ export class Market {
   }
   // Un habitant (ou le joueur) paie un service à un prestataire habitant
   payService(c, svc, price, buyer) {
-    c.money += price * (1 - TAX);
-    this.e.budget += price * TAX;
+    c.money += price * (1 - this.tax());
+    this.e.budget += price * this.tax();
     c.earned += price;
     c.clients = (c.clients || 0) + 1;
     this.useSupplies(c, svc);
@@ -280,7 +296,7 @@ export class Market {
     }
     // 4. la ville : salaires publics, aides sociales, consommation des stocks périssables
     for (const c of e.citizens) {
-      if (PUBLIC_JOBS.includes(c.job)) { const w = JOBS[c.job].salaire * 0.9; c.money += w; e.budget -= w; }
+      if (PUBLIC_JOBS.includes(c.job)) { const w = JOBS[c.job].salaire * 0.9 * (JOBS[c.job].sector === 'securite' ? this.policy().police : 1); c.money += w; e.budget -= w; }
       if (c.money < 60) { c.money += 70; e.budget -= 70; }
       if (c.money > 2500) { const t = (c.money - 2500) * 0.04; c.money -= t; e.budget += t; }
       for (const id of Object.keys(c.stock)) {
@@ -326,9 +342,10 @@ export class Market {
       if (g.fuel) for (const [id, q] of Object.entries(g.fuel)) if (!this.ensure(c, id, q)) return; else c.stock[id] -= q;
       const total = g.loot.reduce((a, l) => a + l[1], 0);
       const short = OUTPUTS[c.job].some((o) => (this.e.prevShort?.[o] || 0) > 2);
+      const pm = this.prodMult(job);
       for (let i = 0; i < g.rolls * (short ? 3 : 2); i++) {
         let r = rnd() * total;
-        for (const [id, w, a, b] of g.loot) { r -= w; if (r <= 0) { c.stock[id] = (c.stock[id] || 0) + a + Math.floor(rnd() * (b - a + 1)); break; } }
+        for (const [id, w, a, b] of g.loot) { r -= w; if (r <= 0) { c.stock[id] = (c.stock[id] || 0) + Math.round((a + Math.floor(rnd() * (b - a + 1))) * pm); break; } }
       }
       if (g.tool) this.wearTool(c, g.tool);
       return;
@@ -351,7 +368,8 @@ export class Market {
       for (const [id, q] of Object.entries(r.in)) if (!this.ensure(c, id, q)) { okk = false; break; }
       if (!okk) continue;
       for (const [id, q] of Object.entries(r.in)) { c.stock[id] -= q; if (c.stock[id] <= 0) delete c.stock[id]; }
-      for (const [id, q] of Object.entries(r.out)) c.stock[id] = (c.stock[id] || 0) + q;
+      const pm = this.prodMult(job);
+      for (const [id, q] of Object.entries(r.out)) { const n = q * pm; c.stock[id] = (c.stock[id] || 0) + Math.floor(n) + (rnd() < n % 1 ? 1 : 0); }
       if (r.tool) this.wearTool(c, r.tool);
       if (r.machine) { c.wear++; if (c.wear > 40) this.maintain(c, r.machine); }
       batches--; progress = true;
@@ -383,8 +401,10 @@ export class Market {
     if (r.n) { c.stock[machine] -= 1; c.wear = 0; }
   }
   consume(c) {
+    const hol = holidayOf(this.s.time || 0);
     for (const need of NPC_NEEDS) {
-      if (rnd() > need.p || (need.rich && c.money < need.rich)) continue;
+      const pp = need.p * (hol?.gifts && need.any.includes('bouquet') ? 4 : 1);
+      if (rnd() > pp || (need.rich && c.money < need.rich)) continue;
       const options = need.any.map((id) => [id, this.bestPrice(id)]).filter(([, p]) => p !== null && p < c.money * 0.5);
       if (!options.length) { this.e.shortages[need.any[0]] = (this.e.shortages[need.any[0]] || 0) + 1; continue; }
       options.sort((a, b) => a[1] / (VALUE[a[0]] || 1) - b[1] / (VALUE[b[0]] || 1));
@@ -394,7 +414,8 @@ export class Market {
     }
     const richBoost = c.money > 1500 ? 2.5 : c.money > 800 ? 1.4 : 1;
     for (const svc of Object.values(SERVICES)) {
-      if (!svc.npc || rnd() > svc.npc * (svc.special ? 1 : richBoost)) continue;
+      const evm = (this.event()?.svc?.[svc.id] || 1) * (hol?.festival && ['concert', 'cinema', 'theatre', 'cocktail'].includes(svc.id) ? 2 : 1);
+      if (!svc.npc || rnd() > svc.npc * evm * (svc.special ? 1 : richBoost)) continue;
       const ps = this.providers(svc.id).filter((p) => p.c !== c);
       if (!ps.length) { this.e.shortages[`svc:${svc.id}`] = (this.e.shortages[`svc:${svc.id}`] || 0) + 1; this.e.demand[svc.id] = (this.e.demand[svc.id] || 0) + 1; continue; }
       const p = rnd() < 0.6 ? ps[0] : pick(ps);
@@ -412,7 +433,8 @@ export class Market {
     const avg = ps.length ? ps.reduce((a, p) => a + p.price, 0) / ps.length : serviceValue(svc);
     const priceFactor = clamp(avg / Math.max(1, myPrice), 0.2, 2.5);
     const share = (1 / (ps.length + 1)) * priceFactor;
-    const expected = daily * share * 0.6 + (this.e.shortages[`svc:${svcId}`] ? 1.5 : 0);
+    const evm = this.event()?.svc?.[svcId] || 1;
+    const expected = daily * evm * share * 0.6 + (this.e.shortages[`svc:${svcId}`] ? 1.5 : 0);
     return Math.min(8, Math.max(0, Math.round(expected + (rnd() - 0.4) * 1.5)));
   }
   // Prix auquel un grossiste rachète tout de suite (moins que sur le marché)

@@ -4,7 +4,7 @@ import { ITEMS } from '../data/items.js';
 import { STOCKS } from '../data/places.js';
 import { GOODS } from '../data/economy.js';
 
-const KEY = 'nexus-vie-v2';
+const KEY = 'nexus-vie-v3';
 export const STATS = [
   ['faim', 'Faim', '🍗'], ['soif', 'Soif', '💧'], ['hygiene', 'Hygiène', '🧼'],
   ['energie', 'Sommeil', '😴'], ['sante', 'Santé', '❤️'], ['moral', 'Moral', '🙂'],
@@ -18,13 +18,13 @@ export function newState() {
   const prices = {};
   for (const id in RESOURCES) prices[id] = 1;
   return {
-    v: 2,
+    v: 3,
     nom: 'Voyageur',
     money: 650,
     time: 8 * 60,                 // minutes depuis le début (jour 1, 8 h)
     stats: { faim: 80, soif: 75, hygiene: 85, energie: 90, sante: 100, moral: 70 },
     pos: { x: 0, z: 150 },
-    inv: { pain: 3, eau: 3, savon: 1 },
+    inv: { pain: 3, eau: 3, savon: 1, carte_identite: 1 },
     dur: {},                      // usure de l'objet en cours d'utilisation (outils, vêtements)
     job: null, diplomas: [], jobXp: {}, permits: [],
     housing: null,                // { type, rentPaidUntil? }
@@ -47,6 +47,8 @@ export function newState() {
     loan: null, brokerUntil: 0, wealthUntil: 0, adviceBonus: 0, insuranceUntil: 0,
     docsBuff: {},                 // prospection, météores, étude marine… : utilisations restantes
     flags: {},
+    mail: [], friends: {}, pets: [], notoriety: 0, age: 25, weekIncome: 0, weekCompany: 0, lotoTickets: 0,
+    city: { mayor: null, programme: 'securite' }, election: null, internetUntil: 0, homeInsuranceUntil: 0, carInsuranceUntil: 0,
     stocks: {}, stockPrices: Object.fromEntries(STOCKS.map((s) => [s.id, s.prix])), stockHist: {},
     deposits: [],                 // placements { amount, until, rate }
     family: { partner: null, married: false, children: [] },
@@ -63,7 +65,7 @@ export function load() {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const s = JSON.parse(raw);
-      if (s && s.v === 2) return Object.assign(newState(), s);
+      if (s && s.v === 3) return Object.assign(newState(), s);
     }
   } catch (e) { /* stockage indisponible : nouvelle partie */ }
   return newState();

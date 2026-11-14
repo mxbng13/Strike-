@@ -100,7 +100,7 @@ capitale/
   js/game/game.js          moteur : besoins, climat, santé, métiers, services, fabrication, chantiers, justice, finance
   js/game/market.js        le marché et ~500 habitants simulés qui exercent chacun un métier
   js/data/economy.js       biens intermédiaires, documents, machines ; 262 recettes ; 86 services ; bâtiments
-  js/data/jobs.js          24 secteurs, 212 métiers (dont extraction, agroalimentaire, textile, mécanique, énergie)
+  js/data/jobs.js          24 secteurs, 224 métiers (dont extraction, agroalimentaire, textile, mécanique, énergie)
   js/data/resources.js     les 80 ressources de base
   js/data/items.js         objets de consommation (nourriture, vêtements, outils, meubles, médicaments…)
   js/data/places.js        lieux, sites de récolte, véhicules, logements, guildes, bourse
@@ -117,6 +117,14 @@ capitale/
   bien a un producteur et que chaque production est utilisée par quelqu’un.
 - Justice (vol → enquête de police → procureur → juge → prison), prêts, courtiers en assurance, traders, export avec
   dédouanement, transport de marchandises, entrepôts, enfants à nourrir, scolariser et faire garder chaque jour, etc.
+- **La vraie vie** (`js/data/life.js`, `js/game/life.js`) : jours de la semaine, 4 saisons (récoltes plus faibles en hiver,
+  chauffage), jours fériés (Noël, Fête de la ville…), horaires d’ouverture de chaque lieu ; courrier avec factures
+  (électricité et eau payées aux producteurs, ordures), impôt sur le revenu par tranches, taxes d’habitation et foncière,
+  impôt sur les sociétés, majorations puis saisie par huissier ; sécurité sociale (30 % des soins) + mutuelle, chômage ;
+  carte d’identité, carte grise, permis à l’auto-école ; contrôles routiers, amendes, accidents, assurances auto et habitation ;
+  actualités qui changent l’économie (sécheresse, grippe, grève, krach, soldes, tempête…) ; élections municipales tous les
+  14 jours (on peut voter, se présenter et devenir maire pour fixer la politique de la ville) ; amis (réductions, invitations,
+  prêts), notoriété, anniversaires ; animaux de compagnie ; parc, bibliothèque, loto, colis, télétravail. 224 métiers.
 - L’onglet **📊 Marché** montre les pénuries du jour (places à prendre) et permet d’explorer chaque chaîne de production.
 
 ## Mise à jour : XP, niveaux, paliers, boutique, fusils

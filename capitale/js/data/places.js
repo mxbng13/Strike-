@@ -60,6 +60,13 @@ export const PLACES = [
   { id: 'evenements', nom: 'Salle des fêtes', emoji: '💍', spot: 'ring', desc: 'Mariages, fêtes, rencontres.', special: 'events' },
   { id: 'famille', nom: 'Maison de la famille', emoji: '👶', spot: 'ring', desc: 'Adoption, garde d’enfants.', special: 'family' },
   { id: 'cadeaux', nom: 'Boutique de cadeaux', emoji: '🎁', spot: 'ring', desc: 'Bijoux, fleurs, parfums, objets sentimentaux.', shop: SHOP.gifts },
+  { id: 'veterinaire', nom: 'Clinique vétérinaire', emoji: '🐾', spot: 'ring', desc: 'Vétérinaires et éleveurs : chiots, chatons, croquettes.', shop: ['croquettes', 'chiot', 'chaton'] },
+  { id: 'poste', nom: 'La Poste', emoji: '📮', spot: 'ring', desc: 'Les facteurs livrent colis et courrier.' },
+  { id: 'kiosque', nom: 'Kiosque Presse & Loto', emoji: '🎟️', spot: 'ring', desc: 'Journaux, tickets de loto (tirage chaque dimanche à 20 h).', shop: ['journal', 'smartphone'] },
+  { id: 'parc', nom: 'Parc central', emoji: '🌳', spot: 'ring', desc: 'Gratuit : promenade, jogging, pique-nique. Entretenu par les jardiniers.', special: 'park' },
+  { id: 'bibliotheque', nom: 'Bibliothèque', emoji: '📚', spot: 'ring', desc: 'Emprunter des livres : un peu d’expérience et du moral.' },
+  { id: 'prefecture', nom: 'Préfecture & Centre des impôts', emoji: '🏢', spot: 'ring', desc: 'Carte d’identité, carte grise, impôts.', shop: ['carte_identite', 'carte_grise'], special: 'taxes' },
+  { id: 'auto_ecole', nom: 'Auto-école', emoji: '🚘', spot: 'ring', desc: 'Les moniteurs vous font passer le permis de conduire.' },
   { id: 'mairie', nom: 'Hôtel de ville', emoji: '🏛️', spot: 'core:command', desc: 'Créer sa société, faire construire, zones réservées.', special: 'cityhall' },
   { id: 'banque', nom: 'Banque & Bourse', emoji: '📈', spot: 'core:spire2', desc: 'Banquiers, traders, conseillers.', special: 'bank' },
 ];

@@ -7,6 +7,7 @@ import { PLACES, SITES, VEHICLES, HOUSING, GUILDS, STOCKS } from '../data/places
 import { STATS, def, has, fmt, clock, duration } from '../game/state.js';
 import { PLACE_BY_ID, WEATHER, CLIMATES, COND_NAMES, VALUE, serviceValue, RECIPES_BY_JOB, SERVICES_BY_JOB } from '../game/game.js';
 import { PRODUCERS } from '../game/market.js';
+import { DAYS, seasonOf, weekday, holidayOf, yearOf, PROGRAMMES, PETS } from '../data/life.js';
 
 const $ = (sel) => document.querySelector(sel);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -27,6 +28,7 @@ const GUIDE = [
   ['7. Loisirs', [['Cinéma, concerts, théâtre', ['loisirs']], ['Sport, coach, tournoi', ['arene']], ['Voyages guidés', ['tourisme']]]],
   ['8. Progression', [['Formations, livres', ['ecole']], ['Zone de haut niveau', ['mairie', 'cratere']], ['Fabrication avancée', ['atelier', 'usine', 'labo']]]],
   ['9. Famille', [['Maison (notaire + géomètre)', ['immobilier']], ['Mariage (alliances, wedding planner)', ['evenements']], ['Enfants (école, garde)', ['famille']], ['Cadeaux', ['cadeaux']]]],
+  ['Vie quotidienne', [['Papiers : carte d’identité, carte grise', ['prefecture']], ['Impôts et factures (courrier)', ['prefecture']], ['Permis de conduire', ['auto_ecole']], ['Animaux', ['veterinaire']], ['Loisirs gratuits', ['parc', 'bibliotheque']], ['Loto, journaux', ['kiosque']], ['Colis', ['poste']]]],
   ['10. Économie', [['Société, bâtiments, employés', ['mairie']], ['Vendre au marché', ['comptoir']], ['Bourse (traders), prêts (banquiers)', ['banque']]]],
 ];
 
@@ -48,14 +50,18 @@ export class UI {
     $('#statbars').innerHTML = STATS.map(([k, n, e]) => `<div class="stat" data-k="${k}" title="${n}"><span class="si">${e}</span><div class="bar"><i></i></div><span class="sv"></span></div>`).join('');
     $('#actionbar').innerHTML = [
       ['inventory', '🎒', 'Sac'], ['job', '💼', 'Métier'], ['company', '🏭', 'Entreprise'], ['market', '📊', 'Marché'], ['home', '🏠', 'Maison'],
-      ['family', '💞', 'Famille'], ['places', '📍', 'Lieux'], ['guide', '📖', 'Besoins'], ['journal', '📜', 'Journal'],
+      ['family', '💞', 'Proches'], ['mail', '📬', 'Courrier'], ['city', '🏛️', 'Ville'], ['places', '📍', 'Lieux'], ['guide', '📖', 'Besoins'], ['journal', '📜', 'Journal'],
     ].map(([k, e, n]) => `<button data-a="open" data-k="${k}"><span>${e}</span><small>${n}</small></button>`).join('');
   }
   updateHud() {
     const s = this.s, g = this.g;
     $('#money').textContent = fmt(s.money);
     $('#money').classList.toggle('neg', s.money < 0);
-    $('#clock').textContent = clock(s.time);
+    const se = seasonOf(s.time), hol = holidayOf(s.time);
+    $('#clock').textContent = `${DAYS[weekday(s.time)]} · ${clock(s.time)} · ${se.emoji} ${se.nom}${hol ? ` · ${hol.emoji} ${hol.nom}` : ''}`;
+    const unread = g.unread();
+    const mb = document.querySelector('#actionbar [data-k="mail"]');
+    if (mb) mb.classList.toggle('badge', unread > 0), mb.dataset.n = unread;
     const w = WEATHER[s.weather.type], c = CLIMATES[g.climateHere()];
     $('#weather').textContent = `${w.emoji} ${w.nom} · ${c.emoji} ${c.nom}`;
     const job = g.currentJob();
@@ -74,6 +80,10 @@ export class UI {
     }
     if (g.overloaded()) chips.push(`<span class="chip bad">🎒 Trop chargé (${g.carried()}/${g.capacity()})</span>`);
     if (s.theft) chips.push('<span class="chip bad">🦹 Vol à signaler</span>');
+    const ev = g.event();
+    if (ev) chips.push(`<span class="chip warn" data-a="open" data-k="city">${ev.emoji} ${ev.nom}</span>`);
+    const dueBills = (s.mail || []).filter((m) => !m.paid && m.amount).length;
+    if (dueBills) chips.push(`<span class="chip bad" data-a="open" data-k="mail">🧾 ${dueBills} facture(s) à payer</span>`);
     if (s.buffs.forme > s.time) chips.push('<span class="chip ok">💪 En forme</span>');
     if (s.insuranceUntil > s.time) chips.push('<span class="chip ok">🛡️ Assuré</span>');
     $('#chips').innerHTML = chips.join('');
@@ -105,7 +115,7 @@ export class UI {
     const html = {
       place: () => this.placePanel(id), inventory: () => this.inventoryPanel(), job: () => this.jobPanel(), home: () => this.homePanel(),
       family: () => this.familyPanel(), company: () => this.companyPanel(), places: () => this.placesPanel(), guide: () => this.guidePanel(),
-      journal: () => this.journalPanel(), market: () => this.marketPanel(), good: () => this.goodPanel(id), sector: () => this.jobPanel(id),
+      journal: () => this.journalPanel(), mail: () => this.mailPanel(), city: () => this.cityPanel(), market: () => this.marketPanel(), good: () => this.goodPanel(id), sector: () => this.jobPanel(id),
     }[kind]();
     const body = $('#panelbody');
     const scroll = body.scrollTop;
@@ -132,12 +142,17 @@ export class UI {
       const d = this.a.distanceTo(id), v = VEHICLES[s.transport];
       h += `<div class="goto">Vous êtes à ${Math.round(d)} m. ${this.btn(`${v.emoji} Y aller (≈ ${duration(d / v.speed)})`, 'go', { id }, { cls: 'primary' })}</div>`;
     }
-    const dis = !here;
-    h += this.workHere(id, dis);
+    const open = g.isOpen(id);
+    if (!p.kind) h += `<p class="small">🕒 ${esc(g.hoursText(id))}</p>`;
+    if (!open) h += `<div class="goto warn">Fermé en ce moment. ${this.btn(`⏳ Attendre l’ouverture (${duration(g.waitTime(id))})`, 'waitopen', { id }, { disabled: !here })}</div>`;
+    const dis = !here || !open;
+    h += this.workHere(id, here && (open || g.canTelework()) ? false : true);
     if (p.special) h += this.special(p.special, id, dis);
     if (p.gather) h += this.sitePanel(p, dis);
     const svcs = g.servicesAt(id);
     if (svcs.length) h += this.section('🧑‍🔧 Services rendus par des gens', svcs.map((sv) => this.serviceRow(sv, dis)).join(''));
+    const people = [...new Set(svcs.flatMap((sv) => this.m.providers(sv.id).slice(0, 2).map((x) => x.c)))].slice(0, 4);
+    if (people.length && open) h += this.section('🙋 Les gens qui travaillent ici', people.map((c) => `<div class="row small"><div>${esc(c.nom)} · ${esc(JOBS[c.job].nom)}${(s.friends[c.id] || 0) >= 30 ? ' · <span class="tag">ami(e)</span>' : (s.friends[c.id] ? ` · amitié ${Math.round(s.friends[c.id])}` : '')}</div>${this.btn('Discuter (30 min)', 'chat', { c: c.id }, { disabled: dis })}</div>`).join(''));
     if (p.shop) h += this.section('🛒 En vente ici (par leurs producteurs)', `<div class="grid">${p.shop.map((it) => this.offerCard(it, dis)).join('')}</div>`);
     return h;
   }
@@ -147,6 +162,7 @@ export class UI {
     let h = '';
     if (job.place === id) {
       const lvl = g.jobLevel(), miss = g.missingFor(job);
+      if (g.canTelework()) h += '<p class="small tag">💻 Télétravail possible depuis chez vous</p>';
       h += `<div class="row"><div><b>Salarié</b> chez un employeur · ${fmt(job.salaire * (1 + 0.15 * (lvl - 1)))} par service de 4 h${(job.outils || []).length || (job.equip || []).length ? `<br>${[...job.outils, ...job.equip].map((x) => this.req(x)).join(' ')}` : ''}${miss.permis ? `<br><span class="warn">Il faut : ${PERMITS[miss.permis].nom}</span>` : ''}</div>${this.btn('Travailler 4 h', 'work', {}, { cls: 'primary', disabled: dis })}</div>`;
     }
     for (const sv of SERVICES_BY_JOB[s.job] || []) {
@@ -168,7 +184,7 @@ export class UI {
     const eff = sv.eff ? `<span class="eff">${g.effText(sv.eff)}</span>` : '';
     let arg = '';
     if (['teleport', 'train', 'flight', 'taxi', 'tour'].includes(sv.special)) arg = this.destSelect(sv.special);
-    if (sv.special === 'consign' || sv.special === 'export') arg = this.itemSelect();
+    if (['consign', 'export', 'parcel'].includes(sv.special)) arg = this.itemSelect();
     if (sv.special === 'training') return `<div class="row"><div><b>${esc(sv.nom)}</b><br><span class="small">Choisissez une formation plus bas (Académie).</span></div></div>`;
     if (sv.special === 'build' || sv.special === 'install_machine' || sv.special === 'repair_machines' && false) return `<div class="row"><div><b>${esc(sv.nom)}</b> · ${provs.length} disponible(s)<br><span class="small">Engagez-les depuis l’onglet 🏭 Entreprise.</span></div></div>`;
     if (!provs.length) return `<div class="row"><div><b>${esc(sv.nom)}</b> ${eff}<br><span class="warn small">Personne ne rend ce service en ce moment. Métier à prendre : ${esc(this.jobsText(sv.jobs))}.</span></div></div>`;
@@ -235,12 +251,20 @@ export class UI {
       case 'events': {
         const f = s.family;
         const req = Object.entries(LIFE_REQUIREMENTS.mariage).map(([i, q]) => this.req(i, q)).join(' ');
-        return this.section('Fêtes et mariages', `<div class="row"><div><b>Dîner galant</b> (servi au restaurant)</div>${this.btn('Inviter', 'date', {}, { disabled: dis || !f.partner })}</div>
+        const inv = s.flags.inviteUntil > s.time ? `<div class="row"><div><b>Soirée de votre ami(e) ${esc(this.m.citizen(s.flags.inviteFrom)?.nom || '')}</b> · 3 h</div>${this.btn('Y participer', 'invite', {}, { disabled: dis, cls: 'primary' })}</div>` : '';
+        return this.section('Fêtes et mariages', inv + `<div class="row"><div><b>Dîner galant</b> (servi au restaurant)</div>${this.btn('Inviter', 'date', {}, { disabled: dis || !f.partner })}</div>
           <div class="row"><div><b>Mariage</b> · affection ≥ 80, logement, wedding planner ${s.flags.weddingPlanned ? '✅' : '❌'}<br>${req} · frais de mairie 500 ₵</div>${this.btn('Se marier', 'marry', {}, { disabled: dis || f.married })}</div>`);
       }
       case 'family': return this.section('Enfants', `<p class="small">Il faut une maison familiale. Chaque jour, un enfant mange (produits achetés), va à l’école (professeur) et se fait garder (nounou, animateur) : beaucoup de dépenses, mais du bonheur.</p>
         <div class="row"><div><b>Adopter</b> · ${this.req('dossier_admin')} + enquête d’un assistant social + 800 ₵</div>${this.btn('Adopter', 'adopt', {}, { disabled: dis })}</div>`);
-      case 'cityhall': return this.cityHallPanel(dis);
+      case 'cityhall': return this.cityHallPanel(dis) + this.electionSection(dis);
+      case 'park': return this.section('🌳 Activités gratuites', [['promenade', 'Promenade (1 h) · +6 moral'], ['jogging', 'Jogging (1 h) · +4 santé, en forme'], ['piquenique', 'Pique-nique (apportez à manger) · +10 moral'], ['chien', 'Promener votre chien · +9 moral']]
+        .map(([k, t]) => `<div class="row"><div>${t}</div>${this.btn('Y aller', 'park', { k }, { disabled: dis })}</div>`).join(''));
+      case 'taxes': {
+        const due = (s.mail || []).filter((m) => !m.paid && m.amount);
+        return this.section('🧾 Impôts et factures', `<p class="small">Impôt sur le revenu chaque lundi (0 % jusqu’à 500 ₵ gagnés dans la semaine, puis 10 %, 20 %, 30 %), taxe d’habitation ou foncière, impôt sur les sociétés. Revenus de la semaine en cours : <b>${fmt(s.weekIncome || 0)}</b>.</p>`
+          + (due.length ? due.map((m) => `<div class="row small"><div>${esc(m.subject)}${m.late ? ' <span class="warn">(majoré)</span>' : ''}</div>${this.btn(`Payer ${p1(m.amount)}`, 'paymail', { id: m.id })}</div>`).join('') : '<p class="small">Rien à payer.</p>'));
+      }
       case 'bank': return this.bankPanel(dis);
       default: return '';
     }
@@ -392,6 +416,7 @@ export class UI {
         const d = def(id), acts = [];
         if (d.use || d.cure || d.cat === 'livre' || d.vaccine || ['carte_prospection', 'alerte_meteores', 'etude_marine', 'optimisation'].includes(id)) acts.push(this.btn('Utiliser', 'use', { id }));
         if (d.vehicle) acts.push(this.btn('Mettre en service', 'use', { id }, { cls: 'primary' }));
+        if (d.pet) acts.push(this.btn('Adopter', 'use', { id }, { cls: 'primary' }));
         if (d.comfort && s.housing) acts.push(this.btn('Installer', 'install', { id }, { disabled: !g.atHome() }));
         if (d.gift && s.family.partner) acts.push(this.btn('Offrir', 'gift', { id }));
         const durTxt = d.dur && s.dur[id] !== undefined ? ` · état ${Math.round(100 * s.dur[id] / d.dur)} %` : '';
@@ -410,7 +435,8 @@ export class UI {
       h += this.section('Votre poste', `<p>Lieu : ${esc(PLACE_BY_ID[job.place].nom)} ${g.at(job.place) ? '' : this.btn('Y aller', 'go', { id: job.place })} · salarié ${fmt(job.salaire * (1 + 0.15 * (lvl - 1)))} / 4 h</p>
         <p>Expérience ${xp}${next !== null ? ` / ${next}` : ' (max)'}${miss.permis ? ` · <span class="warn">il faut ${PERMITS[miss.permis].nom}</span>` : ''}</p>
         ${[...job.outils, ...job.equip].length ? `<p>${[...job.outils, ...job.equip].map((x) => this.req(x)).join(' ')}</p>` : ''}
-        ${this.btn('Travailler 4 h (salarié)', 'work', {}, { cls: 'primary', disabled: !g.at(job.place) })} ${this.btn('Démissionner', 'quit')}`);
+        ${this.btn(g.canTelework() ? 'Télétravailler 4 h' : 'Travailler 4 h (salarié)', 'work', {}, { cls: 'primary', disabled: !g.at(job.place) && !g.canTelework() })} ${this.btn('Démissionner', 'quit')}
+        ${['info', 'com', 'admin', 'finance'].includes(job.sector) ? '<p class="small">Télétravail possible chez vous avec internet (technicien télécom) et un ordinateur.</p>' : ''}`);
       // ce que vous pouvez produire
       const recs = RECIPES_BY_JOB[s.job] || [];
       if (recs.length) h += this.section('🛠️ À votre compte : fabriquer et vendre', recs.map((r) => {
@@ -532,6 +558,11 @@ export class UI {
       const gifts = Object.keys(s.inv).filter((id) => def(id)?.gift);
       h += this.section('🎁 Cadeaux', gifts.length ? gifts.map((id) => `<div class="row"><div>${def(id).emoji} ${esc(def(id).nom)} · +${def(id).gift}</div>${this.btn('Offrir', 'gift', { id })}</div>`).join('') : `<p class="small">${this.btn('Boutique de cadeaux', 'go', { id: 'cadeaux' })}</p>`);
     } else h += `<p>Rencontres : Club Néon, conseiller en image pour plus de charme.</p>${this.btn('Club Néon', 'go', { id: 'club' })}`;
+    const pets = s.pets || [];
+    h += this.section('🐾 Animaux', pets.length ? pets.map((pt) => `<p>${PETS[pt.type].emoji} ${esc(pt.nom)} · faim ${Math.round(pt.faim)} · santé ${Math.round(pt.sante)}</p>`).join('') + `<p class="small">Croquettes chaque jour (${this.req('croquettes')}), vétérinaire s’il est malade.</p>` : `<p class="small">Chiots et chatons à la clinique vétérinaire. ${this.btn('Y aller', 'go', { id: 'veterinaire' })}</p>`);
+    const fr = Object.entries(s.friends || {}).filter(([, v]) => v >= 5).sort((a, b) => b[1] - a[1]).slice(0, 15);
+    h += this.section(`🤝 Amis (notoriété ${Math.round(s.notoriety || 0)})`, (fr.length ? fr.map(([cid, v]) => { const c = this.m.citizen(cid); return c ? `<div class="row small"><div>${esc(c.nom)} · ${esc(JOBS[c.job].nom)} · amitié ${Math.round(v)}${v >= 70 ? ' 💛' : v >= 30 ? ' 🤝' : ''}</div>${v >= 70 && !s.flags.friendLoan ? this.btn('Emprunter', 'borrow', { c: cid }) : ''}</div>` : ''; }).join('') : '<p class="small">Discutez avec les gens dans les lieux, utilisez leurs services : ils deviennent vos amis (−10 % chez eux, invitations, prêts).</p>')
+      + (s.flags.friendLoan ? `<p class="warn">Vous devez ${fmt(s.flags.friendLoan.amount)} à un ami. ${this.btn('Rembourser', 'repay')}</p>` : ''));
     h += this.section('👶 Enfants', f.children.length ? f.children.map((c) => `<p>${esc(c.nom)} · éducation ${Math.round(c.growth || 0)} · bonheur ${Math.round(c.happy ?? 70)}</p>`).join('') + '<p class="small">Orthophoniste, éducateur, colonie : plus d’éducation et de bonheur.</p>' : '<p class="small">Adoption à la Maison de la famille.</p>');
     return h;
   }
@@ -545,6 +576,33 @@ export class UI {
     h += this.btn('Recommencer une nouvelle vie', 'reset', {}, { cls: 'danger' });
     return h;
   }
+  mailPanel() {
+    const s = this.s;
+    for (const m of s.mail || []) m.read = true;
+    const icon = { facture: '🧾', impot: '🏛️', amende: '🚨', info: '📰', ami: '💌' };
+    let h = this.head('📬', 'Courrier', 'Factures, impôts, amendes, nouvelles et messages de vos amis');
+    h += '<p class="small">Payez avant la date limite : sinon +10 %, puis saisie par un huissier (+25 %).</p>';
+    h += (s.mail || []).map((m) => `<div class="row"><div>${icon[m.kind] || '✉️'} <b>${esc(m.subject)}</b><br><span class="small">${esc(m.from)} · ${clock(m.t)}${m.amount && !m.paid ? ` · à payer avant ${clock(m.due)}${m.late ? ' (majoré)' : ''}` : ''}</span></div>${m.amount ? (m.paid ? '<span class="tag">Payé</span>' : this.btn(`Payer ${p1(m.amount)}`, 'paymail', { id: m.id }, { cls: 'primary' })) : ''}</div>`).join('') || '<p class="small">Boîte aux lettres vide.</p>';
+    return h;
+  }
+  cityPanel() {
+    const g = this.g, s = this.s, pol = g.policy(), ev = g.event();
+    let h = this.head('🏛️', 'La ville de Nexus', `Année ${yearOf(s.time)} · ${seasonOf(s.time).emoji} ${seasonOf(s.time).nom}`);
+    h += this.section('📰 Actualité', ev ? `<p><b>${ev.emoji} ${ev.nom}</b> : ${esc(ev.txt)}</p>` : '<p class="small">Rien de spécial en ce moment.</p>');
+    h += this.section('🏛️ Mairie', `<p>Maire : <b>${s.city?.mayor === 'player' ? 'vous !' : esc(s.city?.mayorName || 'aucun (intérim)')}</b> · politique : <b>${esc(pol.nom)}</b></p><p class="small">${esc(pol.txt)} TVA ${Math.round(pol.tva * 100)} % sur toutes les ventes.</p>`);
+    h += this.section('📅 Calendrier', `<p class="small">Une année = 28 jours (4 saisons de 7 jours). L’hiver, les récoltes baissent et le chauffage coûte cher ; l’été, attention à la canicule.</p><p class="small">Jours fériés : 5 Fête du travail · 10 Fête de la ville · 12 Fête de la musique · 21 Halloween · 26 Noël · 28 Réveillon. Élections municipales un dimanche sur deux.</p>`);
+    h += this.section('👤 Vous', `<p>${s.age || 25} ans · notoriété ${Math.round(s.notoriety || 0)}/100 · revenus de la semaine ${fmt(s.weekIncome || 0)}</p>`);
+    return h;
+  }
+  electionSection(dis) {
+    const g = this.g, s = this.s, e = g.electionState();
+    if (!e) return this.section('🗳️ Élections', `<p class="small">Pas d’élection cette semaine (une semaine sur deux, vote le dimanche à 20 h).</p>${s.city?.mayor === 'player' ? this.policySelect() : ''}`);
+    let h = e.cands.map((c) => `<div class="row small"><div><b>${esc(c.nom)}</b> (${esc(JOBS[c.job].nom.toLowerCase())}) · ${esc(PROGRAMMES.find((p) => p.id === c.prog).nom)}</div>${e.voted === c.id ? '<span class="tag">Votre vote</span>' : this.btn('Voter', 'vote', { c: c.id }, { disabled: dis })}</div>`).join('');
+    if (e.player) h += `<div class="row small"><div><b>Vous</b> · ${esc(PROGRAMMES.find((p) => p.id === e.playerProg).nom)}</div>${e.voted === 'player' ? '<span class="tag">Votre vote</span>' : this.btn('Voter', 'vote', { c: 'player' }, { disabled: dis })}</div>`;
+    else h += `<p class="small">Se présenter (notoriété ≥ 30, 1 500 ₵ de campagne) :</p>${PROGRAMMES.map((p) => this.btn(p.nom, 'run', { p: p.id }, { disabled: dis, title: p.txt })).join('')}`;
+    return this.section('🗳️ Élections de dimanche', h + (s.city?.mayor === 'player' ? this.policySelect() : ''));
+  }
+  policySelect() { return `<p class="small">Vous êtes maire : choisissez la politique de la ville.</p>${PROGRAMMES.map((p) => this.btn(p.nom, 'policy', { p: p.id }, { cls: this.s.city.programme === p.id ? 'on' : '', title: p.txt })).join('')}`; }
   journalPanel() { return this.head('📜', 'Journal', '') + this.s.log.map((l) => `<div class="log ${l.kind}"><span>${clock(l.t)}</span> ${esc(l.msg)}</div>`).join(''); }
 
   // ------------------------------------------------------------------ actions
@@ -582,7 +640,7 @@ export class UI {
         const sv = SERVICES[d.svc];
         let arg = d.arg;
         if (['teleport', 'train', 'flight', 'taxi', 'tour'].includes(sv.special)) arg = this.tab.dest || SITES[0].id;
-        if (sv.special === 'consign' || sv.special === 'export') arg = this.tab.item;
+        if (['consign', 'export', 'parcel'].includes(sv.special)) arg = this.tab.item;
         r = g.buyService(d.svc, d.c, arg);
         if (r.msg === 'minigame') { this.a.minigame(); r = null; }
         break;
@@ -645,6 +703,16 @@ export class UI {
       case 'sbuy': r = g.buyStock(d.id, num('n')); break;
       case 'ssell': r = g.sellStock(d.id, num('n')); break;
       case 'deposit': r = g.deposit(num('a'), num('d')); break;
+      case 'waitopen': r = g.waitOpen(d.id); break;
+      case 'chat': r = g.chat(d.c); break;
+      case 'park': r = g.parkActivity(d.k); break;
+      case 'paymail': r = g.payMail(d.id); break;
+      case 'invite': r = g.attendInvite(); break;
+      case 'borrow': r = g.borrowFromFriend(d.c); break;
+      case 'repay': r = g.repayFriend(); break;
+      case 'vote': r = g.vote(d.c); break;
+      case 'run': r = g.runForMayor(d.p); break;
+      case 'policy': r = g.setProgramme(d.p); break;
       case 'reset': if (confirm('Effacer votre partie et recommencer ?')) this.a.reset(); return;
       default: return;
     }
