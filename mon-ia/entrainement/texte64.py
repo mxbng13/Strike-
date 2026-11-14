@@ -29,6 +29,8 @@ BUDGET_H = float(os.environ.get('BUDGET_H', '0.02' if SMOKE else '10.5'))
 RES = 64
 T = 1000
 MAX_LEN = 20          # mots par description
+# Largeur du réseau par niveau (64→32→16→8). « 1,2,4,5 » = version « grande » (≈ 42 M paramètres).
+MULTS = tuple(int(v) for v in os.environ.get('MULTS', '1,2,3,4').split(','))
 VOCAB_SIZE = 6000     # mots les plus fréquents
 PAD, NULL, UNK = 0, 1, 2
 
@@ -296,10 +298,10 @@ def main():
     cap_ids = [[encode(c, vocab) for c in cs] for cs in captions]
     n = len(images)
     data = torch.from_numpy(images).permute(0, 3, 1, 2).contiguous()  # uint8 sur CPU
-    model = UNet(base=32 if SMOKE else 64).to(DEVICE)
+    model = UNet(base=32 if SMOKE else 64, mults=MULTS).to(DEVICE)
     if resume:
         model.load_state_dict(torch.load(resume, map_location=DEVICE))
-    ema = UNet(base=32 if SMOKE else 64).to(DEVICE); ema.load_state_dict(model.state_dict()); ema.requires_grad_(False)
+    ema = UNet(base=32 if SMOKE else 64, mults=MULTS).to(DEVICE); ema.load_state_dict(model.state_dict()); ema.requires_grad_(False)
     print(f'paramètres : {sum(p.numel() for p in model.parameters()) / 1e6:.1f} M, images : {n}', flush=True)
     opt = torch.optim.AdamW(model.parameters(), lr=1e-4 if resume else 2e-4, weight_decay=0.01)
     scaler = torch.cuda.amp.GradScaler(enabled=DEVICE == 'cuda')
