@@ -919,6 +919,46 @@ export function createWorld(canvas, places, sites) {
   addEventListener('keyup', (e) => keys.delete(e.code));
   addEventListener('blur', () => keys.clear());
 
+  // ------------------------------------------------------------------ vos bâtiments (terrains autour de la capitale)
+  const plotsGroup = new THREE.Group();
+  scene.add(plotsGroup);
+  function plotFor(i) {
+    const ring = 250 + Math.floor(i / 14) * 45;
+    let a = 0.25 + (i % 14) * 0.45;
+    for (const r of ROADS) if (Math.abs(Math.atan2(Math.sin(a - r), Math.cos(a - r))) < 0.12) a += 0.2;
+    const [x, z] = polar(ring, a);
+    return [Math.round(x), Math.round(z)];
+  }
+  function updateBuildings(list) {
+    while (plotsGroup.children.length) plotsGroup.remove(plotsGroup.children[0]);
+    for (const b of list) {
+      const [x, z] = b.pos;
+      const y = Math.max(heightAt(x, z), 0.5);
+      const g = new THREE.Group(); g.position.set(x, y, z); plotsGroup.add(g);
+      add(new THREE.BoxGeometry(30, 1, 30), MAT.pave, 0, 0.5, 0, g);
+      if (b.stage !== 'actif') {
+        const done = Object.values(b.steps || {}).filter(Boolean).length;
+        const hgt = 2 + done * 2.5;
+        add(new THREE.BoxGeometry(20, hgt, 16), MAT.pave, 0, hgt / 2 + 1, 0, g);
+        const frame = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(22, 18, 18)), new THREE.LineBasicMaterial({ color: 0xffb84d }));
+        frame.position.y = 10; g.add(frame);
+        add(new THREE.BoxGeometry(1, 28, 1), MAT.amber, 12, 14, -8, g);
+        add(new THREE.BoxGeometry(16, 0.8, 0.8), MAT.amber, 5, 28, -8, g);
+      } else if (b.type === 'usine') {
+        add(new THREE.BoxGeometry(24, 12, 18), towerMat(6, 4, 99, 3, 1), 0, 7, 0, g);
+        add(new THREE.BoxGeometry(24.4, 0.5, 18.4), MAT.amber, 0, 13.2, 0, g);
+        for (const cx of [-7, 7]) { add(new THREE.CylinderGeometry(1.6, 2, 18, 10), MAT.metal, cx, 21, 6, g); add(new THREE.CylinderGeometry(1.7, 1.7, 0.6, 10, 1, true), MAT.red, cx, 29, 6, g); }
+      } else if (b.type === 'boutique') {
+        add(new THREE.BoxGeometry(18, 8, 12), MAT.white, 0, 5, 0, g);
+        add(new THREE.BoxGeometry(16, 5, 0.4), MAT.glass, 0, 4.5, 6.2, g, false);
+        add(new THREE.BoxGeometry(18.4, 0.6, 12.4), MAT.pink, 0, 9.2, 0, g);
+      } else {
+        add(new THREE.BoxGeometry(18, 9, 14), towerMat(4, 3, 55, 2, 1), 0, 5.5, 0, g);
+        add(new THREE.BoxGeometry(18.4, 0.5, 14.4), MAT.cyan, 0, 10.2, 0, g);
+      }
+    }
+  }
+
   // ------------------------------------------------------------------ construction
   const siteSpots = computeSites();
   buildTerrain();
@@ -1012,7 +1052,7 @@ export function createWorld(canvas, places, sites) {
   });
 
   return {
-    frame, heightAt, climateAt, placePos, siteSpots, camera, raycaster,
+    frame, heightAt, climateAt, placePos, siteSpots, camera, raycaster, plotFor, updateBuildings,
     get dist() { return dist; }, set dist(v) { dist = goalDist = v; },
     get yaw() { return yaw; }, get target() { return target; },
     zoomT, zoomBy, setAvatar, setDestination, setTime, setWeather,

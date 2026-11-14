@@ -79,39 +79,45 @@ tests/boxes.test.mjs            tests de la logique des box (npm test)
 Sauvegarde : locale à ce navigateur, sans synchronisation entre appareils.
 Console : `__game.save.reset()` remet la progression à zéro.
 
-## Nouveau jeu : NEXUS (simulation de vie)
+## Nouveau jeu : NEXUS (simulation de vie et économie de joueurs)
 
 Page séparée : `capitale/index.html` → http://localhost:5173/capitale/ avec `npm run dev`
 (Three.js chargé depuis un CDN, sauvegarde locale dans le navigateur).
 
+**Principe : tout est fait par quelqu’un.** Le pain vient d’un boulanger (farine du meunier, blé de l’agriculteur, eau du
+technicien en environnement, électricité de l’opérateur de centrale) ; un antibiotique vient d’un pharmacien (extrait de
+plantes d’un cueilleur, solvants d’un chimiste, alambic d’un verrier) et ne s’achète qu’avec l’ordonnance d’un médecin ;
+une usine demande un plan d’architecte, un bornage de géomètre, un acte de notaire, des briques, du mortier, des poutres…,
+puis maçon, charpentier, plombier, électricien, peintre et conducteur de travaux, et des machines construites par les
+mécaniciens industriels avec l’acier des métallurgistes et le minerai des mineurs. Si personne ne produit : pénurie.
+
 ```
 capitale/
-  index.html            interface (HUD, panneaux, styles)
-  js/main.js            relie carte, simulation et interface ; trajets, mini-carte, mini-jeu
-  js/world.js           carte 3D 8 000 × 8 000, capitale, avant-postes, marqueurs, avatar, jour/nuit, pluie
-  js/game/state.js      état du joueur et sauvegarde
-  js/game/game.js       moteur : temps, besoins, climat, santé, métiers, récolte, fabrication, économie
-  js/data/resources.js  les 80 ressources (métaux, énergie, chimie, bio, avancées, mer, agriculture…)
-  js/data/items.js      objets : nourriture, vêtements, outils, équipements, meubles, médicaments, cadeaux…
-  js/data/jobs.js       19 secteurs, 171 métiers, permis et certificats
-  js/data/places.js     42 lieux de la capitale, 8 sites de ressources, recettes, véhicules, logements,
-                        guildes, bourse, « joueurs » simulés qui tiennent les services
+  index.html               interface (HUD, panneaux, styles)
+  js/main.js               relie carte, simulation et interface ; trajets, mini-carte, mini-jeu
+  js/world.js              carte 3D, capitale, avant-postes, vos bâtiments, avatar, jour/nuit, pluie
+  js/game/state.js         état du joueur et sauvegarde
+  js/game/game.js          moteur : besoins, climat, santé, métiers, services, fabrication, chantiers, justice, finance
+  js/game/market.js        le marché et ~500 habitants simulés qui exercent chacun un métier
+  js/data/economy.js       biens intermédiaires, documents, machines ; 262 recettes ; 86 services ; bâtiments
+  js/data/jobs.js          24 secteurs, 212 métiers (dont extraction, agroalimentaire, textile, mécanique, énergie)
+  js/data/resources.js     les 80 ressources de base
+  js/data/items.js         objets de consommation (nourriture, vêtements, outils, meubles, médicaments…)
+  js/data/places.js        lieux, sites de récolte, véhicules, logements, guildes, bourse
 ```
 
-- **Besoins** qui baissent avec le temps : faim, soif, hygiène, sommeil, santé, moral. À 0 de santé : évanouissement
-  et facture d’hôpital. Climat (froid en altitude, chaud au sud) et météo (pluie, orage, canicule, vague de froid)
-  imposent les bons vêtements.
-- **Métiers** : formation payante à l’Académie (3 formateurs au choix), niveaux 1 à 10, outils et équipements
-  qui s’usent, accidents sans équipement, permis obligatoires pour certains. Petits boulots sans diplôme.
-- **Ressources** récoltées sur 8 sites (ferme, forêt, mine, port, champ pétrolifère, volcan, forêt ancienne,
-  cratère de haut niveau), vendues au Comptoir (prix qui varient), transformées à l’atelier, l’usine et le labo.
-- **Déplacements** : à pied (toucher le sol), cheval, voiture, drone (achat ou location, carburant, entretien),
-  train et navettes, téléportation payante.
-- **Social, confort, santé, loisirs, famille, économie** : guildes, ville privée, club, musée, logement (location
-  ou achat), meubles et confort, médecins, pharmacie, hôpital, assurance, spectacles, sport, voyages guidés,
-  mini-jeu de l’arène, rencontres, mariage, enfants, entreprise avec employés, publicité, bourse, placements.
-- L’onglet **📖 Besoins** reprend les 10 familles de besoins et renvoie vers les lieux correspondants.
-- Les services « tenus par des joueurs » sont simulés : un serveur multijoueur sera nécessaire pour de vrais joueurs.
+- **Les habitants** (version solo) : chacun a un métier, un stock et de l’argent ; il récolte ou fabrique en achetant ses
+  matières aux autres, vend au prix qu’il ajuste selon la demande, paie des services, consomme pour vivre. Les prestataires
+  servent au plus 8 clients par jour. La ville paie les métiers publics (police, profs, juges…) avec une taxe de 5 % sur les
+  ventes. Un serveur multijoueur pourra remplacer ces habitants par de vrais joueurs (l’interface du marché est déjà séparée).
+- **Le joueur** : salarié dans son métier, ou à son compte — fabriquer et vendre au marché (prix automatique qui suit la
+  concurrence), recevoir des clients pour un service, récolter. Créer sa société, faire construire atelier, usine ou
+  boutique, y installer des machines, embaucher des habitants (contrat de travail, fiches de paie chaque semaine).
+- **Chaque métier sert** : `node` sur le script de validation (dans l’historique de la conversation) vérifie que les 212
+  métiers ont une activité, que chaque bien a un producteur et que chaque production est utilisée par quelqu’un.
+- Justice (vol → enquête de police → procureur → juge → prison), prêts, courtiers en assurance, traders, export avec
+  dédouanement, transport de marchandises, entrepôts, enfants à nourrir, scolariser et faire garder chaque jour, etc.
+- L’onglet **📊 Marché** montre les pénuries du jour (places à prendre) et permet d’explorer chaque chaîne de production.
 
 ## Mise à jour : XP, niveaux, paliers, boutique, fusils
 

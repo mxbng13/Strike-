@@ -1,20 +1,20 @@
 // Les métiers, regroupés par secteur.
 // Chaque secteur donne des valeurs par défaut (lieu de travail, coût de la formation, salaire par service de 4 h,
 // outils et équipements nécessaires, risque d'accident). Un métier peut les remplacer.
-// prod : ressources gagnées à chaque service · conso : ressources consommées · permis : document obligatoire
+// Ce que chaque métier fabrique ou les services qu'il rend : voir economy.js · permis : document obligatoire
 
 const SECTORS_RAW = [
   { id: 'agri', nom: 'Agriculture, Agroalimentaire et Environnement', emoji: '🌾', place: 'ferme',
     formation: 500, heures: 8, salaire: 55, outils: ['faucille'], equip: ['gants'], risque: 0.03, jobs: [
-      ['Agriculteur', { prod: { fruits_legumes: 6, graines: 2, biomasse: 2 }, conso: { graines: 1 }, bonus: { engrais: 0.5 } }],
-      ['Éleveur', { prod: { cuir: 1, laine: 3, peaux: 1 }, outils: [] }],
-      ['Apiculteur', { prod: { miel: 3, pollen: 3 }, outils: [] }],
-      ['Pépiniériste', { prod: { graines: 5, plantes_medicinales: 1 } }],
-      ['Maraîcher', { prod: { fruits_legumes: 8, cafe: 1 }, bonus: { engrais: 0.5 } }],
-      ['Horticulteur', { prod: { plantes_medicinales: 2, pollen: 2, fibres_vegetales: 2 } }],
-      ['Bûcheron', { place: 'foret', outils: ['hache'], equip: ['casque'], prod: { bois: 10, cendres_bois: 1 }, risque: 0.07 }],
-      ['Ingénieur agronome', { place: 'labo', salaire: 150, formation: 3500, heures: 24, outils: ['ordinateur_pro'], equip: [], prod: { engrais: 3 } }],
-      ['Technicien en environnement', { salaire: 95, formation: 1500, heures: 16, prod: { algues: 2 } }],
+      ['Agriculteur', { }],
+      ['Éleveur', { outils: [] }],
+      ['Apiculteur', { outils: [] }],
+      ['Pépiniériste', { }],
+      ['Maraîcher', { }],
+      ['Horticulteur', { }],
+      ['Bûcheron', { place: 'foret', outils: ['hache'], equip: ['casque'], risque: 0.07 }],
+      ['Ingénieur agronome', { place: 'labo', salaire: 150, formation: 3500, heures: 24, outils: ['ordinateur_pro'], equip: [] }],
+      ['Technicien en environnement', { salaire: 95, formation: 1500, heures: 16 }],
     ] },
   { id: 'artisanat', nom: 'Artisanat et Métiers d’Art', emoji: '🔨', place: 'atelier',
     formation: 900, heures: 12, salaire: 80, outils: ['marteau'], equip: ['gants'], risque: 0.04, jobs: [
@@ -25,7 +25,7 @@ const SECTORS_RAW = [
   { id: 'btp', nom: 'Bâtiment et Travaux Publics (BTP)', emoji: '🏗️', place: 'chantier',
     formation: 800, heures: 10, salaire: 85, outils: ['marteau'], equip: ['casque', 'tenue_securite'], risque: 0.07, jobs: [
       ['Architecte', { salaire: 170, formation: 5000, heures: 30, outils: ['ordinateur_pro'], equip: [], risque: 0.01 }],
-      ['Maçon', { conso: { pierre: 2 } }], ['Plombier', { salaire: 95 }], ['Électricien', { salaire: 100, risque: 0.08 }],
+      ['Maçon', { }], ['Plombier', { salaire: 95 }], ['Électricien', { salaire: 100, risque: 0.08 }],
       ['Charpentier', { outils: ['scie'] }], ['Peintre en bâtiment', { outils: [] }],
       ['Conducteur de travaux', { salaire: 140, formation: 2500, heures: 20, outils: [] }],
       ['Géomètre', { salaire: 120, formation: 2000, heures: 16, outils: ['ordinateur_pro'], equip: [], risque: 0.02 }],
@@ -43,6 +43,7 @@ const SECTORS_RAW = [
       ['Journaliste', {}], ['Photographe', { outils: ['kit_artiste'] }], ['Réalisateur', { salaire: 140, formation: 3000, heures: 20 }],
       ['Graphiste', {}], ['Community manager', { salaire: 80 }], ['Rédacteur web', { salaire: 75 }], ['Illustrateur', { outils: ['kit_artiste'] }],
       ['Chargé de communication', { salaire: 100 }], ['Designer UX/UI', { salaire: 125, formation: 2200, heures: 16 }],
+      ['Imprimeur', { outils: [], salaire: 70, formation: 600, heures: 6 }],
     ] },
   { id: 'info', nom: 'Informatique et Télécommunications', emoji: '💻', place: 'technopole',
     formation: 2500, heures: 20, salaire: 140, outils: ['ordinateur_pro'], equip: [], risque: 0.002, jobs: [
@@ -73,7 +74,8 @@ const SECTORS_RAW = [
       ['Conducteur de train', { salaire: 120, formation: 2500, heures: 16 }], ['Logisticien', { salaire: 95, place: 'usine' }],
       ['Magasinier', { salaire: 60, place: 'comptoir', equip: ['gants'], formation: 300, heures: 4 }], ['Agent de transit', { salaire: 90, place: 'port' }],
       ['Affréteur', { salaire: 100, place: 'port' }], ['Contrôleur aérien', { salaire: 190, formation: 7000, heures: 40 }],
-      ['Capitaine de navire', { place: 'port', salaire: 180, formation: 6000, heures: 36, permis: 'permis_bateau', prod: { poissons: 4 } }],
+      ['Capitaine de navire', { place: 'port', salaire: 180, formation: 6000, heures: 36, permis: 'permis_bateau' }],
+      ['Opérateur de téléportation', { place: 'portail', salaire: 130, formation: 3500, heures: 20 }],
     ] },
   { id: 'hotellerie', nom: 'Hôtellerie, Restauration et Tourisme', emoji: '🍽️', place: 'restaurant',
     formation: 500, heures: 6, salaire: 60, outils: [], equip: [], risque: 0.02, jobs: [
@@ -84,20 +86,21 @@ const SECTORS_RAW = [
     ] },
   { id: 'industrie', nom: 'Industrie et Production', emoji: '🏭', place: 'usine',
     formation: 900, heures: 10, salaire: 85, outils: [], equip: ['casque', 'gants'], risque: 0.05, jobs: [
-      ['Opérateur de production', { prod: { plastique: 2 } }], ['Technicien de maintenance', { outils: ['marteau'], salaire: 95 }],
+      ['Opérateur de production', { }], ['Technicien de maintenance', { outils: ['marteau'], salaire: 95 }],
       ['Ingénieur en production', { salaire: 165, formation: 4500, heures: 28, outils: ['ordinateur_pro'] }],
       ['Soudeur', { salaire: 100, equip: ['casque', 'gants', 'tenue_securite'], risque: 0.08 }], ['Conducteur de ligne', { salaire: 90 }],
       ['Responsable qualité', { salaire: 130, formation: 2500, heures: 16, risque: 0.01 }],
-      ['Chimiste', { place: 'labo', salaire: 150, formation: 4000, heures: 24, craft: true, prod: { solvants: 1 } }],
-      ['Métallurgiste', { salaire: 120, formation: 2000, heures: 14, prod: { aluminium: 1 }, conso: { bauxite: 2 } }],
+      ['Chimiste', { place: 'labo', salaire: 150, formation: 4000, heures: 24, craft: true }],
+      ['Métallurgiste', { salaire: 120, formation: 2000, heures: 14 }],
       ['Responsable d’atelier', { salaire: 140, formation: 3000, heures: 18 }],
+      ['Papetier', { salaire: 70, formation: 500, heures: 6 }],
     ] },
   { id: 'sciences', nom: 'Sciences et Recherche', emoji: '🔬', place: 'labo',
     formation: 4000, heures: 28, salaire: 150, outils: ['ordinateur_pro'], equip: ['blouse'], risque: 0.01, jobs: [
       ['Chercheur', {}], ['Technicien de laboratoire', { salaire: 95, formation: 1500, heures: 12 }], ['Ingénieur de recherche', { salaire: 175 }],
-      ['Mathématicien', { equip: [] }], ['Physicien', { salaire: 165 }], ['Biologiste', { prod: { plantes_medicinales: 1 } }],
-      ['Géologue', { place: 'mine', outils: ['pioche'], equip: ['casque'], risque: 0.04, prod: { fossiles: 0.3, cristaux: 0.2 }, gatherBonus: 'mine' }],
-      ['Astronome', { prod: { poussiere_meteorite: 0.05 } }], ['Océanographe', { place: 'port', equip: [], prod: { algues_marines: 3, corail: 0.3 }, gatherBonus: 'port' }],
+      ['Mathématicien', { equip: [] }], ['Physicien', { salaire: 165 }], ['Biologiste', { }],
+      ['Géologue', { place: 'mine', outils: ['pioche'], equip: ['casque'], risque: 0.04 }],
+      ['Astronome', { }], ['Océanographe', { place: 'port', equip: [] }],
     ] },
   { id: 'droit', nom: 'Droit et Justice', emoji: '⚖️', place: 'tribunal',
     formation: 5000, heures: 32, salaire: 170, outils: ['mallette'], equip: [], risque: 0.003, jobs: [
@@ -148,6 +151,42 @@ const SECTORS_RAW = [
       ['Auxiliaire de vie', { place: 'residences', salaire: 70 }], ['Conseiller en image', { place: 'vetements', salaire: 85 }],
       ['Masseur bien-être', { place: 'bains', salaire: 75 }], ['Wedding planner', { place: 'evenements', salaire: 100, formation: 1500, heures: 10 }],
       ['Chauffeur privé', { place: 'garage', salaire: 80, permis: 'permis_conduire' }],
+      ['Agent des bains publics', { place: 'bains', salaire: 45, formation: 200, heures: 3 }],
+    ] },
+  { id: 'extraction', nom: 'Extraction et Ressources naturelles', emoji: '⛏️', place: 'mine',
+    formation: 400, heures: 6, salaire: 70, outils: ['pioche'], equip: ['casque', 'gants'], risque: 0.07, jobs: [
+      ['Mineur', {}], ['Carrier', { equip: ['gants'] }],
+      ['Foreur pétrolier', { place: 'puits', outils: ['foreuse'], equip: ['casque', 'tenue_securite'], permis: 'permis_extraction', salaire: 110, formation: 1500, heures: 12 }],
+      ['Cueilleur de plantes médicinales', { place: 'foret_ancienne', outils: ['faucille'], equip: [], risque: 0.02 }],
+      ['Pêcheur', { place: 'port', outils: ['canne_peche'], equip: [], risque: 0.02 }],
+      ['Plongeur', { place: 'port', outils: [], equip: ['combi_plongee'], salaire: 90 }],
+      ['Saunier', { place: 'port', outils: [], equip: ['gants'], risque: 0.01 }],
+      ['Chasseur', { place: 'foret', outils: ['arc'], equip: [], risque: 0.04 }],
+      ['Prospecteur d’étoiles', { place: 'cratere', equip: ['combi_antirad'], salaire: 150, formation: 3000, heures: 16 }],
+      ['Récolteur volcanique', { place: 'volcan', equip: ['combi_thermique'], salaire: 120, formation: 1500, heures: 10 }],
+    ] },
+  { id: 'agroalim', nom: 'Agroalimentaire et Métiers de bouche', emoji: '🥖', place: 'marche',
+    formation: 500, heures: 6, salaire: 60, outils: [], equip: [], risque: 0.02, jobs: [
+      ['Meunier', { place: 'ferme' }], ['Boulanger', {}], ['Boucher', {}], ['Fromager', {}], ['Brasseur', { place: 'usine' }],
+      ['Confiseur', {}], ['Conserveur', { place: 'usine' }], ['Torréfacteur', {}],
+    ] },
+  { id: 'textile', nom: 'Textile et Habillement', emoji: '🧵', place: 'atelier',
+    formation: 600, heures: 8, salaire: 65, outils: [], equip: [], risque: 0.01, jobs: [
+      ['Tisserand', {}], ['Tanneur', { equip: ['gants'], risque: 0.03 }], ['Couturier', {}], ['Cordonnier', {}],
+    ] },
+  { id: 'mecanique', nom: 'Mécanique, Machines et Véhicules', emoji: '⚙️', place: 'usine',
+    formation: 1500, heures: 12, salaire: 100, outils: ['marteau'], equip: ['gants'], risque: 0.05, jobs: [
+      ['Mécanicien industriel', {}], ['Tourneur-fraiseur', {}], ['Électronicien', { outils: [], equip: [] }],
+      ['Mécanicien automobile', { place: 'garage' }], ['Maréchal-ferrant', { place: 'garage' }],
+      ['Ingénieur mécanique', { salaire: 170, formation: 5000, heures: 28, outils: ['ordinateur_pro'] }],
+      ['Ingénieur aéronautique', { salaire: 190, formation: 6000, heures: 32, outils: ['ordinateur_pro'] }],
+      ['Chaudronnier', {}], ['Carrossier', { place: 'garage' }],
+    ] },
+  { id: 'energie', nom: 'Énergie', emoji: '⚡', place: 'usine',
+    formation: 1500, heures: 12, salaire: 105, outils: [], equip: ['casque'], risque: 0.04, jobs: [
+      ['Opérateur de centrale', {}], ['Technicien solaire', {}],
+      ['Ingénieur nucléaire', { salaire: 210, formation: 8000, heures: 40, permis: 'certif_nucleaire', equip: ['combi_antirad'] }],
+      ['Technicien éolien', {}], ['Raffineur', {}], ['Gazier', {}],
     ] },
 ];
 

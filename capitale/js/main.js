@@ -25,6 +25,8 @@ function init() {
     distanceTo,
     distanceBetween: (a, b) => { const pa = a ? pos(a) : here(); const pb = pos(b); return Math.hypot(pa[0] - pb[0], pa[1] - pb[1]); },
     climateAt: world.climateAt,
+    plotFor: (i) => world.plotFor(i),
+    updateBuildings: (list) => world.updateBuildings(list),
     teleport: (id) => {
       const p = pos(id);
       state.pos.x = p[0]; state.pos.z = p[1] + arriveOffset(id);
@@ -40,9 +42,11 @@ function init() {
     distanceTo,
     travelTo: (id) => { const p = pos(id); startTravel(p[0], p[1] + arriveOffset(id), id); },
     minigame: () => startMinigame(),
+    travelToPoint: (x, z) => startTravel(x, z + 18, null),
     reset: () => { reset(); state.__reset = true; location.reload(); },
   });
   state.onLog = (msg, kind) => ui.toast(msg, kind);
+  world.updateBuildings(state.buildings || []);
   game.onChange(() => ui.render());
 
   // ------------------------------------------------------------------ déplacements

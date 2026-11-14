@@ -2,14 +2,15 @@
 import { RESOURCES } from '../data/resources.js';
 import { ITEMS } from '../data/items.js';
 import { STOCKS } from '../data/places.js';
+import { GOODS } from '../data/economy.js';
 
-const KEY = 'nexus-vie-v1';
+const KEY = 'nexus-vie-v2';
 export const STATS = [
   ['faim', 'Faim', '🍗'], ['soif', 'Soif', '💧'], ['hygiene', 'Hygiène', '🧼'],
   ['energie', 'Sommeil', '😴'], ['sante', 'Santé', '❤️'], ['moral', 'Moral', '🙂'],
 ];
 
-export const def = (id) => RESOURCES[id] || ITEMS[id] || null;
+export const def = (id) => RESOURCES[id] || ITEMS[id] || GOODS[id] || null;
 export const fmt = (n) => `${Math.round(n).toLocaleString('fr-FR')} ₵`;
 export const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
@@ -17,13 +18,13 @@ export function newState() {
   const prices = {};
   for (const id in RESOURCES) prices[id] = 1;
   return {
-    v: 1,
+    v: 2,
     nom: 'Voyageur',
     money: 650,
     time: 8 * 60,                 // minutes depuis le début (jour 1, 8 h)
     stats: { faim: 80, soif: 75, hygiene: 85, energie: 90, sante: 100, moral: 70 },
     pos: { x: 0, z: 150 },
-    inv: { pain: 2, eau: 2, savon: 1 },
+    inv: { pain: 3, eau: 3, savon: 1 },
     dur: {},                      // usure de l'objet en cours d'utilisation (outils, vêtements)
     job: null, diplomas: [], jobXp: {}, permits: [],
     housing: null,                // { type, rentPaidUntil? }
@@ -35,7 +36,17 @@ export function newState() {
     guild: null, privateCity: false,
     passes: {},                   // club: fin, musee: fin, haut_niveau: true
     buffs: {},                    // forme: fin, sellboost: fin
-    company: null,
+    eco: null,                    // habitants et marché (créés au premier lancement)
+    listings: {},                 // vos offres de vente : bien -> { qty, price }
+    myPrices: {},                 // vos prix de services
+    supplyAcc: {},                // fournitures consommées en fraction
+    company: null,                // votre société (statuts + immatriculation)
+    buildings: [],                // vos bâtiments (projets, chantiers, actifs)
+    warehouse: {}, storageUntil: 0,
+    theft: null, guardUntil: 0, escortUntil: 0, mountainUntil: 0, cyberUntil: 0,
+    loan: null, brokerUntil: 0, wealthUntil: 0, adviceBonus: 0, insuranceUntil: 0,
+    docsBuff: {},                 // prospection, météores, étude marine… : utilisations restantes
+    flags: {},
     stocks: {}, stockPrices: Object.fromEntries(STOCKS.map((s) => [s.id, s.prix])), stockHist: {},
     deposits: [],                 // placements { amount, until, rate }
     family: { partner: null, married: false, children: [] },
@@ -52,7 +63,7 @@ export function load() {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const s = JSON.parse(raw);
-      if (s && s.v === 1) return Object.assign(newState(), s);
+      if (s && s.v === 2) return Object.assign(newState(), s);
     }
   } catch (e) { /* stockage indisponible : nouvelle partie */ }
   return newState();
