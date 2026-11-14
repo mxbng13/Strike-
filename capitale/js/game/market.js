@@ -64,10 +64,14 @@ export function serviceValue(svc) {
 }
 
 // ------------------------------------------------------------------ création des habitants
-const MORE = { 'agri.agriculteur': 8, 'agroalim.boulanger': 8, 'agri.maraicher': 7, 'agri.pepinieriste': 5, 'hotellerie.chef_cuisinier': 5, 'hotellerie.sommelier': 3, 'agroalim.brasseur': 3,  'agri.eleveur': 3, 'agroalim.boucher': 3, 'agroalim.torrefacteur': 3,
+// UN SEUL habitant (bot) par métier pour l'instant. Plus tard, des milliers de joueurs pourront exercer le même métier :
+// le marché accepte déjà autant de vendeurs et de prestataires qu'on veut pour un même bien ou service.
+// Chaque bot tient une petite entreprise dont la taille (SCALE) suit les besoins de la ville : c'est ce qui permet à un
+// seul boulanger de nourrir tout le monde. Quand des joueurs arriveront, on pourra réduire cette taille.
+export const JOB_SCALE = { 'agri.agriculteur': 8, 'agroalim.boulanger': 8, 'agri.maraicher': 7, 'agri.pepinieriste': 5, 'hotellerie.chef_cuisinier': 5, 'hotellerie.sommelier': 3, 'agroalim.brasseur': 3,  'agri.eleveur': 3, 'agroalim.boucher': 3, 'agroalim.torrefacteur': 3,
   'hotellerie.serveur': 3, 'hotellerie.chef_cuisinier': 3, 'services.agent_des_bains_publics': 3, 'services.coiffeur': 3, 'industrie.papetier': 6,
   'extraction.carrier': 4, 'industrie.metallurgiste': 5, 'energie.operateur_de_centrale': 6, 'energie.technicien_solaire': 4, 'energie.technicien_eolien': 4, 'extraction.mineur': 6, 'agri.technicien_en_environnement': 8,
-  'agri.bucheron': 4, 'artisanat.verrier': 3, 'artisanat.ceramiste': 3, 'btp.charpentier': 3, 'industrie.chimiste': 5, 'agroalim.meunier': 5, 'agroalim.conserveur': 3, 'textile.tisserand': 3, 'textile.couturier': 3,
+  'agri.bucheron': 4, 'artisanat.verrier': 6, 'industrie.soudeur': 5, 'btp.plombier': 4, 'btp.macon': 4, 'btp.electricien': 4, 'btp.peintre_en_batiment': 3, 'btp.conducteur_de_travaux': 3, 'artisanat.ebeniste': 3, 'artisanat.ceramiste': 3, 'btp.charpentier': 3, 'industrie.chimiste': 8, 'agroalim.meunier': 5, 'agroalim.conserveur': 3, 'textile.tisserand': 3, 'textile.couturier': 3,
   'extraction.cueilleur_de_plantes_medicinales': 3, 'sante.pharmacien': 3, 'sante.medecin': 3, 'industrie.operateur_de_production': 5, 'energie.raffineur': 4,
   'extraction.foreur_petrolier': 3, 'artisanat.forgeron': 3, 'mecanique.tourneur_fraiseur': 3, 'mecanique.electronicien': 3 };
 
@@ -77,13 +81,11 @@ export function createEconomy() {
   const uniqueName = () => { for (let k = 0; k < 50; k++) { const nm = `${pick(NAMES)} ${pick(SURNAMES)}`; if (!used.has(nm)) { used.add(nm); return nm; } } return `${pick(NAMES)} ${pick(SURNAMES)} ${used.size}`; };
   let n = 0;
   for (const job of Object.keys(JOBS)) {
-    const count = MORE[job] || 2;
-    for (let i = 0; i < count; i++) {
-      const c = { id: `c${n++}`, nom: uniqueName(), job, money: 500 + Math.round(rnd() * 400), stock: {}, price: {}, acc: {},
-        wear: 0, note: Math.round((3.4 + rnd() * 1.6) * 10) / 10, sold: 0, earned: 0 };
-      seedStock(c);
-      citizens.push(c);
-    }
+    const scale = JOB_SCALE[job] || 2;
+    const c = { id: `c${n++}`, nom: uniqueName(), job, scale, money: (500 + Math.round(rnd() * 400)) * scale, stock: {}, price: {}, acc: {},
+      wear: 0, note: Math.round((3.4 + rnd() * 1.6) * 10) / 10, sold: 0, earned: 0 };
+    for (let k = 0; k < scale; k++) seedStock(c);
+    citizens.push(c);
   }
   return { citizens, day: 0, budget: 60000, demand: {}, sales: {}, shortages: {}, lastTx: {} };
 }
@@ -232,7 +234,7 @@ export class Market {
   providers(svcId) {
     const svc = SERVICES[svcId];
     const cap = clamp(Math.round(600 / svc.min), 4, 40);
-    return this.e.citizens.filter((c) => !c.hired && svc.jobs.includes(c.job) && (c.clients || 0) < cap && this.canServe(c, svc))
+    return this.e.citizens.filter((c) => !c.hired && svc.jobs.includes(c.job) && (c.clients || 0) < cap * (c.scale || 1) && this.canServe(c, svc))
       .map((c) => ({ c, price: c.price[`svc:${svcId}`] || serviceValue(svc) }))
       .sort((a, b) => a.price - b.price);
   }
@@ -279,14 +281,14 @@ export class Market {
     // 2. consommation des habitants
     for (const c of order) this.consume(c);
     // 3. commandes des entreprises, chantiers, recherche
-    for (const c of order) {
+    for (const c of order) for (let k = 0; k < (c.scale || 1); k++) {
       for (const [list, p] of [[COMPANY_NEEDS, 0.2], [RESEARCH_NEEDS, 0.1]]) {
         if (c.money < 600 || rnd() > p) continue;
         const id = pick(list);
         if (this.buy(c, id, 1).n && !OUTPUTS[c.job].includes(id)) { c.stock[id] -= 1; if (c.stock[id] <= 0) delete c.stock[id]; }
       }
     }
-    const builders = e.day % 2 ? order.filter((c) => c.money > 2500).slice(0, 1) : [];
+    const builders = e.day % 2 ? order.filter((c) => c.money > 2500 * (c.scale || 1)).slice(0, 1) : [];
     for (const c of builders) {
       for (const [id, q] of Object.entries(CONSTRUCTION_NEEDS)) this.buy(c, id, q);
       for (const sid of ['gros_oeuvre', 'charpente', 'plomberie', 'electricite_batiment', 'peinture_batiment', 'reception_travaux']) {
@@ -296,22 +298,24 @@ export class Market {
     }
     // 4. la ville : salaires publics, aides sociales, consommation des stocks périssables
     for (const c of e.citizens) {
-      if (PUBLIC_JOBS.includes(c.job)) { const w = JOBS[c.job].salaire * 0.9 * (JOBS[c.job].sector === 'securite' ? this.policy().police : 1); c.money += w; e.budget -= w; }
-      if (c.money < 60) { c.money += 70; e.budget -= 70; }
-      if (c.money > 2500) { const t = (c.money - 2500) * 0.04; c.money -= t; e.budget += t; }
+      const sc = c.scale || 1;
+      if (PUBLIC_JOBS.includes(c.job)) { const w = JOBS[c.job].salaire * 0.9 * sc * (JOBS[c.job].sector === 'securite' ? this.policy().police : 1); c.money += w; e.budget -= w; }
+      if (c.money < 60 * sc) { c.money += 70 * sc; e.budget -= 70 * sc; }
+      if (c.money > 2500 * sc) { const t = (c.money - 2500 * sc) * 0.04; c.money -= t; e.budget += t; }
       for (const id of Object.keys(c.stock)) {
         const d = ALL[id];
         if (!d) { delete c.stock[id]; continue; }
-        if ((d.cat === 'agro' || d.cat === 'nourriture' || d.cat === 'boisson') && c.stock[id] > this.cap(id)) c.stock[id] = Math.floor(c.stock[id] * 0.85);
-        if (d.cat === 'doc' && c.stock[id] > 12) c.stock[id] = 12;
+        if ((d.cat === 'agro' || d.cat === 'nourriture' || d.cat === 'boisson') && c.stock[id] > this.cap(id) * sc) c.stock[id] = Math.floor(c.stock[id] * 0.85);
+        if (d.cat === 'doc' && c.stock[id] > 12 * sc) c.stock[id] = 12 * sc;
       }
     }
     // 5. les prix s'ajustent : ce qui part augmente, ce qui reste baisse
     for (const c of e.citizens) {
+      const sc = c.scale || 1;
       for (const id of OUTPUTS[c.job]) {
         const st = c.stock[id] || 0, v = VALUE[id] || 5;
         let p = c.price[id] || v;
-        if (st <= 1) p *= 1.07; else if (st > 10 && !e.sales[id]) p *= 0.95; else if (st > 4) p *= 0.98;
+        if (st <= sc) p *= 1.07; else if (st > 10 * sc && !e.sales[id]) p *= 0.95; else if (st > 4 * sc) p *= 0.98;
         c.price[id] = Math.round(clamp(p, v * 0.55, v * 2.6) * 10) / 10;
       }
       for (const s of SERVICES_BY_JOB[c.job] || []) {
@@ -326,7 +330,7 @@ export class Market {
     const job = c.job;
     // les prestataires de services rachètent leurs fournitures (savon, bandages, plats, électricité…)
     for (const svc of SERVICES_BY_JOB[job] || []) {
-      for (const [id, q] of Object.entries(svc.supplies)) if ((c.stock[id] || 0) < Math.ceil(q * 4)) this.ensure(c, id, Math.ceil(q * 8));
+      for (const [id, q] of Object.entries(svc.supplies)) if ((c.stock[id] || 0) < Math.ceil(q * 4 * (c.scale || 1))) this.ensure(c, id, Math.ceil(q * 8 * (c.scale || 1)));
       if (svc.tool) this.ensure(c, svc.tool, 1);
     }
     if (GATHER_JOBS[job]) {
@@ -343,7 +347,7 @@ export class Market {
       const total = g.loot.reduce((a, l) => a + l[1], 0);
       const short = OUTPUTS[c.job].some((o) => (this.e.prevShort?.[o] || 0) > 2);
       const pm = this.prodMult(job);
-      for (let i = 0; i < g.rolls * (short ? 3 : 2); i++) {
+      for (let i = 0; i < g.rolls * (short ? 3 : 2) * (c.scale || 1); i++) {
         let r = rnd() * total;
         for (const [id, w, a, b] of g.loot) { r -= w; if (r <= 0) { c.stock[id] = (c.stock[id] || 0) + Math.round((a + Math.floor(rnd() * (b - a + 1))) * pm); break; } }
       }
@@ -354,7 +358,7 @@ export class Market {
     if (!recs.length) return;
     // on travaille plus quand ce qu'on fabrique manque
     const short = OUTPUTS[c.job].some((o) => (this.e.prevShort?.[o] || 0) > 0 || this.supplyFast(o) < 3);
-    let batches = short ? 4 : 2;
+    let batches = (short ? 4 : 2) * (c.scale || 1);
     // on produit ce qui manque le plus sur le marché
     const ranked = [...recs].sort((a, b) => this.scarcity(b) - this.scarcity(a));
     let progress = true;
@@ -362,7 +366,7 @@ export class Market {
      progress = false;
      for (const r of ranked) {
       if (batches <= 0) break;
-      if (Object.keys(r.out).every((o) => (c.stock[o] || 0) > this.cap(o))) continue;
+      if (Object.keys(r.out).every((o) => (c.stock[o] || 0) > this.cap(o) * (c.scale || 1))) continue;
       if (r.tool && !this.ensure(c, r.tool, 1)) continue;
       let okk = true;
       for (const [id, q] of Object.entries(r.in)) if (!this.ensure(c, id, q)) { okk = false; break; }
@@ -401,6 +405,9 @@ export class Market {
     if (r.n) { c.stock[machine] -= 1; c.wear = 0; }
   }
   consume(c) {
+    for (let k = 0; k < (c.scale || 1); k++) this.consumeOnce(c);
+  }
+  consumeOnce(c) {
     const hol = holidayOf(this.s.time || 0);
     for (const need of NPC_NEEDS) {
       const pp = need.p * (hol?.gifts && need.any.includes('bouquet') ? 4 : 1);
@@ -429,7 +436,7 @@ export class Market {
   clientsFor(svcId, myPrice) {
     const svc = SERVICES[svcId];
     const ps = this.providers(svcId);
-    const daily = svc.npc * this.e.citizens.length;
+    const daily = svc.npc * this.e.citizens.reduce((a, c) => a + (c.scale || 1), 0);
     const avg = ps.length ? ps.reduce((a, p) => a + p.price, 0) / ps.length : serviceValue(svc);
     const priceFactor = clamp(avg / Math.max(1, myPrice), 0.2, 2.5);
     const share = (1 / (ps.length + 1)) * priceFactor;

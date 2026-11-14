@@ -4,7 +4,7 @@ import { ITEMS } from '../data/items.js';
 import { STOCKS } from '../data/places.js';
 import { GOODS } from '../data/economy.js';
 
-const KEY = 'nexus-vie-v3';
+const KEY = 'nexus-vie-v4';
 export const STATS = [
   ['faim', 'Faim', '🍗'], ['soif', 'Soif', '💧'], ['hygiene', 'Hygiène', '🧼'],
   ['energie', 'Sommeil', '😴'], ['sante', 'Santé', '❤️'], ['moral', 'Moral', '🙂'],
@@ -18,7 +18,7 @@ export function newState() {
   const prices = {};
   for (const id in RESOURCES) prices[id] = 1;
   return {
-    v: 3,
+    v: 4,
     nom: 'Voyageur',
     money: 650,
     time: 8 * 60,                 // minutes depuis le début (jour 1, 8 h)
@@ -65,7 +65,7 @@ export function load() {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const s = JSON.parse(raw);
-      if (s && s.v === 3) return Object.assign(newState(), s);
+      if (s && s.v === 4) return Object.assign(newState(), s);
     }
   } catch (e) { /* stockage indisponible : nouvelle partie */ }
   return newState();

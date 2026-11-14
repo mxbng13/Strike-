@@ -106,7 +106,12 @@ capitale/
   js/data/places.js        lieux, sites de récolte, véhicules, logements, guildes, bourse
 ```
 
-- **Les habitants** (version solo) : chacun a un métier, un stock et de l’argent ; il récolte ou fabrique en achetant ses
+- **Un seul habitant simulé (bot) par métier** pour l’instant (224). Chacun tient une petite entreprise dont la taille
+  (`JOB_SCALE` dans `market.js`) suit les besoins de la ville. Le marché accepte déjà autant de vendeurs et de prestataires
+  qu’on veut par bien ou service : des milliers de joueurs pourront exercer le même métier. Les employés embauchés par
+  le joueur sont de nouvelles personnes (le bot reste sur le marché). Les matériaux introuvables sont commandés et livrés
+  sur le chantier dès que les producteurs en ont fabriqué.
+- **Les habitants** : chacun a un métier, un stock et de l’argent ; il récolte ou fabrique en achetant ses
   matières aux autres, vend au prix qu’il ajuste selon la demande, paie des services, consomme pour vivre. Les prestataires
   servent au plus 8 clients par jour. La ville paie les métiers publics (police, profs, juges…) avec une taxe de 5 % sur les
   ventes. Un serveur multijoueur pourra remplacer ces habitants par de vrais joueurs (l’interface du marché est déjà séparée).

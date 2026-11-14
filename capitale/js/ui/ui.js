@@ -476,7 +476,8 @@ export class UI {
     const g = this.g, s = this.s, B = BUILDINGS[b.type];
     const line = (kind, id, q) => { const have = b[kind][id] || 0; return `<span class="req ${have >= q ? 'ok' : (s.inv[id] ? 'mid' : 'no')}" data-a="open" data-k="good" data-id="${id}">${def(id).emoji} ${esc(def(id).nom)} ${have}/${q}</span>`; };
     let h = `<p class="small">Documents :</p><p>${Object.entries(B.docs).map(([i, q]) => line('docs', i, q)).join(' ')}</p><p class="small">Matériaux :</p><p>${Object.entries(B.mats).map(([i, q]) => line('mats', i, q)).join(' ')}</p>
-      ${this.btn('Livrer ce que j’ai', 'deliver', { b: b.id })}${this.btn('Acheter ce qui manque', 'buymissing', { b: b.id }, { cls: 'primary' })}<h4>Ouvriers</h4>`;
+      ${this.btn('Livrer ce que j’ai', 'deliver', { b: b.id })}${this.btn('Acheter ce qui manque', 'buymissing', { b: b.id }, { cls: 'primary' })}
+      ${s.orders?.[b.id] ? `<p class="small warn">📦 En commande : ${Object.entries(s.orders[b.id]).map(([i, q]) => `${def(i).nom} ×${q}`).join(', ')} (livré chaque nuit dès que possible)</p>` : ''}<h4>Ouvriers</h4>`;
     for (const step of BUILD_STEPS) {
       const svc = Object.values(SERVICES).find((x) => x.step === step);
       const done = b.steps[step];
@@ -502,7 +503,8 @@ export class UI {
     // employés
     h += `<h4>Employés (${b.employees.length}/${B.workers}) · ${this.req('contrat_travail')} par embauche, ${this.req('fiches_paie')} chaque semaine</h4>`;
     for (const cid of b.employees) {
-      const c = this.m.citizen(cid);
+      const c = g.worker(b, cid);
+      if (!c) continue;
       const recs = (RECIPES_BY_JOB[c.job] || []).filter((r) => !r.machine || b.machines.includes(r.machine));
       h += `<div class="row small"><div><b>${esc(c.nom)}</b> · ${esc(JOBS[c.job].nom)} · ${fmt(g.wageOf(c))}/jour<br><select data-c="prod" data-b="${b.id}" data-cid="${cid}">${recs.map((r) => `<option value="${r.idx}" ${b.prod[cid] === r.idx ? 'selected' : ''}>${Object.entries(r.out).map(([i, q]) => `${def(i).nom} ×${q}`).join(' + ')} ← ${Object.entries(r.in).map(([i, q]) => `${def(i).nom} ×${q}`).join(', ') || 'rien'}</option>`).join('')}</select></div>${this.btn('Licencier', 'fire', { b: b.id, c: cid })}</div>`;
     }

@@ -206,7 +206,7 @@ export function createWorld(canvas, places, sites) {
     const rnd = () => hash(seed++, 77, 991);
     for (let tries = 0; tries < 400000 && n < MAX; tries++) {
       const x = (rnd() - 0.5) * MAP * 0.96, z = (rnd() - 0.5) * MAP * 0.96;
-      if (Math.hypot(x, z) < 260) continue;
+      if (Math.hypot(x, z) < 560) continue;
       if (avoid.some(([ax, az]) => Math.hypot(ax - x, az - z) < 75)) continue;
       const f = forestAt(x, z);
       if (f < 0.53 + rnd() * 0.08) continue;
@@ -508,27 +508,7 @@ export function createWorld(canvas, places, sites) {
       add(new THREE.CylinderGeometry(3.5, 3.5, 0.6, 8, 1, true), MAT.cyan, x, 8, z);
       add(new THREE.SphereGeometry(2, 16, 12), MAT.cyan, x, 27.5, z);
     }
-    // bouclier
-    const shieldMat = new THREE.ShaderMaterial({
-      uniforms: { uTime: { value: 0 }, uColor: { value: new THREE.Color(0.35, 1.5, 2.3) } },
-      vertexShader: `varying vec3 vN; varying vec3 vV; varying vec3 vP;
-        void main(){ vec4 wp = modelMatrix * vec4(position, 1.0); vP = position;
-          vN = normalize(mat3(modelMatrix) * normal); vV = cameraPosition - wp.xyz;
-          gl_Position = projectionMatrix * viewMatrix * wp; }`,
-      fragmentShader: `uniform float uTime; uniform vec3 uColor; varying vec3 vN; varying vec3 vV; varying vec3 vP;
-        void main(){
-          float f = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 3.0);
-          float band = exp(-pow((vP.y - mod(uTime * 16.0, 150.0)) / 2.5, 2.0));
-          vec2 g = abs(fract(vec2(atan(vP.x, vP.z) * 18.0, vP.y / 9.0)) - 0.5);
-          float grid = smoothstep(0.46, 0.5, max(g.x, g.y));
-          float a = f * 0.32 + 0.012 + band * 0.14 + grid * 0.035;
-          gl_FragColor = vec4(uColor * a, a); }`,
-      transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
-    });
-    const shield = new THREE.Mesh(new THREE.SphereGeometry(132, 64, 24, 0, Math.PI * 2, 0, Math.PI / 2), shieldMat);
-    shield.scale.y = 0.95; shield.renderOrder = 2;
-    city.add(shield);
-    animated.push((t) => { shieldMat.uniforms.uTime.value = t; });
+    // (plus de dôme d'énergie : la capitale est entourée de petites maisons)
     // drones
     for (let i = 0; i < 5; i++) {
       const d = buildShip(0.55 + (i % 2) * 0.2);
@@ -592,6 +572,48 @@ export function createWorld(canvas, places, sites) {
       spot(`ring:${p.id}`, x, z);
     });
   }
+
+  // Des centaines de petites maisons autour de la capitale (le quartier où vivent les habitants)
+  function buildHouses(exclude) {
+    const MAX = 900;
+    const bodyGeo = new THREE.BoxGeometry(1, 1, 1); bodyGeo.translate(0, 0.5, 0);
+    const roofGeo = new THREE.ConeGeometry(0.78, 0.7, 4); roofGeo.rotateY(Math.PI / 4); roofGeo.translate(0, 1.35, 0);
+    const winGeo = new THREE.BoxGeometry(0.5, 0.25, 0.04); winGeo.translate(0, 0.55, 0.52);
+    const body = new THREE.InstancedMesh(bodyGeo, new THREE.MeshStandardMaterial({ roughness: 0.8 }), MAX);
+    const roof = new THREE.InstancedMesh(roofGeo, new THREE.MeshStandardMaterial({ roughness: 0.7, flatShading: true }), MAX);
+    const win = new THREE.InstancedMesh(winGeo, new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 2.0, 1.0), toneMapped: false }), MAX);
+    body.castShadow = roof.castShadow = true; body.receiveShadow = true;
+    const walls = [C('#f2ece1'), C('#e8dccb'), C('#dfe7ee'), C('#f4e3c9'), C('#e6efe2')];
+    const roofs = [C('#b2492f'), C('#8d3b2a'), C('#4f5d73'), C('#6b4a3a'), C('#3f6f5a'), C('#a0632f')];
+    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), p = new THREE.Vector3(), col = new THREE.Color();
+    let n = 0, seed = 0;
+    const rnd = () => hash(seed++, 313, 77);
+    for (let tries = 0; tries < 20000 && n < MAX; tries++) {
+      const r = 196 + Math.pow(rnd(), 0.8) * 340, a = rnd() * Math.PI * 2;
+      if (ROADS.some((rd) => Math.abs(Math.atan2(Math.sin(a - rd), Math.cos(a - rd))) * r < 14)) continue;
+      const [x, z] = polar(r, a);
+      if (exclude.some(([ex, ez, er]) => Math.hypot(ex - x, ez - z) < er)) continue;
+      const y = heightAt(x, z);
+      if (y < 3 || Math.abs(heightAt(x + 6, z) - y) + Math.abs(heightAt(x, z + 6) - y) > 3) continue;
+      const w = 5 + rnd() * 3, d = 5 + rnd() * 3, hgt = 3.5 + rnd() * 2.5;
+      const rot = a + Math.PI + (rnd() - 0.5) * 0.4;      // façade tournée vers la ville
+      q.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, rot);
+      p.set(x, y - 0.2, z); sc.set(w, hgt, d);
+      body.setMatrixAt(n, m.compose(p, q, sc));
+      body.setColorAt(n, col.copy(walls[(rnd() * walls.length) | 0]));
+      sc.set(w * 1.05, hgt * 0.9, d * 1.05); p.set(x, y - 0.2 + hgt * 0.1, z);
+      roof.setMatrixAt(n, m.compose(p, q, sc));
+      roof.setColorAt(n, col.copy(roofs[(rnd() * roofs.length) | 0]));
+      p.set(x, y - 0.2, z); sc.set(w, hgt, d);
+      win.setMatrixAt(n, m.compose(p, q, sc));
+      exclude.push([x, z, 9]);
+      n++;
+    }
+    body.count = roof.count = win.count = n;
+    scene.add(body, roof, win);
+    houseLights = win;
+  }
+  let houseLights = null;
 
   // Avant-postes
   function buildSites(siteSpots) {
@@ -766,6 +788,7 @@ export function createWorld(canvas, places, sites) {
     sun.position.set(Math.cos(ang) * 420, CAP_Y + 80 + Math.max(Math.sin(ang), 0.15) * 400, 180);
     sun.color.setHSL(0.09, 0.6 + dusk * 0.4, 0.75 - dusk * 0.1);
     for (const m of windowMats) m.emissiveIntensity = 1.2 + (1 - d) * 2.6;
+    if (houseLights) houseLights.visible = d < 0.55;
   }
   function setWeather(type) { weatherType = type; rain.visible = type === 'pluie' || type === 'orage'; }
 
@@ -966,6 +989,7 @@ export function createWorld(canvas, places, sites) {
   buildCapital();
   buildRingPlaces(places.filter((p) => p.spot === 'ring'));
   buildSites(siteSpots);
+  { const ex = Object.values(siteSpots).map(([x, z]) => [x, z, 60]); for (let i = 0; i < 40; i++) { const [x, z] = plotFor(i); ex.push([x, z, 26]); } buildHouses(ex); }
   const placePos = {};
   for (const p of places) {
     const key = p.spot === 'ring' ? `ring:${p.id}` : p.spot;

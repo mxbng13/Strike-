@@ -301,6 +301,7 @@ export const RECIPES = [
   R({ planches: 4 }, { bois: 3 }, 'btp.charpentier', { tool: 'scie' }),
   R({ poutres: 4 }, { planches: 6 }, 'btp.charpentier', { tool: 'scie' }),
   R({ mortier: 6 }, { ciment: 2, pierre: 4 }, 'btp.macon'),
+  R({ peinture: 4 }, { solvants: 1, calcium: 1 }, 'btp.peintre_en_batiment'),
   R({ plan_archi: 1 }, { papier: 2 }, 'btp.architecte', { tool: 'ordinateur_pro', min: 240 }),
   R({ bornage: 1 }, { papier: 1 }, 'btp.geometre'),
   R({ etude_structure: 1 }, { papier: 2 }, 'btp.ingenieur_en_genie_civil', { tool: 'ordinateur_pro', min: 240 }),

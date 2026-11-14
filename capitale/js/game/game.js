@@ -258,8 +258,10 @@ export class Game {
     const lines = [];
     this.autoPrices();
     this.m.dirty = true;
+    for (const o of Object.values(s.orders || {})) for (const [id, q] of Object.entries(o)) s.eco.shortages[id] = (s.eco.shortages[id] || 0) + q * 3;
     this.m.day();
     this.autoPrices();
+    this.deliverOrders();
     if (s.housing?.type === 'location') { this.forcePay(HOUSING.location.loyer, 'loyer'); lines.push(`loyer −${HOUSING.location.loyer} ₵`); }
     this.lifeDaily();
     if (weekday(s.time) === 0) this.weeklyTick();
@@ -1181,8 +1183,36 @@ export class Game {
     }
     this.m.dirty = true;
     if (got.length) log(s, `Achats pour le chantier : ${got.join(' ')} (−${fmt(spent)}).`);
-    if (none.length) log(s, `⚠️ Introuvable ou trop cher pour l’instant : ${none.join(', ')}. Personne n’en vend : c’est l’occasion de le produire vous-même !`, 'warn');
+    if (none.length) {
+      // commande auprès des producteurs : livrée sur le chantier dès qu'ils en auront fabriqué
+      s.orders = s.orders || {};
+      const o = (s.orders[bid] = s.orders[bid] || {});
+      for (const [kind, need] of [['docs', B.docs], ['mats', B.mats]]) for (const [id, q] of Object.entries(need)) {
+        const missing = q - (b[kind][id] || 0) - (s.inv[id] || 0);
+        if (missing > 0) o[id] = missing;
+      }
+      log(s, `📦 Commande passée pour : ${none.join(', ')}. Les producteurs vont en fabriquer davantage ; livraison sur le chantier dès que possible.`, 'warn');
+    }
     return this.deliver(bid);
+  }
+  deliverOrders() {
+    const s = this.s;
+    for (const [bid, o] of Object.entries(s.orders || {})) {
+      const b = s.buildings.find((x) => x.id === bid);
+      if (!b || b.stage !== 'chantier') { delete s.orders[bid]; continue; }
+      const B = BUILDINGS[b.type], got = [];
+      for (const [id, q] of Object.entries(o)) {
+        const r = this.m.buy('player', id, q);
+        if (!r.n) continue;
+        s.inv[id] -= r.n; if (s.inv[id] <= 0) delete s.inv[id];
+        const kind = B.docs[id] ? 'docs' : 'mats';
+        b[kind][id] = (b[kind][id] || 0) + r.n;
+        o[id] -= r.n; if (o[id] <= 0) delete o[id];
+        got.push(`${def(id).emoji}${r.n} (−${fmt(r.spent)})`);
+      }
+      if (got.length) log(s, `🚚 Commande livrée sur « ${b.nom} » : ${got.join(' ')}.`, 'good');
+      if (!Object.keys(o).length) delete s.orders[bid];
+    }
   }
   stepReady(b, step) {
     const B = BUILDINGS[b.type];
@@ -1225,14 +1255,20 @@ export class Game {
     if (BUILDINGS[b.type].shop) ['commerce.vendeur', 'commerce.responsable_de_magasin', 'commerce.marchandiseur'].forEach((j) => jobs.add(j));
     if (b.type === 'atelier') for (const r of RECIPES) if (!r.machine && !r.home && r.jobs[0] !== '*' && ['artisanat', 'textile', 'agroalim'].includes(JOBS[r.jobs[0]]?.sector)) r.jobs.forEach((j) => jobs.add(j));
     const machineJobs = new Set(RECIPES.filter((r) => r.machine && b.machines.includes(r.machine)).flatMap((r) => r.jobs));
-    return this.s.eco.citizens.filter((c) => jobs.has(c.job) && !c.hired).sort((x, y) => (machineJobs.has(y.job) ? 1 : 0) - (machineJobs.has(x.job) ? 1 : 0)).slice(0, 30);
+    // les candidats sont de nouvelles personnes formées au métier (le bot du métier reste sur le marché)
+    const d = day(this.s.time);
+    return [...jobs].sort((x, y) => (machineJobs.has(y) ? 1 : 0) - (machineJobs.has(x) ? 1 : 0)).slice(0, 30).map((job, i) => ({
+      id: `w${d}-${i}-${job}`, nom: `${NAMES[(d * 7 + i * 13) % NAMES.length]} ${['Arden', 'Voss', 'Calder', 'Morrow', 'Lune', 'Ferro', 'Silva', 'Vega', 'Stone', 'Hale'][(d + i) % 10]}`, job }));
   }
   hire(bid, cid) {
-    const s = this.s, b = s.buildings.find((x) => x.id === bid), c = this.m.citizen(cid);
+    const s = this.s, b = s.buildings.find((x) => x.id === bid);
+    const c = this.hireCandidates(b).find((x) => x.id === cid);
+    if (!c) return fail('Candidat introuvable.');
     if (b.employees.length >= BUILDINGS[b.type].workers) return fail('Plus de poste disponible.');
     if (!has(s, 'contrat_travail')) return fail('Il faut un contrat de travail (fait par les ressources humaines, au Comptoir).');
     removeItem(s, 'contrat_travail');
-    c.hired = b.id;
+    b.staff = b.staff || {};
+    b.staff[cid] = { nom: c.nom, job: c.job };
     b.employees.push(cid);
     const rec = (RECIPES_BY_JOB[c.job] || []).find((r) => !r.machine || b.machines.includes(r.machine));
     if (rec) b.prod[cid] = rec.idx;
@@ -1241,14 +1277,15 @@ export class Game {
     return ok();
   }
   fire(bid, cid) {
-    const b = this.s.buildings.find((x) => x.id === bid), c = this.m.citizen(cid);
+    const b = this.s.buildings.find((x) => x.id === bid), c = this.worker(b, cid);
     b.employees = b.employees.filter((x) => x !== cid); delete b.prod[cid];
-    if (c) c.hired = null;
+    if (b.staff) delete b.staff[cid];
     this.m.dirty = true;
     log(this.s, `${c?.nom} a quitté « ${b.nom} ».`);
     return ok();
   }
   wageOf(c) { return Math.round(JOBS[c.job].salaire * 1.6); }
+  worker(b, cid) { return b.staff?.[cid] || this.m.citizen(cid); }
   setProd(bid, cid, idx) { const b = this.s.buildings.find((x) => x.id === bid); b.prod[cid] = Number(idx); return ok(); }
   takeFromBuilding(bid, id, n) {
     const b = this.s.buildings.find((x) => x.id === bid);
@@ -1281,12 +1318,12 @@ export class Game {
     let wages = 0, produced = 0;
     const optim = b.optimUntil > s.time;
     for (const cid of [...b.employees]) {
-      const c = this.m.citizen(cid);
+      const c = this.worker(b, cid);
       if (!c) continue;
       const w = this.wageOf(c);
       wages += w;
       this.forcePay(w, `salaire de ${c.nom}`);
-      c.money += w;
+      this.s.eco.budget += w * 0.2;        // cotisations sociales
       if (b.strike) continue;
       const r = RECIPES[b.prod[cid]];
       if (!r) continue;
