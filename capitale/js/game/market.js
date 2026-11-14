@@ -187,6 +187,7 @@ export class Market {
     for (const o of this.offers(good)) {
       if (n >= qty) break;
       if ((isPlayer && o.player) || o.seller === buyer) continue;
+      if (opts.seller && o.seller !== opts.seller && o.seller?.id !== opts.seller) continue;
       let p = o.price();
       if (opts.maxPrice && p > opts.maxPrice) break;
       if (isPlayer && opts.discount) p *= 1 - opts.discount;

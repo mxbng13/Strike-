@@ -95,7 +95,8 @@ mécaniciens industriels avec l’acier des métallurgistes et le minerai des mi
 capitale/
   index.html               interface (HUD, panneaux, styles)
   js/main.js               relie carte, simulation et interface ; trajets, mini-carte, mini-jeu
-  js/world.js              carte 3D, capitale, avant-postes, vos bâtiments, avatar, jour/nuit, pluie
+  js/world.js              carte 3D, lac, capitale, avant-postes, vos bâtiments, avatar, jour/nuit, pluie
+  js/lakecity.js           maisons des 224 métiers en quartiers, pontons, quais, phare, bateaux
   js/game/state.js         état du joueur et sauvegarde
   js/game/game.js          moteur : besoins, climat, santé, métiers, services, fabrication, chantiers, justice, finance
   js/game/market.js        le marché et ~500 habitants simulés qui exercent chacun un métier
@@ -106,6 +107,12 @@ capitale/
   js/data/places.js        lieux, sites de récolte, véhicules, logements, guildes, bourse
 ```
 
+- **La capitale sur le lac** (`js/lakecity.js`) : un grand lac au sud, des quais illuminés, un pont, trois pontons sur
+  pilotis, une place flottante avec phare et fontaine, des bateaux. **Chaque métier a sa maison, son atelier ou son
+  immeuble** (224), regroupés en quartiers par secteur avec un style propre (maisons pour l’agriculture et l’artisanat,
+  ateliers à cheminée pour l’industrie et l’énergie, immeubles pour la finance, le droit, l’informatique, la santé…) ;
+  hôtellerie, arts, transport et sport vivent sur les pontons. Cliquer une maison : qui exerce ce métier, achat direct
+  chez le producteur, ses services, comment le devenir.
 - **Un seul habitant simulé (bot) par métier** pour l’instant (224). Chacun tient une petite entreprise dont la taille
   (`JOB_SCALE` dans `market.js`) suit les besoins de la ville. Le marché accepte déjà autant de vendeurs et de prestataires
   qu’on veut par bien ou service : des milliers de joueurs pourront exercer le même métier. Les employés embauchés par

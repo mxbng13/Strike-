@@ -3,7 +3,8 @@ import { createWorld, MAP, heightAt, terrainColor } from './world.js';
 import { load, save, reset, log, hourOf, fmt } from './game/state.js';
 import { Game, PLACE_BY_ID } from './game/game.js';
 import { UI } from './ui/ui.js';
-import { PLACES, SITES, VEHICLES } from './data/places.js';
+import { PLACES, SITES, VEHICLES, JOB_HOUSES } from './data/places.js';
+import { SECTORS } from './data/jobs.js';
 import * as THREE from 'three';
 
 const TRAVEL_SCALE = 30;   // minutes de jeu par seconde réelle pendant un trajet
@@ -14,13 +15,13 @@ const state = load();
 requestAnimationFrame(() => setTimeout(init, 30));
 
 function init() {
-  const world = createWorld(document.getElementById('c'), PLACES, SITES);
+  const world = createWorld(document.getElementById('c'), PLACES, SITES, JOB_HOUSES, SECTORS);
   const pos = (id) => world.placePos[id];
   const here = () => [state.pos.x, state.pos.z];
-  const distanceTo = (id) => { const p = pos(id); return Math.hypot(p[0] - state.pos.x, p[1] - state.pos.z); };
+  const distanceTo = (id) => { const p = pos(id); return p ? Math.hypot(p[0] - state.pos.x, p[1] - state.pos.z) : Infinity; };
   let travel = null;
 
-  function arriveOffset(id) { return PLACE_BY_ID[id].kind ? 30 : 9; }
+  function arriveOffset(id) { return PLACE_BY_ID[id].kind ? 30 : PLACE_BY_ID[id].jobHouse ? 11 : 9; }
   const game = new Game(state, {
     distanceTo,
     distanceBetween: (a, b) => { const pa = a ? pos(a) : here(); const pb = pos(b); return Math.hypot(pa[0] - pb[0], pa[1] - pb[1]); },
@@ -28,8 +29,9 @@ function init() {
     plotFor: (i) => world.plotFor(i),
     updateBuildings: (list) => world.updateBuildings(list),
     teleport: (id) => {
+      const f = world.jobFront[id];
       const p = pos(id);
-      state.pos.x = p[0]; state.pos.z = p[1] + arriveOffset(id);
+      if (f) { state.pos.x = f[0]; state.pos.z = f[1]; } else { state.pos.x = p[0]; state.pos.z = p[1] + arriveOffset(id); }
       travel = null; world.setDestination(null);
       world.flyTo(state.pos.x, state.pos.z);
     },
@@ -40,7 +42,7 @@ function init() {
 
   const ui = new UI(game, {
     distanceTo,
-    travelTo: (id) => { const p = pos(id); startTravel(p[0], p[1] + arriveOffset(id), id); },
+    travelTo: (id) => { const f = world.jobFront[id]; if (f) return startTravel(f[0], f[1], id); const p = pos(id); startTravel(p[0], p[1] + arriveOffset(id), id); },
     minigame: () => startMinigame(),
     travelToPoint: (x, z) => startTravel(x, z + 18, null),
     reset: () => { reset(); state.__reset = true; location.reload(); },

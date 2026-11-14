@@ -3,7 +3,7 @@ import { RESOURCES, RESOURCE_CATEGORIES } from '../data/resources.js';
 import { ITEMS, ITEM_CATEGORIES } from '../data/items.js';
 import { GOODS, GOOD_CATEGORIES, RECIPES, SERVICES, BUILDINGS, BUILD_STEPS, BUILD_STEP_NAMES, COMPANY_DOCS, LIFE_REQUIREMENTS, GATHER_JOBS } from '../data/economy.js';
 import { JOBS, SECTORS, SECTOR_BY_ID, ODD_JOB, PERMITS, LEVELS } from '../data/jobs.js';
-import { PLACES, SITES, VEHICLES, HOUSING, GUILDS, STOCKS } from '../data/places.js';
+import { PLACES, SITES, VEHICLES, HOUSING, GUILDS, STOCKS, JOB_HOUSES } from '../data/places.js';
 import { STATS, def, has, fmt, clock, duration } from '../game/state.js';
 import { PLACE_BY_ID, WEATHER, CLIMATES, COND_NAMES, VALUE, serviceValue, RECIPES_BY_JOB, SERVICES_BY_JOB } from '../game/game.js';
 import { PRODUCERS } from '../game/market.js';
@@ -142,6 +142,7 @@ export class UI {
       const d = this.a.distanceTo(id), v = VEHICLES[s.transport];
       h += `<div class="goto">Vous êtes à ${Math.round(d)} m. ${this.btn(`${v.emoji} Y aller (≈ ${duration(d / v.speed)})`, 'go', { id }, { cls: 'primary' })}</div>`;
     }
+    if (p.jobHouse) return h + this.jobHousePanel(p.jobHouse, !here);
     const open = g.isOpen(id);
     if (!p.kind) h += `<p class="small">🕒 ${esc(g.hoursText(id))}</p>`;
     if (!open) h += `<div class="goto warn">Fermé en ce moment. ${this.btn(`⏳ Attendre l’ouverture (${duration(g.waitTime(id))})`, 'waitopen', { id }, { disabled: !here })}</div>`;
@@ -330,6 +331,32 @@ export class UI {
     }).join('');
     const permits = Object.entries(PERMITS).map(([pid, p]) => `<div class="row"><div>${p.emoji} <b>${esc(p.nom)}</b> · ${duration(p.heures * 60)}</div>${s.permits.includes(pid) ? '<span class="tag">Obtenu</span>' : this.btn(fmt(p.prix), 'permit', { id: pid }, { disabled: dis })}</div>`).join('');
     return this.section('🎓 Formations', h) + this.section('📄 Permis et certificats', permits);
+  }
+  jobHousePanel(jid, dis) {
+    const g = this.g, s = this.s, j = JOBS[jid], sec = SECTOR_BY_ID[j.sector];
+    const bots = s.eco.citizens.filter((c) => c.job === jid);
+    let h = `<p class="small">${sec.emoji} ${esc(sec.nom)}</p><p>${esc(this.jobOutputText(jid))}</p>`;
+    const people = bots.map((c) => `<div class="row small"><div><b>${esc(c.nom)}</b> ⭐${c.note} · habitant${(s.friends[c.id] || 0) >= 30 ? ' · <span class="tag">ami(e)</span>' : ''}</div>${this.btn('Discuter (30 min)', 'chat', { c: c.id }, { disabled: dis })}</div>`).join('');
+    const me = s.job === jid ? `<div class="row small"><div><b>${esc(s.nom)}</b> · vous · niveau ${g.jobLevel()}</div><span class="tag">C’est votre métier</span></div>` : '';
+    h += this.section(`🧑‍🔧 Ceux qui exercent ce métier (${bots.length + (s.job === jid ? 1 : 0)})`, people + me + '<p class="small">Bientôt, tous les joueurs qui choisissent ce métier apparaîtront ici : il pourra y en avoir des milliers.</p>');
+    // ce qu'ils vendent
+    const outs = [...new Set((RECIPES_BY_JOB[jid] || []).flatMap((r) => Object.keys(r.out)).concat((GATHER_JOBS[jid] || []).flatMap(([site, gid]) => SITES.find((x) => x.id === site).gather.find((x) => x.id === gid).loot.map(([id]) => id))))];
+    if (outs.length) h += this.section('🛒 En vente directement chez eux', outs.map((id) => {
+      const d = def(id);
+      const offers = this.m.offers(id).filter((o) => o.job === jid);
+      const o = offers[0];
+      return `<div class="row small"><div>${d.emoji} <b data-a="open" data-k="good" data-id="${id}">${esc(d.nom)}</b>${o ? ` · ${o.qty()} en stock` : ' · <span class="warn">épuisé</span>'}${has(s, id) ? ` · vous : ${s.inv[id]}` : ''}</div>${o ? this.btn(p1(o.price()), 'buyfrom', { id, c: o.seller.id }, { disabled: dis }) + this.btn('×5', 'buyfrom', { id, c: o.seller.id, n: 5 }, { disabled: dis }) : ''}</div>`;
+    }).join(''));
+    // leurs services
+    const svcs = (SERVICES_BY_JOB[jid] || []).filter((x) => !x.hidden);
+    if (svcs.length) h += this.section('🧑‍💼 Leurs services (ici ou à leur lieu de travail)', svcs.map((sv) => this.serviceRow(sv, dis)).join(''));
+    // votre métier
+    if (s.job === jid) {
+      const recs = (RECIPES_BY_JOB[jid] || []).filter((r) => !r.machine);
+      h += this.section('💼 Chez vous', `<p class="small">Vous pouvez fabriquer ici les produits de votre métier (${recs.length} recettes sans machine) : onglet Métier.</p>${this.btn('Ouvrir mon métier', 'open', { k: 'job' })}`);
+    } else h += this.section('🎓 Devenir ' + esc(j.nom.toLowerCase()), `<p class="small">Formation : ${fmt(j.formation)} · ${j.heures} h · salaire ${fmt(j.salaire)} / 4 h${j.permis ? ` · ${PERMITS[j.permis].nom}` : ''}.</p>${this.btn('Aller à l’Académie', 'go', { id: 'ecole' })}`);
+    h += `<p class="small">Lieu de travail principal : ${esc(PLACE_BY_ID[j.place].nom)} ${this.btn('Y aller', 'go', { id: j.place })}</p>`;
+    return h;
   }
   jobOutputText(jid) {
     const outs = new Set();
@@ -570,7 +597,8 @@ export class UI {
   }
   placesPanel() {
     const row = (p) => `<div class="row"><div>${p.emoji} ${esc(p.nom)} <span class="small">${Math.round(this.a.distanceTo(p.id))} m</span></div><div>${this.btn('Voir', 'open', { k: 'place', id: p.id })}${this.btn('Y aller', 'go', { id: p.id })}</div></div>`;
-    return this.head('📍', 'Lieux', '') + this.section('🗺️ Sites de ressources', SITES.map(row).join('')) + this.section('🏙️ Capitale', PLACES.map(row).join(''));
+    return this.head('📍', 'Lieux', '') + this.section('🗺️ Sites de ressources', SITES.map(row).join('')) + this.section('🏙️ Capitale', PLACES.map(row).join(''))
+      + this.section(`🏘️ Les maisons des ${JOB_HOUSES.length} métiers`, SECTORS.map((sec) => `<details><summary>${sec.emoji} ${esc(sec.nom)} (${sec.jobIds.length})</summary>${sec.jobIds.map((j) => row(PLACE_BY_ID[`job:${j}`])).join('')}</details>`).join(''));
   }
   guidePanel() {
     let h = this.head('📖', 'Besoins', 'Tout se paie, et tout est fait par quelqu’un.');
@@ -637,6 +665,7 @@ export class UI {
       case 'gobuilding': this.a.travelToPoint(num('x'), num('z')); return;
       case 'transport': r = g.setTransport(d.id); break;
       case 'buy': r = g.buyGood(d.id, num('n') || 1); break;
+      case 'buyfrom': r = g.buyGood(d.id, num('n') || 1, { seller: d.c }); break;
       case 'use': r = g.use(d.id); break;
       case 'service': {
         const sv = SERVICES[d.svc];

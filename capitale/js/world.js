@@ -4,6 +4,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { buildLakeCity } from './lakecity.js';
 
 // ---------------------------------------------------------------------------
 // Réglages du monde
@@ -11,9 +12,12 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 export const MAP = 8000;
 const HALF = MAP / 2;
 const SEG = 512;
-export const CAP_Y = 22;
-const CAP_FLAT = 215;
-const CAP_BLEND = 520;
+export const CAP_Y = 9;
+const CAP_FLAT = 480;
+const CAP_BLEND = 780;
+// Le grand lac au sud de la capitale
+export const LAKE = { x: 0, z: 560, rx: 640, rz: 370 };
+export const lakeDist = (x, z) => Math.hypot((x - LAKE.x) / LAKE.rx, (z - LAKE.z) / LAKE.rz);
 const MIN_DIST = 30, MAX_DIST = 11000;
 
 // ---------------------------------------------------------------------------
@@ -55,7 +59,10 @@ function rawHeight(x, z) {
 }
 export function heightAt(x, z) {
   const t = smooth(CAP_FLAT, CAP_BLEND, Math.hypot(x, z));
-  return CAP_Y + (rawHeight(x, z) - CAP_Y) * t;
+  let h = CAP_Y + (rawHeight(x, z) - CAP_Y) * t;
+  const lk = 1 - smooth(0.955, 1.0, lakeDist(x, z));
+  if (lk > 0) h = h * (1 - lk) - 30 * lk;
+  return h;
 }
 export const forestAt = (x, z) => fbm(x / 600, z / 600, 4, 21);
 export function climateAt(x, z) {
@@ -73,6 +80,7 @@ const PAL = {
 const tmpC = new THREE.Color(), tmpC2 = new THREE.Color();
 export function terrainColor(h, slope, x, z, out) {
   const n = vnoise(x / 110, z / 110, 5) * 0.6 + vnoise(x / 27, z / 27, 9) * 0.4;
+  if (h > 1.5 && h < 16 && Math.hypot(x, z) < 820) { out.copy(PAL.grassA).lerp(PAL.grassB, n * 0.8); return out; }   // pelouses de la capitale
   if (h < -1) out.copy(PAL.sand).lerp(PAL.deep, clamp(-h / 45, 0, 1));
   else if (h < 6) out.copy(PAL.sand);
   else if (h < 170) {
@@ -122,7 +130,7 @@ function computeSites() {
 }
 
 // ---------------------------------------------------------------------------
-export function createWorld(canvas, places, sites) {
+export function createWorld(canvas, places, sites, jobHouses = [], sectors = []) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(innerWidth, innerHeight);
@@ -161,7 +169,7 @@ export function createWorld(canvas, places, sites) {
   sun.target.position.set(0, CAP_Y, 0);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
-  Object.assign(sun.shadow.camera, { left: -230, right: 230, top: 230, bottom: -230, near: 10, far: 1600 });
+  Object.assign(sun.shadow.camera, { left: -480, right: 480, top: 480, bottom: -480, near: 10, far: 2200 });
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.6;
   scene.add(sun, sun.target);
@@ -206,7 +214,7 @@ export function createWorld(canvas, places, sites) {
     const rnd = () => hash(seed++, 77, 991);
     for (let tries = 0; tries < 400000 && n < MAX; tries++) {
       const x = (rnd() - 0.5) * MAP * 0.96, z = (rnd() - 0.5) * MAP * 0.96;
-      if (Math.hypot(x, z) < 560) continue;
+      if (Math.hypot(x, z) < 820 || lakeDist(x, z) < 1.1) continue;
       if (avoid.some(([ax, az]) => Math.hypot(ax - x, az - z) < 75)) continue;
       const f = forestAt(x, z);
       if (f < 0.53 + rnd() * 0.08) continue;
@@ -297,11 +305,13 @@ export function createWorld(canvas, places, sites) {
     const px = Math.cos(angle), pz = -Math.sin(angle);
     const W = 5.5, step = 6;
     const n = Math.ceil((r1 - r0) / step) + 1;
-    const pos = [], idx = [], dots = [];
+    const pos = [], idx = [], dots = [], pillars = [];
     for (let i = 0; i < n; i++) {
       const r = r0 + i * step;
       const cx = dirx * r, cz = dirz * r;
-      const y = r < 120 ? CAP_Y + 0.25 : Math.max(heightAt(cx, cz), 0.3) + 1.2;
+      const gh = heightAt(cx, cz);
+      const y = r < 120 ? CAP_Y + 0.25 : gh < CAP_Y - 2 ? CAP_Y - 0.5 : gh + 1.2;      // pont au-dessus de l'eau
+      if (gh < 0 && i % 5 === 0) pillars.push([cx, cz, y]);
       for (const s of [-1, 1]) pos.push(cx + px * W * s, y, cz + pz * W * s);
       if (i % 2 === 0) for (const s of [-1, 1]) dots.push([cx + px * (W - 0.8) * s, y + 0.05, cz + pz * (W - 0.8) * s]);
       if (i > 0) { const a = (i - 1) * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
@@ -317,6 +327,16 @@ export function createWorld(canvas, places, sites) {
     const m = new THREE.Matrix4(), q = new THREE.Quaternion().setFromAxisAngle(THREE.Object3D.DEFAULT_UP, angle), one = new THREE.Vector3(1, 1, 1);
     dots.forEach((d, k) => inst.setMatrixAt(k, m.compose(new THREE.Vector3(...d), q, one)));
     scene.add(inst);
+    if (pillars.length) {
+      const pil = new THREE.InstancedMesh(new THREE.BoxGeometry(2, 1, 2).translate(0, 0.5, 0), MAT.pave, pillars.length * 2);
+      let k = 0;
+      for (const [cx, cz, y] of pillars) for (const sd of [-1, 1]) pil.setMatrixAt(k++, m.compose(new THREE.Vector3(cx + px * W * sd, -30, cz + pz * W * sd), q, new THREE.Vector3(1, y + 30, 1)));
+      scene.add(pil);
+      const rail = new THREE.InstancedMesh(new THREE.SphereGeometry(0.5, 8, 6), MAT.amber, pillars.length * 2);
+      k = 0;
+      for (const [cx, cz, y] of pillars) for (const sd of [-1, 1]) rail.setMatrixAt(k++, m.compose(new THREE.Vector3(cx + px * (W + 0.5) * sd, y + 3, cz + pz * (W + 0.5) * sd), q, one));
+      scene.add(rail);
+    }
   }
 
   // ------------------------------------------------------------------ capitale
@@ -331,7 +351,7 @@ export function createWorld(canvas, places, sites) {
     hexRing(PLAZA_R + 0.15, 0.5, MAT.cyan, 2.9);
     add(new THREE.CylinderGeometry(PLAZA_R - 8, PLAZA_R - 8, 0.4, 6), MAT.white, 0, 3.2, 0);
     hexRing(PLAZA_R - 7.9, 0.25, MAT.cyanSoft, 3.35);
-    for (const a of ROADS) buildRoad(a, 56, 900);
+    for (const a of ROADS) buildRoad(a, 56, 1100);
     // anneau de faubourg pavé
     const ring = add(new THREE.RingGeometry(150, 186, 72).rotateX(-Math.PI / 2), MAT.pave, 0, 0.15, 0, city, false);
     ring.receiveShadow = true;
@@ -573,46 +593,6 @@ export function createWorld(canvas, places, sites) {
     });
   }
 
-  // Des centaines de petites maisons autour de la capitale (le quartier où vivent les habitants)
-  function buildHouses(exclude) {
-    const MAX = 900;
-    const bodyGeo = new THREE.BoxGeometry(1, 1, 1); bodyGeo.translate(0, 0.5, 0);
-    const roofGeo = new THREE.ConeGeometry(0.78, 0.7, 4); roofGeo.rotateY(Math.PI / 4); roofGeo.translate(0, 1.35, 0);
-    const winGeo = new THREE.BoxGeometry(0.5, 0.25, 0.04); winGeo.translate(0, 0.55, 0.52);
-    const body = new THREE.InstancedMesh(bodyGeo, new THREE.MeshStandardMaterial({ roughness: 0.8 }), MAX);
-    const roof = new THREE.InstancedMesh(roofGeo, new THREE.MeshStandardMaterial({ roughness: 0.7, flatShading: true }), MAX);
-    const win = new THREE.InstancedMesh(winGeo, new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 2.0, 1.0), toneMapped: false }), MAX);
-    body.castShadow = roof.castShadow = true; body.receiveShadow = true;
-    const walls = [C('#f2ece1'), C('#e8dccb'), C('#dfe7ee'), C('#f4e3c9'), C('#e6efe2')];
-    const roofs = [C('#b2492f'), C('#8d3b2a'), C('#4f5d73'), C('#6b4a3a'), C('#3f6f5a'), C('#a0632f')];
-    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), p = new THREE.Vector3(), col = new THREE.Color();
-    let n = 0, seed = 0;
-    const rnd = () => hash(seed++, 313, 77);
-    for (let tries = 0; tries < 20000 && n < MAX; tries++) {
-      const r = 196 + Math.pow(rnd(), 0.8) * 340, a = rnd() * Math.PI * 2;
-      if (ROADS.some((rd) => Math.abs(Math.atan2(Math.sin(a - rd), Math.cos(a - rd))) * r < 14)) continue;
-      const [x, z] = polar(r, a);
-      if (exclude.some(([ex, ez, er]) => Math.hypot(ex - x, ez - z) < er)) continue;
-      const y = heightAt(x, z);
-      if (y < 3 || Math.abs(heightAt(x + 6, z) - y) + Math.abs(heightAt(x, z + 6) - y) > 3) continue;
-      const w = 5 + rnd() * 3, d = 5 + rnd() * 3, hgt = 3.5 + rnd() * 2.5;
-      const rot = a + Math.PI + (rnd() - 0.5) * 0.4;      // façade tournée vers la ville
-      q.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, rot);
-      p.set(x, y - 0.2, z); sc.set(w, hgt, d);
-      body.setMatrixAt(n, m.compose(p, q, sc));
-      body.setColorAt(n, col.copy(walls[(rnd() * walls.length) | 0]));
-      sc.set(w * 1.05, hgt * 0.9, d * 1.05); p.set(x, y - 0.2 + hgt * 0.1, z);
-      roof.setMatrixAt(n, m.compose(p, q, sc));
-      roof.setColorAt(n, col.copy(roofs[(rnd() * roofs.length) | 0]));
-      p.set(x, y - 0.2, z); sc.set(w, hgt, d);
-      win.setMatrixAt(n, m.compose(p, q, sc));
-      exclude.push([x, z, 9]);
-      n++;
-    }
-    body.count = roof.count = win.count = n;
-    scene.add(body, roof, win);
-    houseLights = win;
-  }
   let houseLights = null;
 
   // Avant-postes
@@ -794,7 +774,7 @@ export function createWorld(canvas, places, sites) {
 
   // ------------------------------------------------------------------ caméra
   const target = new THREE.Vector3(0, CAP_Y, 0);
-  let dist = 260, goalDist = 260, yaw = 0.6, tiltOffset = 0;
+  let dist = 620, goalDist = 620, yaw = 0.15, tiltOffset = 0;
   let goalYaw = null, flyTo = null, zoomAnchor = null, follow = null;
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
@@ -849,7 +829,8 @@ export function createWorld(canvas, places, sites) {
     ndc.set((sx / innerWidth) * 2 - 1, -(sy / innerHeight) * 2 + 1);
     raycaster.setFromCamera(ndc, camera);
     const hits = raycaster.intersectObjects(markers.filter((m) => m.visible), false);
-    return hits.length ? hits[0].object.userData.id : null;
+    if (hits.length) return hits[0].object.userData.id;
+    return lakeCity.pick(raycaster);
   }
   function setZoomAnchor(sx, sy) { const w = groundPoint(sx, sy); zoomAnchor = w ? { sx, sy, world: w.clone() } : null; }
   function zoomBy(factor, sx, sy) {
@@ -946,9 +927,9 @@ export function createWorld(canvas, places, sites) {
   const plotsGroup = new THREE.Group();
   scene.add(plotsGroup);
   function plotFor(i) {
-    const ring = 250 + Math.floor(i / 14) * 45;
-    let a = 0.25 + (i % 14) * 0.45;
-    for (const r of ROADS) if (Math.abs(Math.atan2(Math.sin(a - r), Math.cos(a - r))) < 0.12) a += 0.2;
+    const ring = 505 + Math.floor(i / 16) * 40;
+    let a = 1.15 + (i % 16) * 0.25;
+    for (const r of ROADS) if (Math.abs(Math.atan2(Math.sin(a - r), Math.cos(a - r))) < 0.06) a += 0.12;
     const [x, z] = polar(ring, a);
     return [Math.round(x), Math.round(z)];
   }
@@ -989,7 +970,8 @@ export function createWorld(canvas, places, sites) {
   buildCapital();
   buildRingPlaces(places.filter((p) => p.spot === 'ring'));
   buildSites(siteSpots);
-  { const ex = Object.values(siteSpots).map(([x, z]) => [x, z, 60]); for (let i = 0; i < 40; i++) { const [x, z] = plotFor(i); ex.push([x, z, 26]); } buildHouses(ex); }
+  const lakeCity = buildLakeCity({ scene, add, MAT, towerMat, heightAt, polar, CAP_Y, ROADS, animated, buildShip, hash, jobHouses, sectors, LAKE, lakeDist, plotFor });
+  houseLights = lakeCity.nightWindows;
   const placePos = {};
   for (const p of places) {
     const key = p.spot === 'ring' ? `ring:${p.id}` : p.spot;
@@ -999,6 +981,7 @@ export function createWorld(canvas, places, sites) {
     addMarker(p, s[0], s[1], false);
   }
   for (const s of sites) { placePos[s.id] = spots[`site:${s.id}`]; addMarker(s, ...placePos[s.id], true); }
+  Object.assign(placePos, lakeCity.jobPos);
   updateCamera();
 
   // ------------------------------------------------------------------ boucle
@@ -1065,6 +1048,7 @@ export function createWorld(canvas, places, sites) {
     dest.scale.setScalar(clamp(camera.position.distanceTo(dest.position) * 0.008, 1, 60));
     dest.rotation.z = t;
     updateRain(t);
+    lakeCity.update(t, camera, target, dist);
     composer.render();
   }
 
@@ -1076,7 +1060,7 @@ export function createWorld(canvas, places, sites) {
   });
 
   return {
-    frame, heightAt, climateAt, placePos, siteSpots, camera, raycaster, plotFor, updateBuildings,
+    frame, heightAt, climateAt, placePos, siteSpots, camera, raycaster, plotFor, updateBuildings, jobFront: lakeCity.jobFront,
     get dist() { return dist; }, set dist(v) { dist = goalDist = v; },
     get yaw() { return yaw; }, get target() { return target; },
     zoomT, zoomBy, setAvatar, setDestination, setTime, setWeather,
@@ -1084,7 +1068,7 @@ export function createWorld(canvas, places, sites) {
     flyTo(x, z, d) { flyTo = new THREE.Vector2(x, z); follow = null; zoomAnchor = null; if (d) goalDist = d; },
     follow(on) { follow = on; if (on) { flyTo = null; zoomAnchor = null; } },
     resetNorth() { goalYaw = 0; },
-    home() { flyTo = new THREE.Vector2(0, 0); goalDist = 260; goalYaw = 0.6; tiltOffset = 0; follow = null; },
+    home() { flyTo = new THREE.Vector2(0, 120); goalDist = 620; goalYaw = 0.15; tiltOffset = 0; follow = null; },
     viewCorners() {
       return [[0, 0], [innerWidth, 0], [innerWidth, innerHeight], [0, innerHeight]].map(([sx, sy]) => {
         ndc.set((sx / innerWidth) * 2 - 1, -(sy / innerHeight) * 2 + 1);

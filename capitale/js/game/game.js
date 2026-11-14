@@ -3,14 +3,15 @@
 // et le joueur peut lui-même produire, vendre, rendre des services, embaucher et faire construire.
 import { ITEMS } from '../data/items.js';
 import { JOBS, SECTOR_BY_ID, ODD_JOB, levelOf, PERMITS } from '../data/jobs.js';
-import { PLACES, SITES, VEHICLES, HOUSING, GUILDS, STOCKS, NAMES } from '../data/places.js';
+import { PLACES, SITES, VEHICLES, HOUSING, GUILDS, STOCKS, NAMES, JOB_HOUSES } from '../data/places.js';
 import { RECIPES, SERVICES, BUILDINGS, BUILD_STEPS, COMPANY_DOCS, LIFE_REQUIREMENTS, GATHER_JOBS } from '../data/economy.js';
 import { def, has, addItem, removeItem, wear, log, clamp, fmt, hourOf, day, duration, save } from './state.js';
-import { Market, createEconomy, VALUE, serviceValue, RECIPES_BY_JOB, SERVICES_BY_JOB } from './market.js';
+import { Market, createEconomy, VALUE, serviceValue, RECIPES_BY_JOB, SERVICES_BY_JOB, PRODUCERS } from './market.js';
+const PRODUCERS_OF = (id) => PRODUCERS[id] || new Set();
 import { installLife, seasonOf, weekday } from './life.js';
 import { PETS } from '../data/life.js';
 
-export const PLACE_BY_ID = Object.fromEntries([...PLACES, ...SITES].map((p) => [p.id, p]));
+export const PLACE_BY_ID = Object.fromEntries([...PLACES, ...SITES, ...JOB_HOUSES].map((p) => [p.id, p]));
 const rnd = Math.random;
 const pick = (a) => a[Math.floor(rnd() * a.length)];
 const gauss = () => (rnd() + rnd() + rnd() - 1.5) / 1.5;
@@ -57,16 +58,19 @@ export class Game {
 
   // ------------------------------------------------------------------ utilitaires
   place(id) { return PLACE_BY_ID[id]; }
-  radius(id) { return this.place(id)?.kind ? 90 : 16; }
+  radius(id) { return this.place(id)?.kind ? 90 : this.place(id)?.jobHouse ? 14 : 16; }
   at(id) { return this.world.distanceTo(id) <= this.radius(id); }
   hereId() {
     let best = null, bd = Infinity;
-    for (const p of [...PLACES, ...SITES]) { const d = this.world.distanceTo(p.id); if (d < bd) { bd = d; best = p; } }
+    for (const p of [...PLACES, ...SITES, ...JOB_HOUSES]) { const d = this.world.distanceTo(p.id); if (d < bd) { bd = d; best = p; } }
     return best && bd <= this.radius(best.id) ? best.id : null;
   }
   atSite() { const h = this.hereId(); return h && this.place(h).kind ? h : null; }
+  atJobHouse() { const h = this.hereId(); return h && this.place(h).jobHouse ? this.place(h).jobHouse : null; }
   atPlaceFor(svc) {
     if (svc.place === '*any') return true;
+    const jh = this.atJobHouse();
+    if (jh && svc.jobs.includes(jh)) return true;          // on peut aussi aller chez le prestataire
     if (svc.place === '*site') return !!this.atSite();
     return this.at(svc.place);
   }
@@ -318,6 +322,8 @@ export class Game {
   // ------------------------------------------------------------------ acheter aux producteurs
   canBuyHere(id) {
     if (this.at('comptoir')) return true;
+    const jh = this.atJobHouse();
+    if (jh && (PRODUCERS_OF(id).has(jh))) return true;
     const here = this.hereId();
     const p = here && this.place(here);
     return !!(p && p.shop && p.shop.includes(id));
@@ -326,7 +332,7 @@ export class Game {
     if (!opts.anywhere && !this.canBuyHere(id)) return fail('Ce produit ne se vend pas ici (essayez le Comptoir des ressources).');
     if (!opts.anywhere) { const cl = this.closedMsg(this.hereId()); if (cl) return fail(cl); }
     const discount = opts.useBon && has(this.s, 'bon_achat') ? 0.15 : 0;
-    const r = this.m.buy('player', id, n, { discount });
+    const r = this.m.buy('player', id, n, { discount, seller: opts.seller });
     if (!r.n) return fail(this.m.offers(id).length ? 'Pas assez d’argent.' : `Rupture : personne ne vend de ${def(id).nom.toLowerCase()} en ce moment.`);
     if (discount) removeItem(this.s, 'bon_achat');
     this.s.stats_total.depense += r.spent;
@@ -380,7 +386,7 @@ export class Game {
   buyService(svcId, citizenId, arg) {
     const s = this.s, svc = SERVICES[svcId];
     if (!this.atPlaceFor(svc)) return fail('Il faut être sur place.');
-    if (!svc.place.startsWith('*')) { const cl = this.closedMsg(svc.place); if (cl) return fail(cl); }
+    if (!svc.place.startsWith('*') && !this.atJobHouse()) { const cl = this.closedMsg(svc.place); if (cl) return fail(cl); }
     if (this.event()?.block?.includes(svc.special)) return fail(`${this.event().nom} : service interrompu.`);
     if (['flight', 'tour', 'loan'].includes(svc.special) && !has(s, 'carte_identite')) return fail('Il faut une carte d’identité (préfecture).');
     const prov = this.m.providers(svcId).find((p) => p.c.id === citizenId) || this.m.providers(svcId)[0];
@@ -725,7 +731,7 @@ export class Game {
     else {
       if (!s.job || !r.jobs.includes(s.job)) return `Réservé : ${r.jobs.map((j) => JOBS[j]?.nom).join(', ')}`;
       if (r.machine) { const b = this.workshopFor(r); if (!b) return `Il faut une machine « ${def(r.machine).nom} » installée dans votre bâtiment`; }
-      else if (!this.at(JOBS[s.job].place) && !s.buildings.some((b) => b.stage === 'actif' && this.atBuilding(b))) return `À votre lieu de travail (${this.place(JOBS[s.job].place).nom}) ou dans votre bâtiment`;
+      else if (!this.at(JOBS[s.job].place) && this.atJobHouse() !== s.job && !s.buildings.some((b) => b.stage === 'actif' && this.atBuilding(b))) return `À votre lieu de travail (${this.place(JOBS[s.job].place).nom}) ou dans votre bâtiment`;
       const miss = this.missingFor(JOBS[s.job]);
       if (miss.permis) return `Il faut : ${PERMITS[miss.permis].nom}`;
     }

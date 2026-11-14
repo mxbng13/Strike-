@@ -1,3 +1,4 @@
+import { JOBS, SECTOR_BY_ID } from './jobs.js';
 // Lieux de la capitale et sites de ressources sur la carte.
 // spot : où placer le lieu (voir world.js) · shop : objets vendus · services : actions payantes
 // special : écran particulier (marché des ressources, garage, gare, école…)
@@ -174,3 +175,10 @@ export const STOCKS = [
 
 export const NAMES = ['Alix', 'Noé', 'Lou', 'Sacha', 'Eden', 'Maé', 'Rayan', 'Lina', 'Iris', 'Malo', 'Zoé', 'Nils', 'Jade', 'Elio', 'Léa', 'Timéo',
   'Ambre', 'Yanis', 'Nora', 'Axel', 'Mila', 'Oscar', 'Romy', 'Kenzo', 'Livia', 'Hugo', 'Anouk', 'Milan', 'Céleste', 'Gabin'];
+
+// Une maison (ou un atelier, un immeuble) pour CHAQUE métier : c'est là qu'on trouve ceux qui l'exercent
+// (aujourd'hui un habitant simulé, demain tous les joueurs qui ont choisi ce métier).
+export const JOB_HOUSES = Object.values(JOBS).map((j) => ({
+  id: `job:${j.id}`, jobHouse: j.id, nom: `${j.nom}`, emoji: SECTOR_BY_ID[j.sector].emoji,
+  desc: `Quartier ${SECTOR_BY_ID[j.sector].nom.split(',')[0]} · la maison des ${j.nom.toLowerCase()}s`,
+}));
