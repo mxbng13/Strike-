@@ -1,0 +1,32 @@
+{
+  "name": "EggMountain",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "EggMountain": {
+        "$className": "Folder",
+        "Config": { "$path": "src/shared/Config.luau" },
+        "Remotes": {
+          "$className": "Folder",
+          "Notify": { "$className": "RemoteEvent" },
+          "EggAction": { "$className": "RemoteEvent" },
+          "IntroDone": { "$className": "RemoteEvent" }
+        }
+      }
+    },
+    "ServerScriptService": {
+      "EggMountain": {
+        "$className": "Folder",
+        "Main": { "$path": "src/server/Main.server.luau" },
+        "DataManager": { "$path": "src/server/DataManager.luau" },
+        "EggSystem": { "$path": "src/server/EggSystem.luau" },
+        "ObstacleSystem": { "$path": "src/server/ObstacleSystem.luau" }
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "EggMountainClient": { "$path": "src/client/Client.client.luau" }
+      }
+    }
+  }
+}
