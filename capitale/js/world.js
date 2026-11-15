@@ -108,7 +108,7 @@ function findSpot(score) {
   return best;
 }
 const slopeAt = (x, z) => Math.abs(heightAt(x + 15, z) - heightAt(x - 15, z)) + Math.abs(heightAt(x, z + 15) - heightAt(x, z - 15));
-function computeSites() {
+export function computeSites() {
   const S = {};
   const far = (pts, x, z, min) => pts.every(([a, b]) => Math.hypot(a - x, b - z) > min);
   const taken = [[0, 0]];

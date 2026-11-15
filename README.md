@@ -107,6 +107,10 @@ capitale/
   js/data/places.js        lieux, sites de récolte, véhicules, logements, guildes, bourse
 ```
 
+- **Vue pixel art isométrique** (par défaut, `js/world2d.js` + `js/layout.js`) : toute la carte dessinée en pixels,
+  chaque métier dans sa pièce ouverte (murs à la couleur du secteur, bureau, écrans, tableau, plante) avec son habitant
+  au travail, étiquettes « 1/1 au poste » (0/1 la nuit), bulles d’activité (« JADE CALDER — fabrique : logiciel »),
+  passants, bateaux, phare, nuit et pluie. Le bouton 🧊 / 🎮 passe de la vue pixel à la vue 3D.
 - **La capitale sur le lac** (`js/lakecity.js`) : un grand lac au sud, des quais illuminés, un pont, trois pontons sur
   pilotis, une place flottante avec phare et fontaine, des bateaux. **Chaque métier a sa maison, son atelier ou son
   immeuble** (224), regroupés en quartiers par secteur avec un style propre (maisons pour l’agriculture et l’artisanat,

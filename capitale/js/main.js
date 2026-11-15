@@ -4,7 +4,14 @@ import { load, save, reset, log, hourOf, fmt } from './game/state.js';
 import { Game, PLACE_BY_ID } from './game/game.js';
 import { UI } from './ui/ui.js';
 import { PLACES, SITES, VEHICLES, JOB_HOUSES } from './data/places.js';
-import { SECTORS } from './data/jobs.js';
+import { SECTORS, JOBS } from './data/jobs.js';
+import { RECIPES_BY_JOB, SERVICES_BY_JOB } from './game/market.js';
+import { GATHER_JOBS } from './data/economy.js';
+import { def } from './game/state.js';
+
+// Vue « pixel » (isométrique, par défaut) ou vue 3D
+let VIEW = 'pixel';
+try { VIEW = localStorage.getItem('nexus-view') || 'pixel'; } catch (e) { /* ignore */ }
 import * as THREE from 'three';
 
 const TRAVEL_SCALE = 30;   // minutes de jeu par seconde réelle pendant un trajet
@@ -14,8 +21,19 @@ const state = load();
 
 requestAnimationFrame(() => setTimeout(init, 30));
 
-function init() {
-  const world = createWorld(document.getElementById('c'), PLACES, SITES, JOB_HOUSES, SECTORS);
+// Ce que fait chaque habitant (affiché dans les bulles de la vue pixel)
+function activityOf(jobId, seed) {
+  const opts = [];
+  for (const r of RECIPES_BY_JOB[jobId] || []) for (const o of Object.keys(r.out)) opts.push(`fabrique : ${def(o).nom.toLowerCase()}`);
+  for (const sv of SERVICES_BY_JOB[jobId] || []) if (!sv.hidden) opts.push(sv.nom.toLowerCase());
+  for (const [site] of GATHER_JOBS[jobId] || []) opts.push(`part récolter (${PLACE_BY_ID[site].nom})`);
+  return opts.length ? opts[seed % opts.length] : 'travaille';
+}
+
+async function init() {
+  let make = createWorld;
+  if (VIEW === 'pixel') make = (await import('./world2d.js')).createWorld;
+  const world = make(document.getElementById('c'), PLACES, SITES, JOB_HOUSES, SECTORS);
   const pos = (id) => world.placePos[id];
   const here = () => [state.pos.x, state.pos.z];
   const distanceTo = (id) => { const p = pos(id); return p ? Math.hypot(p[0] - state.pos.x, p[1] - state.pos.z) : Infinity; };
@@ -48,6 +66,22 @@ function init() {
     reset: () => { reset(); state.__reset = true; location.reload(); },
   });
   state.onLog = (msg, kind) => ui.toast(msg, kind);
+  if (world.setInfo) {
+    const bots = {};
+    for (const c of state.eco.citizens) (bots[c.job] = bots[c.job] || []).push(c);
+    world.setInfo((id) => {
+      const p = PLACE_BY_ID[id];
+      if (!p) return {};
+      if (!p.jobHouse) return { open: game.isOpen(id) };
+      const list = bots[p.jobHouse] || [];
+      const h = hourOf(state.time);
+      const mine = state.job === p.jobHouse ? 1 : 0;
+      const present = h >= 7 && h < 20;
+      const day = Math.floor(state.time / 1440) + Math.floor(h / 3);
+      return { title: JOBS[p.jobHouse].nom, emoji: p.emoji, count: list.length + mine, present, name: list[0]?.nom || state.nom, activity: activityOf(p.jobHouse, day + (list[0] ? parseInt(list[0].id.slice(1), 10) : 0)) };
+    });
+  }
+  { const vb = document.getElementById('viewbtn'); if (vb) { vb.textContent = VIEW === 'pixel' ? '🧊' : '🎮'; vb.title = VIEW === 'pixel' ? 'Passer en vue 3D' : 'Passer en vue pixel'; vb.onclick = () => { try { localStorage.setItem('nexus-view', VIEW === 'pixel' ? '3d' : 'pixel'); } catch (e) { /* ignore */ } save(state); location.reload(); }; } }
   world.updateBuildings(state.buildings || []);
   game.onChange(() => ui.render());
 
