@@ -68,6 +68,26 @@ def main() -> None:
     dest.write_text("\n".join(out), encoding="utf-8")
     print(f"écrit {dest} ({dest.stat().st_size} octets)")
 
+    # Version tout-en-un : la map + les scripts, dans un seul fichier
+    map_src = (ROOT / "build" / "1_BuildMap.luau").read_text(encoding="utf-8")
+    install_src = "\n".join(out)
+    allinone = "\n".join([
+        "-- 🥚 EGG MOUNTAIN — VERSION TOUT-EN-UN (map + scripts du jeu)",
+        "-- Colle TOUT ce fichier dans la barre de commandes de Roblox Studio, puis appuie sur Entrée.",
+        "-- Fichier généré automatiquement par tools/make_installer.py.",
+        "do -- PARTIE 1 : construction de la map",
+        map_src,
+        "end",
+        "do -- PARTIE 2 : installation des scripts",
+        install_src,
+        "end",
+        'print("🥚 EGG MOUNTAIN installé en entier ! Appuie sur F5 pour jouer.")',
+        "",
+    ])
+    dest2 = ROOT / "build" / "EggMountain_ToutEnUn.luau"
+    dest2.write_text(allinone, encoding="utf-8")
+    print(f"écrit {dest2} ({dest2.stat().st_size} octets)")
+
 
 if __name__ == "__main__":
     main()
